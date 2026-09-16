@@ -105,7 +105,7 @@ def main():
 
     async def handle_bar_command(command: str):
         command_bar.set_state("thinking")
-        window.tts.stop_speaking()
+        window.stop_current_task()
         window.chat_view.add_message("user", command)
         skill_res = await window.brain.execute_smart_skill(command)
         if skill_res:

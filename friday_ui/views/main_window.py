@@ -110,6 +110,7 @@ class FridayMainWindow(FluentWindow):
         self.vector_store = FridayVectorStore()
         self.brain.vector_store = self.vector_store
         self._tasks = set()
+        self._current_command_task = None
 
         self._init_window()
         self._init_sub_interfaces()
@@ -247,6 +248,7 @@ class FridayMainWindow(FluentWindow):
         self.chat_view.doc_ingest_requested.connect(self.handle_doc_ingest)
         self.chat_view.deep_research_requested.connect(lambda topic: self.handle_research(topic, "Deep Comprehensive"))
         self.chat_view.voice_toggle_requested.connect(self.toggle_voice_loop)
+        self.chat_view.stop_requested.connect(self.handle_stop_requested)
         self.chat_view.model_changed.connect(self._on_model_quick_switched)
         self.chat_view.voice_changed.connect(self._on_voice_quick_switched)
         self.operations_panel.quick_command_triggered.connect(self.handle_user_command)
@@ -354,12 +356,31 @@ class FridayMainWindow(FluentWindow):
     def _on_error(self, err: str):
         InfoBar.error("System Anomaly", err, parent=self, position=InfoBarPosition.TOP_RIGHT, duration=4000)
 
+    def handle_stop_requested(self):
+        """Immediately halts any active command execution, LLM streaming, and speech."""
+        self.stop_current_task()
+        self.chat_view.finish_stream(final_text=None)
+        InfoBar.info("Stopped", "Generation halted by user.", parent=self, position=InfoBarPosition.TOP_RIGHT, duration=1500)
+
+    def stop_current_task(self):
+        """Cancels running command task and aborts brain generation and TTS speech."""
+        if hasattr(self, 'brain') and hasattr(self.brain, 'abort_generation'):
+            self.brain.abort_generation()
+        if hasattr(self, 'tts') and hasattr(self.tts, 'stop_speaking'):
+            self.tts.stop_speaking()
+        if getattr(self, '_current_command_task', None) and not self._current_command_task.done():
+            self._current_command_task.cancel()
+            self._current_command_task = None
+        self.signals.speech_level_changed.emit(0.0)
+        next_state = "listening" if getattr(self.tts, "voice_loop_active", False) else "idle"
+        self.signals.state_changed.emit(next_state)
+
     def handle_user_command(self, command: str, display_text: str = None):
         """Processes typed, chipped, or attached user command asynchronously."""
-        self.tts.stop_speaking()
+        self.stop_current_task()
         bubble_text = display_text if display_text else command
         self.chat_view.add_message("user", bubble_text)
-        self._create_task(self._process_command(command))
+        self._current_command_task = self._create_task(self._process_command(command))
 
     async def _process_command(self, command: str):
         self.signals.state_changed.emit("thinking")

@@ -13,7 +13,7 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import (
     QFont, QColor, QPainter, QPen, QBrush, QLinearGradient,
-    QRadialGradient, QPainterPath, QGuiApplication
+    QRadialGradient, QPainterPath, QGuiApplication, QKeySequence, QShortcut
 )
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QLabel,
@@ -138,12 +138,15 @@ class ChatView(QWidget):
     deep_research_requested = Signal(str)   # (topic)
     model_changed = Signal(str)
     voice_changed = Signal(str)
+    stop_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.attached_files = []
         self.deep_research_active = False
         self._current_streaming_bubble = None
+        self._streaming_session_id = None
+        self._is_generating = False
         self._last_streamed_text = ""
         self.session_store = SessionStore()
         self.current_session_id = None
@@ -484,7 +487,7 @@ class ChatView(QWidget):
         self.mic_btn.clicked.connect(self.voice_toggle_requested.emit)
         input_layout.addWidget(self.mic_btn)
 
-        # Send Button — Cyan accent matching reference mockup
+        # Send / Stop Button — Dynamically transforms into Stop during active generation/speech
         self.send_btn = PrimaryPushButton("Send", self)
         self.send_btn.setFixedSize(80, 34)
         self.send_btn.setCursor(Qt.PointingHandCursor)
@@ -505,11 +508,74 @@ class ChatView(QWidget):
                 background-color: #0891B2;
             }
         """)
-        self.send_btn.clicked.connect(self._submit_prompt)
+        self.send_btn.clicked.connect(self._on_send_btn_clicked)
         input_layout.addWidget(self.send_btn)
+
+        self.esc_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
+        self.esc_shortcut.activated.connect(self._on_escape_pressed)
 
         self.prompt_input.setToolTip("Press Ctrl + Space to summon F.R.I.D.A.Y. HUD from anywhere in Windows")
         layout.addWidget(input_frame)
+
+    def _on_send_btn_clicked(self):
+        if self._is_generating:
+            self.stop_generation()
+        else:
+            self._submit_prompt()
+
+    def _on_escape_pressed(self):
+        if self._is_generating:
+            self.stop_generation()
+
+    def stop_generation(self):
+        """Immediately halts ongoing generation and speech."""
+        self.stop_requested.emit()
+        self.finish_stream(final_text=None)
+        self._set_generating_state(False)
+
+    def _set_generating_state(self, generating: bool):
+        self._is_generating = generating
+        if generating:
+            self.send_btn.setText("■ Stop")
+            self.send_btn.setToolTip("Halt response generation and speech (Esc)")
+            self.send_btn.setStyleSheet("""
+                PrimaryPushButton {
+                    background-color: #EF4444;
+                    border: 1px solid #DC2626;
+                    font-weight: bold;
+                    font-size: 12px;
+                    border-radius: 8px;
+                    color: #FFFFFF;
+                    letter-spacing: 0.5px;
+                }
+                PrimaryPushButton:hover {
+                    background-color: #F87171;
+                    border: 1px solid #EF4444;
+                }
+                PrimaryPushButton:pressed {
+                    background-color: #B91C1C;
+                }
+            """)
+        else:
+            self.send_btn.setText("Send")
+            self.send_btn.setToolTip("Send directive (Enter)")
+            self.send_btn.setStyleSheet("""
+                PrimaryPushButton {
+                    background-color: #06B6D4;
+                    border: none;
+                    font-weight: bold;
+                    font-size: 12px;
+                    border-radius: 8px;
+                    color: #000000;
+                    letter-spacing: 0.5px;
+                }
+                PrimaryPushButton:hover {
+                    background-color: #22D3EE;
+                }
+                PrimaryPushButton:pressed {
+                    background-color: #0891B2;
+                }
+            """)
 
     def _show_attach_menu(self):
         """Displays the tactical popup action menu from the '+' button."""
@@ -665,6 +731,8 @@ class ChatView(QWidget):
         self.attachments_layout.addStretch(1)
 
     def _submit_prompt(self):
+        if self._is_generating:
+            return
         text = self.prompt_input.text().strip()
 
         # 1. If Deep Research is active
@@ -713,11 +781,16 @@ class ChatView(QWidget):
             self.command_submitted.emit(text, text)
 
     def _on_chip_clicked(self, query: str):
+        if self._is_generating:
+            return
         self.command_submitted.emit(query, query)
 
     def start_stream(self, role: str = "friday", initial_status: str = "Synthesizing..."):
         """Creates and stages a streaming ChatBubble immediately."""
         self.typing_indicator.hide_indicator()
+        self._set_generating_state(True)
+        self._streaming_session_id = self.current_session_id
+
         if self._current_streaming_bubble:
             self._current_streaming_bubble.finish_stream()
             self._current_streaming_bubble = None
@@ -729,9 +802,13 @@ class ChatView(QWidget):
         QTimer.singleShot(30, self._scroll_to_bottom)
 
     def append_token(self, token: str):
-        """Streams a token chunk into the active streaming bubble."""
+        """Streams a token chunk into the active streaming bubble with session isolation."""
+        if not self._is_generating:
+            return
+        if self._streaming_session_id != self.current_session_id:
+            return
         if not self._current_streaming_bubble:
-            self.start_stream("friday", "Synthesizing...")
+            return
         self._current_streaming_bubble.append_token(token)
         vsb = self.scroll_area.verticalScrollBar()
         if vsb.maximum() - vsb.value() < 160:
@@ -739,6 +816,8 @@ class ChatView(QWidget):
 
     def update_status(self, status_text: str):
         """Updates the status description on the active streaming bubble."""
+        if not self._is_generating or self._streaming_session_id != self.current_session_id:
+            return
         if self._current_streaming_bubble:
             self._current_streaming_bubble.set_status(status_text)
 
@@ -768,6 +847,10 @@ class ChatView(QWidget):
             return
         session_id = self.session_combo.itemData(index)
         if session_id and session_id != self.current_session_id:
+            self.stop_requested.emit()
+            self._current_streaming_bubble = None
+            self._streaming_session_id = None
+            self._set_generating_state(False)
             self.current_session_id = session_id
             self._load_session_messages(session_id)
 
@@ -813,6 +896,10 @@ class ChatView(QWidget):
             logger.error(f"Error launching AddModelDialog: {e}")
 
     def _on_new_session(self):
+        self.stop_requested.emit()
+        self._current_streaming_bubble = None
+        self._streaming_session_id = None
+        self._set_generating_state(False)
         new_id = self.session_store.create_session("New Tactical Session")
         self._load_sessions_list()
         InfoBar.success("New Session", "Created new tactical conversation session.", parent=self, position=InfoBarPosition.TOP_RIGHT, duration=2000)
@@ -837,12 +924,14 @@ class ChatView(QWidget):
 
     def finish_stream(self, final_text: str = None):
         """Finalizes the active streaming bubble."""
+        self._set_generating_state(False)
         if self._current_streaming_bubble:
             self._current_streaming_bubble.finish_stream(final_text)
             self._last_streamed_text = self._current_streaming_bubble.raw_text.strip()
-            if self.current_session_id and self._last_streamed_text:
+            if self.current_session_id and self._streaming_session_id == self.current_session_id and self._last_streamed_text:
                 self.session_store.add_message(self.current_session_id, "friday", self._last_streamed_text)
             self._current_streaming_bubble = None
+        self._streaming_session_id = None
         QTimer.singleShot(60, self._scroll_to_bottom)
 
     def add_message(self, role: str, message: str, persist: bool = True):
@@ -924,6 +1013,7 @@ class ChatView(QWidget):
                 }
             """)
         elif st == "THINKING":
+            self._set_generating_state(True)
             self.status_pill.setText("● THINKING")
             self.status_pill.setStyleSheet(f"""
                 color: #F59E0B;
@@ -933,6 +1023,7 @@ class ChatView(QWidget):
             """)
             self.typing_indicator.show_indicator()
         elif st == "SPEAKING":
+            self._set_generating_state(True)
             self.status_pill.setText("● TRANSMITTING")
             self.status_pill.setStyleSheet(f"""
                 color: #06B6D4;
@@ -941,6 +1032,8 @@ class ChatView(QWidget):
                 {base_style}
             """)
         elif st == "IDLE":
+            if not self._current_streaming_bubble:
+                self._set_generating_state(False)
             self.status_pill.setText("● MIC MUTED")
             self.status_pill.setStyleSheet(f"""
                 color: #EF4444;
@@ -963,6 +1056,8 @@ class ChatView(QWidget):
             """)
         else:
             # Standby mode
+            if not self._current_streaming_bubble:
+                self._set_generating_state(False)
             self.status_pill.setText("● STANDBY")
             self.status_pill.setStyleSheet(f"""
                 color: #A1A1AA;

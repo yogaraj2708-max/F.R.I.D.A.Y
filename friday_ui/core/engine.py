@@ -326,7 +326,7 @@ class FridayVoiceEngine:
         """Synthesizes text phrase into raw audio bytes in memory (supports local Kokoro + cloud prefetching)."""
         clean_text = self.clean_text_for_speech(phrase)
         active_cancel = cancel_event if cancel_event is not None else self.cancel_event
-        if not clean_text or active_cancel.is_set():
+        if not clean_text or active_cancel.is_set() or self.cancel_event.is_set():
             return b""
 
         # 1. Tier 1: Local Kokoro Neural TTS (100% Offline, instant CPU inference)
@@ -344,7 +344,7 @@ class FridayVoiceEngine:
                         voice_name = v
                         break
                 audio = await self.kokoro.synthesize_async(clean_text, voice=voice_name, speed=LOCAL_TTS_SPEED)
-                if audio and not active_cancel.is_set():
+                if audio and not active_cancel.is_set() and not self.cancel_event.is_set():
                     return audio
             except Exception as ex:
                 logger.debug("Local Kokoro synthesis fallback: %s", ex)
@@ -355,7 +355,7 @@ class FridayVoiceEngine:
         voices = [v for v in candidate_voices if v and not (v in seen or seen.add(v))]
 
         for voice_name in voices:
-            if active_cancel.is_set():
+            if active_cancel.is_set() or self.cancel_event.is_set():
                 return b""
             if voice_name in LOCAL_VOICES or "local" in voice_name.lower():
                 continue
@@ -365,7 +365,7 @@ class FridayVoiceEngine:
                 communicate = edge_tts.Communicate(clean_text, voice_name, pitch=p, rate=r)
                 stream = b""
                 async for chunk in communicate.stream():
-                    if active_cancel.is_set():
+                    if active_cancel.is_set() or self.cancel_event.is_set():
                         return b""
                     if chunk["type"] == "audio":
                         stream += chunk["data"]
@@ -376,12 +376,12 @@ class FridayVoiceEngine:
                 continue
 
         # 3. Tier 1 Fallback: If cloud synthesis failed or offline, fall back to local Kokoro!
-        if self.kokoro.is_available() and not active_cancel.is_set():
+        if self.kokoro.is_available() and not active_cancel.is_set() and not self.cancel_event.is_set():
             try:
                 logger.debug("Cloud TTS unavailable/offline, falling back to local Kokoro TTS...")
                 fallback_voice = self.local_voice or "bf_emma"
                 audio = await self.kokoro.synthesize_async(clean_text, voice=fallback_voice, speed=LOCAL_TTS_SPEED)
-                if audio and not active_cancel.is_set():
+                if audio and not active_cancel.is_set() and not self.cancel_event.is_set():
                     return audio
             except Exception as ex:
                 logger.debug("Automatic local Kokoro fallback error: %s", ex)
@@ -391,7 +391,7 @@ class FridayVoiceEngine:
     async def play_audio_stream(self, audio_bytes: bytes, cancel_event: Optional[asyncio.Event] = None):
         """Plays in-memory audio bytes through Pygame and drives acoustic HUD visualizer."""
         active_cancel = cancel_event if cancel_event is not None else self.cancel_event
-        if not audio_bytes or active_cancel.is_set():
+        if not audio_bytes or active_cancel.is_set() or self.cancel_event.is_set():
             return
         try:
             sound = pygame.mixer.Sound(io.BytesIO(audio_bytes))
@@ -403,7 +403,7 @@ class FridayVoiceEngine:
 
             if channel:
                 while channel.get_busy():
-                    if active_cancel.is_set():
+                    if active_cancel.is_set() or self.cancel_event.is_set():
                         channel.stop()
                         break
                     level = float(np.random.uniform(0.35, 0.95))
@@ -416,7 +416,7 @@ class FridayVoiceEngine:
         """Instant in-process Windows SAPI COM fallback (zero latency, zero network)."""
         clean_text = self.clean_text_for_speech(phrase)
         active_cancel = cancel_event if cancel_event is not None else self.cancel_event
-        if not clean_text or active_cancel.is_set():
+        if not clean_text or active_cancel.is_set() or self.cancel_event.is_set():
             return
         try:
             import win32com.client
@@ -429,7 +429,7 @@ class FridayVoiceEngine:
                     break
             speaker.Speak(clean_text, 1)  # SVSFlagsAsync = 1
             while speaker.Status.RunningState == 2:
-                if active_cancel.is_set():
+                if active_cancel.is_set() or self.cancel_event.is_set():
                     speaker.Speak("", 2)  # SVSFPurgeBeforeSpeak = 2
                     break
                 self.signals.speech_level_changed.emit(float(np.random.uniform(0.35, 0.85)))
@@ -576,6 +576,7 @@ class FridayBrain:
     def __init__(self, signals: FridaySignals, tts_engine: FridayVoiceEngine):
         self.signals = signals
         self.tts = tts_engine
+        self.abort_event = asyncio.Event()
         host = settings.get("ollama_host", "http://localhost:11434")
         self.client = AsyncClient(host=host)
         saved_m = settings.get("model")
@@ -584,6 +585,12 @@ class FridayBrain:
         self.vector_store = None
         self._init_system_prompt()
         settings.add_listener(self._on_settings_change)
+
+    def abort_generation(self):
+        """Immediately signals cancellation to active LLM generation and halts all speech."""
+        self.abort_event.set()
+        if self.tts:
+            self.tts.stop_speaking()
 
     def _on_settings_change(self, key: str, value):
         if key == "model" and value:
@@ -679,6 +686,7 @@ Core Persona Rules:
     async def _stream_vision_chat(self, model: str, prompt: str, b64_img: str):
         collected = []
         cancel_event = asyncio.Event()
+        self.abort_event.clear()
 
         try:
             self.signals.stream_started.emit("friday", f"Synthesizing visual analysis ({model})...")
@@ -688,6 +696,8 @@ Core Persona Rules:
                 stream=True
             )
             async for chunk in resp_stream:
+                if self.abort_event.is_set() or cancel_event.is_set() or (self.tts and self.tts.cancel_event.is_set()):
+                    break
                 token = chunk['message']['content']
                 collected.append(token)
                 self.signals.stream_token.emit(token)
@@ -696,9 +706,9 @@ Core Persona Rules:
             self.conversation_history.append({'role': 'assistant', 'content': reply})
             self.signals.stream_finished.emit(reply)
 
-            if self.tts and not cancel_event.is_set() and not self.tts.cancel_event.is_set():
+            if self.tts and not cancel_event.is_set() and not self.abort_event.is_set() and not self.tts.cancel_event.is_set():
                 spoken = self.tts.extract_spoken_summary(reply)
-                if spoken and not cancel_event.is_set() and not self.tts.cancel_event.is_set():
+                if spoken and not cancel_event.is_set() and not self.abort_event.is_set() and not self.tts.cancel_event.is_set():
                     await self.tts.speak(spoken, emit_transcript=False)
         except Exception as ex:
             cancel_event.set()
@@ -1520,6 +1530,7 @@ Core Persona Rules:
 
     async def query_llm(self, user_text: str, stream_to_ui: bool = True, stream_to_speech: bool = True) -> str:
         self.signals.state_changed.emit("thinking")
+        self.abort_event.clear()
 
         prompt_text = user_text
         if getattr(self, "vector_store", None):
@@ -1544,6 +1555,13 @@ Core Persona Rules:
         player_task: Optional[asyncio.Task] = None
         speech_cancel_event = asyncio.Event()
 
+        def is_cancelled() -> bool:
+            return (
+                self.abort_event.is_set() or
+                speech_cancel_event.is_set() or
+                (self.tts is not None and self.tts.cancel_event.is_set())
+            )
+
         if stream_to_speech and self.tts:
             self.tts.cancel_event.clear()
             if not seamless_speech:
@@ -1552,14 +1570,20 @@ Core Persona Rules:
 
                 async def _audio_prefetcher():
                     """Stage 1: Pre-fetches neural TTS audio in parallel while previous audio is playing."""
-                    while not speech_cancel_event.is_set():
-                        item = await phrase_queue.get()
-                        if item is None or speech_cancel_event.is_set():
+                    while not is_cancelled():
+                        try:
+                            item = await phrase_queue.get()
+                        except asyncio.CancelledError:
+                            break
+                        if item is None or is_cancelled():
                             await audio_ready_queue.put(None)
                             phrase_queue.task_done()
                             break
                         try:
                             audio_stream = await self.tts.synthesize_audio(item, cancel_event=speech_cancel_event)
+                            if is_cancelled():
+                                phrase_queue.task_done()
+                                break
                             if audio_stream:
                                 await audio_ready_queue.put((audio_stream, item))
                             else:
@@ -1574,17 +1598,21 @@ Core Persona Rules:
                     self.tts.is_speaking = True
                     self.signals.state_changed.emit("speaking")
                     try:
-                        while not speech_cancel_event.is_set():
-                            item = await audio_ready_queue.get()
-                            if item is None or speech_cancel_event.is_set():
+                        while not is_cancelled():
+                            try:
+                                item = await audio_ready_queue.get()
+                            except asyncio.CancelledError:
+                                break
+                            if item is None or is_cancelled():
                                 audio_ready_queue.task_done()
                                 break
                             audio_stream, phrase = item
                             try:
-                                if audio_stream:
-                                    await self.tts.play_audio_stream(audio_stream, cancel_event=speech_cancel_event)
-                                else:
-                                    await self.tts.speak_phrase_sapi(phrase, cancel_event=speech_cancel_event)
+                                if not is_cancelled():
+                                    if audio_stream:
+                                        await self.tts.play_audio_stream(audio_stream, cancel_event=speech_cancel_event)
+                                    else:
+                                        await self.tts.speak_phrase_sapi(phrase, cancel_event=speech_cancel_event)
                             except Exception as p_err:
                                 logger.debug("Playback error: %s", p_err)
                             finally:
@@ -1612,12 +1640,16 @@ Core Persona Rules:
             )
             sentence_buffer = ""
             async for chunk in response_stream:
+                if is_cancelled():
+                    logger.info("Ollama chat stream aborted via user cancellation.")
+                    break
+
                 token = chunk['message']['content']
                 collected.append(token)
                 if stream_to_ui:
                     self.signals.stream_token.emit(token)
 
-                if not seamless_speech and phrase_queue and not speech_cancel_event.is_set():
+                if not seamless_speech and phrase_queue and not is_cancelled():
                     sentence_buffer += token
                     abbrev_m = re.search(r"(?:e\.g|i\.e|vs|dr|mr|mrs|ms|prof|inc|ltd|v\d+)\.\s*$", sentence_buffer, re.IGNORECASE)
                     if not abbrev_m:
@@ -1627,10 +1659,15 @@ Core Persona Rules:
                             phrase = sentence_buffer[:split_pos].strip()
                             sentence_buffer = sentence_buffer[split_pos:]
                             clean = self.tts.clean_text_for_speech(phrase)
-                            if clean and len(clean.split()) >= 1:
+                            if clean and len(clean.split()) >= 1 and not is_cancelled():
                                 await phrase_queue.put(clean)
 
             reply = "".join(collected).strip()
+            if is_cancelled():
+                if stream_to_ui:
+                    self.signals.stream_finished.emit(reply if reply else "[Stopped by user]")
+                return reply
+
             if not reply:
                 reply = "Directive acknowledged, Boss. All parameters nominal."
                 if stream_to_ui:
@@ -1642,18 +1679,17 @@ Core Persona Rules:
 
             if seamless_speech:
                 # Seamless single-track speech: synthesize and speak the complete spoken summary
-                # in ONE unbroken audio track. No stops, no gaps, no buffer underflows!
-                if stream_to_speech and self.tts and not self.tts.cancel_event.is_set():
+                if stream_to_speech and self.tts and not is_cancelled():
                     spoken = self.tts.extract_spoken_summary(reply)
-                    if spoken and not self.tts.cancel_event.is_set():
+                    if spoken and not is_cancelled():
                         await self.tts.speak(spoken, emit_transcript=False)
             else:
-                # Flush remaining buffer to legacy speech queue
-                if phrase_queue and not speech_cancel_event.is_set():
+                # Flush remaining buffer to speech queue
+                if phrase_queue and not is_cancelled():
                     remainder = sentence_buffer.strip()
                     if remainder:
                         clean = self.tts.clean_text_for_speech(remainder)
-                        if clean:
+                        if clean and not is_cancelled():
                             await phrase_queue.put(clean)
                     await phrase_queue.put(None)
                     if prefetch_task:
@@ -1662,19 +1698,26 @@ Core Persona Rules:
                         await player_task
 
             return reply
+        except asyncio.CancelledError:
+            logger.info("Ollama query_llm task cancelled by caller.")
+            speech_cancel_event.set()
+            if stream_to_ui:
+                reply = "".join(collected).strip()
+                self.signals.stream_finished.emit(reply if reply else "[Stopped by user]")
+            return "".join(collected).strip()
         except Exception as e:
-            if prefetch_task and not prefetch_task.done():
-                speech_cancel_event.set()
-                prefetch_task.cancel()
-            if player_task and not player_task.done():
-                speech_cancel_event.set()
-                player_task.cancel()
             logger.exception(f"Ollama chat streaming error: {e}")
             err = f"⚠️ Neural core anomaly: {str(e)}"
             if stream_to_ui:
                 self.signals.stream_token.emit(f"\n\n{err}")
                 self.signals.stream_finished.emit(err)
             return err
+        finally:
+            speech_cancel_event.set()
+            if prefetch_task and not prefetch_task.done():
+                prefetch_task.cancel()
+            if player_task and not player_task.done():
+                player_task.cancel()
 
 def flush_stream(stream):
     """Clears microphone buffer to prevent echo loops."""
