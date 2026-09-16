@@ -480,21 +480,8 @@ class ChatView(QWidget):
         self.mic_btn = ToolButton(FluentIcon.MICROPHONE, self)
         self.mic_btn.setFixedSize(34, 34)
         self.mic_btn.setCursor(Qt.PointingHandCursor)
-        self.mic_btn.setToolTip("Toggle Voice Loop")
-        self.mic_btn.setStyleSheet("""
-            ToolButton {
-                background-color: #141416;
-                border: 1px solid rgba(255, 255, 255, 0.10);
-                border-radius: 8px;
-                color: #A1A1AA;
-            }
-            ToolButton:hover {
-                background-color: #1E1E22;
-                border: 1px solid rgba(255, 255, 255, 0.25);
-                color: #FFFFFF;
-            }
-        """)
         self.mic_btn.clicked.connect(self.voice_toggle_requested.emit)
+        self.set_mic_active(False)
         input_layout.addWidget(self.mic_btn)
 
         # Send / Stop Button — Dynamically transforms into Stop during active generation/speech
@@ -526,6 +513,40 @@ class ChatView(QWidget):
 
         self.prompt_input.setToolTip("Press Ctrl + Space to summon F.R.I.D.A.Y. HUD from anywhere in Windows")
         layout.addWidget(input_frame)
+
+    def set_mic_active(self, active: bool):
+        """Updates mic button visual appearance based on active listening or muted state."""
+        self._mic_active = active
+        if active:
+            self.mic_btn.setToolTip("Mute Microphone (Ctrl+M)")
+            self.mic_btn.setStyleSheet("""
+                ToolButton {
+                    background-color: rgba(0, 240, 255, 0.18);
+                    border: 1px solid #00F0FF;
+                    border-radius: 8px;
+                    color: #00F0FF;
+                }
+                ToolButton:hover {
+                    background-color: rgba(0, 240, 255, 0.35);
+                    border: 1px solid #22D3EE;
+                    color: #FFFFFF;
+                }
+            """)
+        else:
+            self.mic_btn.setToolTip("Unmute Microphone (Ctrl+M)")
+            self.mic_btn.setStyleSheet("""
+                ToolButton {
+                    background-color: #141416;
+                    border: 1px solid rgba(239, 68, 68, 0.40);
+                    border-radius: 8px;
+                    color: #EF4444;
+                }
+                ToolButton:hover {
+                    background-color: rgba(239, 68, 68, 0.15);
+                    border: 1px solid #EF4444;
+                    color: #F87171;
+                }
+            """)
 
     def _on_send_btn_clicked(self):
         if self._is_generating:

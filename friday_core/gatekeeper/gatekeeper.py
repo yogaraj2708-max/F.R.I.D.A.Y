@@ -34,6 +34,10 @@ ALLOWED_PATH_ROOTS = [
     os.path.expandvars(r"%USERPROFILE%\OneDrive\Documents"),
     os.path.expandvars(r"%USERPROFILE%\Documents"),
     os.path.expandvars(r"%USERPROFILE%\Downloads"),
+    os.path.expandvars(r"%USERPROFILE%\OneDrive\Pictures"),
+    os.path.expandvars(r"%USERPROFILE%\Pictures"),
+    os.path.expandvars(r"%USERPROFILE%\Videos"),
+    os.path.expandvars(r"%USERPROFILE%\Music"),
     str(APP_DATA_DIR)
 ]
 

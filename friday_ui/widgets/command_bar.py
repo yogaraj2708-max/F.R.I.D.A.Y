@@ -203,18 +203,6 @@ class FloatingCommandBar(QWidget):
         # Voice Trigger Button (Mic)
         self.mic_btn = ToolButton(FluentIcon.MICROPHONE, self.bar_card)
         self.mic_btn.setFixedSize(36, 36)
-        self.mic_btn.setToolTip("Toggle Acoustic Listening (Voice Loop)")
-        self.mic_btn.setStyleSheet("""
-            ToolButton {
-                background-color: rgba(0, 240, 255, 0.12);
-                border: 1px solid rgba(0, 240, 255, 0.4);
-                border-radius: 18px;
-            }
-            ToolButton:hover {
-                background-color: rgba(0, 240, 255, 0.3);
-                border: 1px solid #00F0FF;
-            }
-        """)
         self.mic_btn.clicked.connect(self.voice_toggle_requested.emit)
         bar_layout.addWidget(self.mic_btn)
 
@@ -296,6 +284,9 @@ class FloatingCommandBar(QWidget):
         self.main_layout.addWidget(self.response_card)
 
         self.setFixedWidth(740)
+        self.mic_shortcut = QShortcut(QKeySequence("Ctrl+M"), self)
+        self.mic_shortcut.activated.connect(self.voice_toggle_requested.emit)
+        self.set_mic_active(False)
 
     def _setup_position(self):
         """Places the bar on screen according to user settings or last saved coords."""
@@ -446,6 +437,38 @@ class FloatingCommandBar(QWidget):
         settings.set("model", model)
         self.model_changed.emit(model)
 
+
+    def set_mic_active(self, active: bool):
+        """Updates mic button appearance in FloatingCommandBar."""
+        self._mic_active = active
+        if active:
+            self.mic_btn.setToolTip("Mute Microphone (Ctrl+M)")
+            self.mic_btn.setStyleSheet("""
+                ToolButton {
+                    background-color: rgba(0, 240, 255, 0.25);
+                    border: 1px solid #00F0FF;
+                    border-radius: 18px;
+                    color: #00F0FF;
+                }
+                ToolButton:hover {
+                    background-color: rgba(0, 240, 255, 0.4);
+                    border: 1px solid #22D3EE;
+                }
+            """)
+        else:
+            self.mic_btn.setToolTip("Unmute Microphone (Ctrl+M)")
+            self.mic_btn.setStyleSheet("""
+                ToolButton {
+                    background-color: rgba(239, 68, 68, 0.15);
+                    border: 1px solid rgba(239, 68, 68, 0.5);
+                    border-radius: 18px;
+                    color: #EF4444;
+                }
+                ToolButton:hover {
+                    background-color: rgba(239, 68, 68, 0.3);
+                    border: 1px solid #EF4444;
+                }
+            """)
 
     def _cycle_mode(self):
         modes = ["⚡ Tactical", "🎯 Deep", "🚀 Turbo"]

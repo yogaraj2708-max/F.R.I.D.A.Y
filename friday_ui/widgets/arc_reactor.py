@@ -72,7 +72,9 @@ class ArcReactorWidget(QWidget):
             if not self.timer.isActive():
                 self.timer.start()
         else:
-            self.timer.setInterval(16)  # ~60 FPS
+            # Dynamic power budget: 30 FPS in standby/idle, 60 FPS during active interaction
+            interval = 16 if getattr(self, "state", "idle") in ["listening", "thinking", "speaking"] else 33
+            self.timer.setInterval(interval)
             if not self.timer.isActive():
                 self.timer.start()
 
@@ -95,6 +97,7 @@ class ArcReactorWidget(QWidget):
             self.target_color = [0.0, 240.0, 255.0]    # Stark Cyan (#00F0FF)
         else:  # idle / standby
             self.target_color = [225.0, 230.0, 240.0]  # Subtle Pure White / Zinc
+        self._apply_power_budget()
         self.update()
 
     def trigger_burst(self):

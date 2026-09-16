@@ -11,7 +11,7 @@ import logging
 
 logger = logging.getLogger("FRIDAY.MainWindow")
 from PySide6.QtCore import Qt, QSize, QTimer, QRectF, QPointF, Property, QPropertyAnimation, QEasingCurve
-from PySide6.QtGui import QIcon, QFont, QColor, QPainter, QLinearGradient, QPen
+from PySide6.QtGui import QIcon, QFont, QColor, QPainter, QLinearGradient, QPen, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QGraphicsDropShadowEffect, QSizePolicy, QStackedWidget
@@ -107,6 +107,7 @@ class FridayMainWindow(FluentWindow):
 
         self.voice_loop = FridayVoiceLoop(self.signals, self.brain, self.tts)
         self.voice_task = None
+        self.command_bar = None
         self.vector_store = FridayVectorStore()
         self.brain.vector_store = self.vector_store
         self._tasks = set()
@@ -144,6 +145,10 @@ class FridayMainWindow(FluentWindow):
             self.setWindowIcon(get_app_icon())
         except Exception:
             pass
+
+        # Global Hotkey Ctrl+M for Microphone Mute / Unmute
+        self.mic_shortcut = QShortcut(QKeySequence("Ctrl+M"), self)
+        self.mic_shortcut.activated.connect(self.toggle_voice_loop)
 
     def _apply_global_style(self):
         """Apply Centralized Monochrome / Tactical Desktop Styling with transparent backing."""
@@ -409,20 +414,41 @@ class FridayMainWindow(FluentWindow):
             self.signals.state_changed.emit("idle")
 
     def toggle_voice_loop(self):
-        """Activates immediate speech recognition on every mic button click or starts the voice engine."""
+        """Toggles speech recognition on/off (Mute / Unmute)."""
         self.tts.stop_speaking()
-        if not self.voice_loop.running:
+        if self.voice_loop.running:
+            # Turn OFF / Mute
+            self.voice_loop.stop()
+            if self.voice_task and not self.voice_task.done():
+                self.voice_task.cancel()
+                self.voice_task = None
+            self.signals.state_changed.emit("idle")
+            self.signals.speech_level_changed.emit(0.0)
+            self.chat_view.set_mic_active(False)
+            if hasattr(self, "command_bar") and self.command_bar:
+                self.command_bar.set_mic_active(False)
+            InfoBar.warning(
+                "Microphone Muted",
+                "Acoustic sensors disabled. Mic is off (Ctrl+M to activate).",
+                parent=self,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=2000
+            )
+        else:
+            # Turn ON / Unmute and listen
             self.voice_loop.start()
             self.voice_task = self._create_task(self.voice_loop.run())
-
-        self.voice_loop.trigger_active_listen()
-        InfoBar.success(
-            "Voice Input Active",
-            "Listening... Speak your directive now.",
-            parent=self,
-            position=InfoBarPosition.TOP_RIGHT,
-            duration=2000
-        )
+            self.voice_loop.trigger_active_listen()
+            self.chat_view.set_mic_active(True)
+            if hasattr(self, "command_bar") and self.command_bar:
+                self.command_bar.set_mic_active(True)
+            InfoBar.success(
+                "Microphone Active",
+                "Listening... Speak your directive now (Ctrl+M to mute).",
+                parent=self,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=2000
+            )
 
     def handle_research(self, topic: str, depth: str):
         self._create_task(self._run_research(topic, depth))

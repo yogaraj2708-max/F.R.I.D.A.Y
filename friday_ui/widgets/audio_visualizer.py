@@ -43,7 +43,9 @@ class AudioVisualizerWidget(QWidget):
             if not self.timer.isActive():
                 self.timer.start()
         else:
-            self.timer.setInterval(16)
+            # Dynamic power budget: 30 FPS in standby/idle, 60 FPS in active interaction
+            interval = 16 if getattr(self, "state", "idle") in ["listening", "speaking"] else 33
+            self.timer.setInterval(interval)
             if not self.timer.isActive():
                 self.timer.start()
 
@@ -58,6 +60,7 @@ class AudioVisualizerWidget(QWidget):
 
     def set_state(self, state: str):
         self.state = state.lower()
+        self._apply_power_budget()
         self.update()
 
     def update_level(self, rms_energy: float):

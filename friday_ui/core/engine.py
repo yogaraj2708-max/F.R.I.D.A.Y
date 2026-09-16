@@ -743,11 +743,40 @@ Core Persona Rules:
         if self.tts:
             await self.tts.speak(f"Boss, your {label} timer is complete.")
 
-    async def organize_directory(self, folder_keyword: str = "downloads") -> str:
+    def _resolve_target_directory(self, folder_keyword: str) -> Optional[Path]:
         user_home = Path(os.path.expanduser("~"))
-        target = user_home / "Downloads" if "download" in folder_keyword.lower() else user_home / "Desktop"
-        if not target.exists():
-            return f"Directory {target} not found, Boss."
+        kw = folder_keyword.lower()
+
+        folder_names = []
+        if "desktop" in kw:
+            folder_names = ["Desktop"]
+        elif "document" in kw:
+            folder_names = ["Documents"]
+        elif "download" in kw:
+            folder_names = ["Downloads"]
+        elif any(p in kw for p in ["picture", "photo", "image"]):
+            folder_names = ["Pictures"]
+        elif any(v in kw for v in ["video", "movie"]):
+            folder_names = ["Videos"]
+        elif any(m in kw for m in ["music", "song", "audio"]):
+            folder_names = ["Music"]
+        else:
+            folder_names = ["Downloads"]
+
+        for fname in folder_names:
+            candidates = [
+                user_home / "OneDrive" / fname,
+                user_home / fname,
+            ]
+            for cand in candidates:
+                if cand.exists() and cand.is_dir():
+                    return cand
+        return None
+
+    async def organize_directory(self, folder_keyword: str = "downloads") -> str:
+        target = self._resolve_target_directory(folder_keyword)
+        if not target or not target.exists():
+            return f"Directory '{folder_keyword}' not found, Boss."
 
         extensions_map = {
             "Images": [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".ico", ".tiff", ".heic"],
@@ -818,8 +847,17 @@ Core Persona Rules:
             ext_filter = [".py", ".js", ".html", ".cpp"]
 
         found = []
-        for folder in [user_home / "Downloads", user_home / "Documents", user_home / "Desktop"]:
-            if folder.exists():
+        candidate_folders = [
+            user_home / "Downloads",
+            user_home / "OneDrive" / "Documents",
+            user_home / "Documents",
+            user_home / "OneDrive" / "Desktop",
+            user_home / "Desktop"
+        ]
+        seen_folders = set()
+        for folder in candidate_folders:
+            if folder.exists() and folder not in seen_folders:
+                seen_folders.add(folder)
                 for p in folder.iterdir():
                     if p.is_file() and not p.name.startswith("."):
                         try:
@@ -1230,7 +1268,21 @@ Core Persona Rules:
         ]
         is_organize_intent = any(k in cmd for k in organize_keywords)
         if is_organize_intent:
-            folder_key = "desktop" if ("desktop" in cmd and "download" not in cmd) else "downloads"
+            if "desktop" in cmd:
+                folder_key = "desktop"
+            elif "document" in cmd:
+                folder_key = "documents"
+            elif "download" in cmd:
+                folder_key = "downloads"
+            elif any(p in cmd for p in ["picture", "photo", "image"]):
+                folder_key = "pictures"
+            elif any(v in cmd for v in ["video", "movie"]):
+                folder_key = "videos"
+            elif any(m in cmd for m in ["music", "song", "audio"]):
+                folder_key = "music"
+            else:
+                folder_key = "downloads"
+
             self.signals.skill_executed.emit("File Organizer", folder_key.title())
             res = await self.organize_directory(folder_key)
             return res
@@ -1793,6 +1845,7 @@ class FridayVoiceLoop:
         self.tts.voice_loop_active = False
         self.force_listen = False
         self.signals.state_changed.emit("idle")
+        self.signals.speech_level_changed.emit(0.0)
 
     async def run(self):
         self.running = True
@@ -1865,21 +1918,28 @@ class FridayVoiceLoop:
                                 self.signals.state_changed.emit("standby")
                             continue
 
-                        # 2. Transcribe (Online Google STT with automatic local Whisper STT fallback)
-                        raw_text = ""
-                        try:
-                            raw_text = self.recognizer.recognize_google(audio_data).strip()
-                        except Exception as g_err:
-                            logger.debug("Google STT unavailable or failed (%s), switching to local offline Whisper STT...", g_err)
-                            raw_text = ""
-
-                        if not raw_text and self.offline_whisper.is_available():
+                        # 2. Transcribe off the GUI thread (Online Google STT with automatic local Whisper STT fallback)
+                        def _transcribe(audio_bytes_data):
+                            recognized = ""
                             try:
-                                raw_text = self.offline_whisper.transcribe_audio_data(audio_data)
-                                if raw_text:
-                                    logger.info("Transcribed via local Whisper STT: '%s'", raw_text)
-                            except Exception as w_ex:
-                                logger.debug("Offline Whisper transcription error: %s", w_ex)
+                                recognized = self.recognizer.recognize_google(audio_bytes_data).strip()
+                            except Exception as g_err:
+                                logger.debug("Google STT unavailable or failed (%s), switching to local offline Whisper STT...", g_err)
+                                recognized = ""
+
+                            if not recognized and self.offline_whisper.is_available():
+                                try:
+                                    recognized = self.offline_whisper.transcribe_audio_data(audio_bytes_data)
+                                    if recognized:
+                                        logger.info("Transcribed via local Whisper STT: '%s'", recognized)
+                                except Exception as w_ex:
+                                    logger.debug("Offline Whisper transcription error: %s", w_ex)
+                            return recognized
+
+                        raw_text = await loop.run_in_executor(None, _transcribe, audio_data)
+
+                        if not self.running:
+                            break
 
                         if not raw_text:
                             if is_active_turn:
@@ -1936,6 +1996,13 @@ class FridayVoiceLoop:
                             flush_stream(stream)
                             self.force_listen = True
                             self.signals.state_changed.emit("listening")
+            except asyncio.CancelledError:
+                self.running = False
+                self.tts.voice_loop_active = False
+                self.signals.state_changed.emit("idle")
+                self.signals.speech_level_changed.emit(0.0)
+                logger.info("Voice loop cancelled.")
+                return
             except Exception as e:
                 logger.exception("[Voice Loop Exception]: %s", e)
                 if dev_idx is not None:
@@ -1948,6 +2015,12 @@ class FridayVoiceLoop:
                     await asyncio.sleep(1.5)
 
     def _record_phrase(self, stream, timeout=None, silence_limit=1.4):
+        try:
+            return self._record_phrase_impl(stream, timeout, silence_limit)
+        finally:
+            self.signals.speech_level_changed.emit(0.0)
+
+    def _record_phrase_impl(self, stream, timeout=None, silence_limit=1.4):
         flush_stream(stream)
         start_time = time.time()
         speaking = False
@@ -1956,6 +2029,9 @@ class FridayVoiceLoop:
         recorded_chunks = []
         pre_roll_len = max(int(0.35 * SAMPLE_RATE / BLOCK_SIZE), 6)
         pre_roll = deque(maxlen=pre_roll_len)
+
+        last_emit_time = 0.0
+        last_emitted_level = -1.0
 
         while self.running:
             if not self.running:
@@ -1989,7 +2065,12 @@ class FridayVoiceLoop:
             # Responsive visualizer scaling: map speech delta smoothly to 0.0 - 1.0
             speech_delta = max(0.0, rms - self.ambient_rms)
             norm_level = min(1.0, float(np.sqrt(speech_delta / 2500.0)))
-            self.signals.speech_level_changed.emit(norm_level)
+
+            now_t = time.time()
+            if (now_t - last_emit_time >= 0.05) and (abs(norm_level - last_emitted_level) > 0.02 or (norm_level == 0.0 and last_emitted_level > 0.0)):
+                last_emit_time = now_t
+                last_emitted_level = norm_level
+                self.signals.speech_level_changed.emit(norm_level)
 
             sens = str(settings.get("mic_sensitivity", "high")).lower()
             if sens == "ultra":

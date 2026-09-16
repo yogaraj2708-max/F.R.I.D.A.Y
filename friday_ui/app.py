@@ -130,6 +130,7 @@ def main():
         pass
 
     # Bridge Floating Command Bar <-> Engine
+    window.command_bar = command_bar
     window.signals.state_changed.connect(command_bar.set_state)
     command_bar.voice_toggle_requested.connect(window.toggle_voice_loop)
 
