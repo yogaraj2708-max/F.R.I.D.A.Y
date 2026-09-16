@@ -1,0 +1,19 @@
+# F.R.I.D.A.Y. 2.0 Dependency Manifest
+# Complete pinned packages for standalone execution, neural voice, and Fluent UI
+
+PySide6>=6.6.0
+PySide6-Fluent-Widgets>=1.5.0
+qasync>=0.27.1
+edge-tts>=7.0.0
+pygame-ce>=2.5.0
+sounddevice>=0.4.6
+SpeechRecognition>=3.10.0
+ollama>=0.4.0
+duckduckgo_search>=7.0.0
+numpy>=1.26.0
+rapidfuzz>=3.0.0
+certifi>=2024.2.2
+pywin32>=306; sys_platform == 'win32'
+kokoro-onnx>=0.3.0
+soundfile>=0.12.1
+faster-whisper>=1.0.0

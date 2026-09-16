@@ -1,0 +1,47 @@
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+
+# Virtual Environment (Critical - Never commit virtualenvs to GitHub)
+.venv/
+venv/
+ENV/
+env/
+.env/
+
+# Build & Packaging Artifacts
+build/
+dist/
+*.spec.bak
+*.egg-info/
+*.egg
+
+# Analysis & Temp Files
+graphify-out/
+
+# Environment Variables & Secrets
+.env
+.env.local
+*.secret
+*.key
+
+# Application Data, Logs & Local Models
+*.log
+logs/
+.friday/
+screenshots/
+assets/kokoro/
+*.onnx
+
+# IDE & OS Artifacts
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+Thumbs.db
+desktop.ini
+.DS_Store
