@@ -90,6 +90,14 @@ echo.
 echo [3/3] Installing all required dependencies...
 echo Using Python interpreter: %PYTHON_EXE%
 echo.
+
+:: Verify internet connectivity to PyPI before attempting download
+where curl.exe >nul 2>&1
+if %errorlevel% equ 0 (
+    curl.exe -I -s --connect-timeout 6 https://pypi.org >nul 2>&1
+    if errorlevel 1 goto :offline_error
+)
+
 "%PYTHON_EXE%" -m pip install --upgrade pip
 "%PYTHON_EXE%" -m pip install -r requirements.txt
 if errorlevel 1 goto :install_error
@@ -144,6 +152,20 @@ echo.
 echo 3. Click "Install Now".
 echo 4. Delete the ".venv" folder in your F.R.I.D.A.Y. directory (if it exists).
 echo 5. Re-run setup.bat!
+echo ========================================================================
+echo.
+pause
+exit /b 1
+
+:offline_error
+echo.
+echo ========================================================================
+echo [ERROR]: No Internet Connection or DNS Failure!
+echo Cannot reach PyPI at https://pypi.org
+echo.
+echo Your computer is offline or DNS failed to resolve pypi.org (Errno 11001).
+echo Please connect to the internet (or disable any blocking VPN/proxy)
+echo and re-run setup.bat!
 echo ========================================================================
 echo.
 pause
