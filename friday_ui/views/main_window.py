@@ -139,6 +139,11 @@ class FridayMainWindow(FluentWindow):
         self.setMinimumSize(950, 650)
         self.setMicaEffectEnabled(True)
         apply_system_backdrop(int(self.winId()), backdrop_type=3) # Windows 11 Acrylic blur
+        try:
+            from friday_ui.app import get_app_icon
+            self.setWindowIcon(get_app_icon())
+        except Exception:
+            pass
 
     def _apply_global_style(self):
         """Apply Centralized Monochrome / Tactical Desktop Styling with transparent backing."""
@@ -605,3 +610,20 @@ class FridayMainWindow(FluentWindow):
             settings.set("local_voice", getattr(self.tts, "local_voice", "bf_emma"))
         if new_theme:
             self._apply_global_style()
+
+    def closeEvent(self, event):
+        """Cleanly tear down all subsystems, background timers, audio, and exit application."""
+        try:
+            self.stop_current_task()
+            if hasattr(self, 'voice_loop') and self.voice_loop.running:
+                self.voice_loop.stop()
+            if hasattr(self, 'telemetry_timer') and self.telemetry_timer.isActive():
+                self.telemetry_timer.stop()
+            if hasattr(self, 'command_bar') and self.command_bar:
+                self.command_bar.unregister_hotkey()
+                self.command_bar.close()
+        except Exception as e:
+            logger.debug(f"Error during closeEvent cleanup: {e}")
+        finally:
+            super().closeEvent(event)
+            QApplication.quit()

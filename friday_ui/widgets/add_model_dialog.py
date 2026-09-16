@@ -25,6 +25,11 @@ class AddModelDialog(QDialog):
         self.selected_model = None
         self._is_pulling = False
         self.setWindowTitle("F.R.I.D.A.Y. 2.0 - Add AI Model")
+        try:
+            from friday_ui.app import get_app_icon
+            self.setWindowIcon(get_app_icon())
+        except Exception:
+            pass
         self.setFixedSize(500, 380)
         self.setWindowFlags(Qt.Dialog | Qt.WindowCloseButtonHint | Qt.MSWindowsFixedSizeDialogHint)
         self.setStyleSheet("""

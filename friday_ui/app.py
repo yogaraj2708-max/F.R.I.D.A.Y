@@ -31,6 +31,17 @@ from friday_core.settings import settings
 from friday_ui.views.main_window import FridayMainWindow
 from friday_ui.widgets.command_bar import FloatingCommandBar
 
+def get_app_icon() -> QIcon:
+    """Returns the high-resolution Stark Arc Reactor icon asset or falls back to programmatic icon."""
+    assets_dir = os.path.join(os.path.dirname(__file__), "assets")
+    ico_path = os.path.join(assets_dir, "friday_icon.ico")
+    if os.path.exists(ico_path):
+        return QIcon(ico_path)
+    png_path = os.path.join(assets_dir, "friday_icon.png")
+    if os.path.exists(png_path):
+        return QIcon(png_path)
+    return create_stark_icon()
+
 def create_stark_icon(size: int = 64) -> QIcon:
     """Generates a high-resolution glowing cyan Stark Arc Reactor QIcon."""
     pixmap = QPixmap(size, size)
@@ -58,6 +69,14 @@ def create_stark_icon(size: int = 64) -> QIcon:
     return QIcon(pixmap)
 
 def main():
+    # Explicit Windows AppUserModelID to group under custom identity and display taskbar icon
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("StarkIndustries.FRIDAY.Assistant.2.0")
+        except Exception:
+            pass
+
     # Enable DPI awareness
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
@@ -68,7 +87,7 @@ def main():
     app.setOrganizationName("Stark Industries")
     app.setQuitOnLastWindowClosed(True)   # Cleanly terminate process when user closes window
 
-    stark_icon = create_stark_icon()
+    stark_icon = get_app_icon()
     app.setWindowIcon(stark_icon)
 
     # Set qasync event loop as the primary asyncio event loop
@@ -85,6 +104,7 @@ def main():
         try:
             from friday_ui.widgets.onboarding_dialog import OnboardingDialog
             onboarding = OnboardingDialog(window)
+            onboarding.setWindowIcon(stark_icon)
             onboarding.exec()
             # Refresh models & persona on window
             if hasattr(window, "brain") and hasattr(window.brain, "reload_persona"):
@@ -96,8 +116,18 @@ def main():
             logging.getLogger("FRIDAY.App").warning("Onboarding dialog launch skipped: %s", ex)
 
     command_bar = FloatingCommandBar()
+    command_bar.setWindowIcon(stark_icon)
+    command_bar.setWindowTitle("F.R.I.D.A.Y. 2.0 Command Bar")
     window.command_bar = command_bar
     app.aboutToQuit.connect(command_bar.unregister_hotkey)
+
+    # Automatically ensure desktop shortcut exists
+    try:
+        from scripts.create_desktop_shortcut import create_desktop_shortcut
+        import threading
+        threading.Thread(target=create_desktop_shortcut, daemon=True).start()
+    except Exception:
+        pass
 
     # Bridge Floating Command Bar <-> Engine
     window.signals.state_changed.connect(command_bar.set_state)

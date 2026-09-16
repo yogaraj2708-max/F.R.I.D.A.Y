@@ -18,6 +18,11 @@ class OnboardingDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("F.R.I.D.A.Y. 2.0 - Tactical Protocol Setup")
+        try:
+            from friday_ui.app import get_app_icon
+            self.setWindowIcon(get_app_icon())
+        except Exception:
+            pass
         self.setFixedSize(540, 520)
         self.setWindowFlags(Qt.Dialog | Qt.WindowCloseButtonHint | Qt.MSWindowsFixedSizeDialogHint)
         self.setStyleSheet("""

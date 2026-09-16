@@ -1938,7 +1938,12 @@ class FridayVoiceLoop:
                             self.signals.state_changed.emit("listening")
             except Exception as e:
                 logger.exception("[Voice Loop Exception]: %s", e)
-                self.signals.error_occurred.emit(f"Voice loop error: {e}")
+                if dev_idx is not None:
+                    logger.warning("[Voice Loop]: Audio device %s failed. Resetting to system default device.", dev_idx)
+                    settings.set("audio_input_device", None)
+                    self.signals.error_occurred.emit("Acoustic sensor fallback: switching to system default microphone.")
+                else:
+                    self.signals.error_occurred.emit(f"Voice loop error: {e}")
                 if self.running:
                     await asyncio.sleep(1.5)
 

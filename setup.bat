@@ -49,9 +49,14 @@ echo.
 if errorlevel 1 goto :install_error
 
 echo.
+echo Creating Desktop Shortcut and registering application icon...
+"%PYTHON_EXE%" scripts\create_desktop_shortcut.py >nul 2>&1
+
+echo.
 echo =======================================================
 echo   Setup Complete! All dependencies successfully installed.
-echo   You can now launch F.R.I.D.A.Y. via run_friday_gui.bat
+echo   Desktop shortcut created: F.R.I.D.A.Y. 2.0
+echo   You can launch F.R.I.D.A.Y. from your Desktop or run_friday_gui.bat
 echo =======================================================
 echo.
 pause

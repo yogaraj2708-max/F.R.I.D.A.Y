@@ -39,6 +39,7 @@ def build():
         "--clean",
         "--windowed",                 # Run as clean Windows desktop app without black console window
         "--name", "FRIDAY_2.0",
+        "--icon", os.path.join(BASE_DIR, "friday_ui", "assets", "friday_icon.ico"),
         "--collect-all", "qfluentwidgets",
         "--collect-all", "qasync",
         "--collect-all", "certifi",

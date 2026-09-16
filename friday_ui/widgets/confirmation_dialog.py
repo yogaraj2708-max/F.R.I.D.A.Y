@@ -29,6 +29,11 @@ class SecurityConfirmationDialog(QDialog):
 
     def _init_ui(self):
         self.setWindowTitle("F.R.I.D.A.Y. Security Clearance")
+        try:
+            from friday_ui.app import get_app_icon
+            self.setWindowIcon(get_app_icon())
+        except Exception:
+            pass
         self.setFixedSize(520, 260)
         self.setWindowFlags(Qt.Dialog | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
