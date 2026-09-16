@@ -39,8 +39,8 @@
 
 ### 1. Clone the Repository
 ```powershell
-git clone https://github.com/<your-username>/<your-repo-name>.git
-cd "jarvis voice"
+git clone https://github.com/yogaraj2708-max/F.R.I.D.A.Y.git
+cd F.R.I.D.A.Y
 ```
 
 ### 2. Create and Activate Virtual Environment
