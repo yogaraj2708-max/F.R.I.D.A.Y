@@ -774,7 +774,7 @@ class ChatView(QWidget):
             self.deep_research_active = False
             self._refresh_attachments_ui()
             display_msg = f"🌐 **[Deep Web Research Directive]**\n\n{text}"
-            self.command_submitted.emit(text, display_msg)
+            self.add_message("user", display_msg)
             self.deep_research_requested.emit(text)
             return
 

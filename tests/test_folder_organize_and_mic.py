@@ -99,6 +99,38 @@ class TestFolderOrganizeAndMic(unittest.TestCase):
         command_bar.set_mic_active(True)
         self.assertIn("Mute", command_bar.mic_btn.toolTip())
 
+    def test_attached_document_bypasses_smart_skills(self):
+        # When a document is attached (like README.md with 'organize' mentioned inside)
+        prompt_with_attachment = (
+            "[Attached Document: README.md]\n```md\n### 📂 Autonomous File Organizer & Desktop Copilot\n"
+            "Sorts loose desktop files into clean categories\n```\n\nBoss Directive:\nexplain this project"
+        )
+        res = asyncio.run(self.brain.execute_smart_skill(prompt_with_attachment))
+        # Must be None so it flows directly to the LLM
+        self.assertIsNone(res)
+
+    def test_questions_do_not_trigger_organize(self):
+        # Plain question about organizing should NOT trigger the file organizer skill
+        queries = [
+            "explain this project",
+            "how to organize files",
+            "how do I sort a list in python",
+            "what is the best way to clean my code",
+            "describe how to arrange folders"
+        ]
+        for q in queries:
+            res = asyncio.run(self.brain.execute_smart_skill(q))
+            self.assertIsNone(res, f"Query '{q}' should not trigger smart skills")
+
+    def test_actual_organize_commands_trigger_correctly(self):
+        res1 = asyncio.run(self.brain.execute_smart_skill("arrange my document folders"))
+        self.assertIsNotNone(res1)
+        self.assertIn("Documents", res1)
+
+        res2 = asyncio.run(self.brain.execute_smart_skill("clean my desktop"))
+        self.assertIsNotNone(res2)
+        self.assertTrue("Desktop" in res2 or "clean" in res2)
+
 
 if __name__ == "__main__":
     unittest.main()

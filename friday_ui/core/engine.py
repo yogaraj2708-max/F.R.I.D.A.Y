@@ -1209,6 +1209,13 @@ Core Persona Rules:
         return None
 
     async def execute_smart_skill(self, command: str) -> Optional[str]:
+        # 0. Bypass smart skills if analyzing attached documents or multi-paragraph content
+        if "[Attached Document:" in command or "Boss Directive:" in command:
+            return None
+
+        if len(command) > 350 and not any(t in command.lower() for t in ["look at my screen", "analyze my screen"]):
+            return None
+
         cmd = command.lower().strip()
 
         # 0. TIMERS & COUNTDOWNS
@@ -1266,7 +1273,21 @@ Core Persona Rules:
             "put them in", "put in folder", "put into folder", "move to folder",
             "move into folder", "separate into", "categorize"
         ]
-        is_organize_intent = any(k in cmd for k in organize_keywords)
+        target_indicators = [
+            "folder", "directory", "desktop", "download", "document", "file", "files",
+            "picture", "pictures", "photo", "photos", "image", "images",
+            "video", "videos", "music", "song", "songs", "drive"
+        ]
+        question_indicators = [
+            "how to", "how do", "how can", "why ", "what is", "what are", "explain",
+            "describe", "write a", "show me how", "tell me", "guide me", "meaning of"
+        ]
+
+        is_question = any(q in cmd for q in question_indicators)
+        has_organize_kw = any(k in cmd for k in organize_keywords)
+        has_target = any(t in cmd for t in target_indicators)
+
+        is_organize_intent = has_organize_kw and has_target and not is_question
         if is_organize_intent:
             if "desktop" in cmd:
                 folder_key = "desktop"

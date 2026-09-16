@@ -389,6 +389,11 @@ class FridayMainWindow(FluentWindow):
     async def _process_command(self, command: str):
         self.signals.state_changed.emit("thinking")
         try:
+            # If an attached document is present, route directly to LLM for in-depth analysis
+            if "[Attached Document:" in command or "Boss Directive:" in command:
+                await self.brain.query_llm(command, stream_to_ui=True, stream_to_speech=True)
+                return
+
             # 1. Smart Skills & Desktop Launching
             skill_res = await self.brain.execute_smart_skill(command)
             if skill_res:
