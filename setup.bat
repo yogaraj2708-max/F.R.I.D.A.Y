@@ -1,9 +1,9 @@
 @echo off
-title F.R.I.D.A.Y. 2.0 - Environment & Dependency Setup
+title F.R.I.D.A.Y. 2.0 - Environment Setup
 cd /d "%~dp0"
 
 echo =======================================================
-echo    F.R.I.D.A.Y. 2.0 - Environment & Dependency Setup
+echo    F.R.I.D.A.Y. 2.0 - Environment and Dependency Setup
 echo =======================================================
 echo.
 
@@ -17,25 +17,36 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [2/3] Creating virtual environment (.venv)...
-if not exist ".venv\Scripts\python.exe" (
-    python -m venv .venv
-    if errorlevel 1 (
-        echo [ERROR]: Failed to create virtual environment.
-        pause
-        exit /b 1
-    )
-    echo Virtual environment created successfully.
+echo [2/3] Setting up Python environment...
+set "PYTHON_EXE=python"
+
+if exist ".venv\Scripts\python.exe" (
+    set "PYTHON_EXE=.venv\Scripts\python.exe"
+    echo Using existing virtual environment: .venv\Scripts\python.exe
 ) else (
-    echo Existing virtual environment detected.
+    echo Creating virtual environment (.venv)...
+    python -m venv .venv >nul 2>&1
+    if exist ".venv\Scripts\python.exe" (
+        set "PYTHON_EXE=.venv\Scripts\python.exe"
+        echo Virtual environment created successfully.
+    ) else if exist ".venv\bin\python.exe" (
+        set "PYTHON_EXE=.venv\bin\python.exe"
+        echo Virtual environment created in bin.
+    ) else (
+        echo [Notice]: Virtual environment creation skipped or restricted by Windows.
+        echo Using system Python directly.
+        set "PYTHON_EXE=python"
+    )
 )
 
-echo [3/3] Upgrading pip and installing requirements...
-".venv\Scripts\python.exe" -m pip install --upgrade pip
-".venv\Scripts\python.exe" -m pip install -r requirements.txt
+echo.
+echo [3/3] Installing all required dependencies...
+echo Using Python interpreter: %PYTHON_EXE%
+"%PYTHON_EXE%" -m pip install --upgrade pip
+"%PYTHON_EXE%" -m pip install -r requirements.txt
 if errorlevel 1 (
     echo.
-    echo [ERROR]: Failed to install dependencies. Please check your internet connection.
+    echo [ERROR]: Dependency installation failed. Please check pip output above.
     pause
     exit /b 1
 )
