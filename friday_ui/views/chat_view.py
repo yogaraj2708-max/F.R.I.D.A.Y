@@ -771,6 +771,47 @@ class ChatView(QWidget):
             self.current_session_id = session_id
             self._load_session_messages(session_id)
 
+    def _on_model_combo_changed(self, text: str):
+        if getattr(self, "_refreshing_models", False) or not text:
+            return
+        settings.set("model", text)
+        self.model_changed.emit(text)
+
+    def _on_settings_updated(self, key: str, value):
+        if key in ("model", "custom_models"):
+            self.refresh_models(selected_model=settings.get("model"))
+
+    def refresh_models(self, selected_model: str = None):
+        self._refreshing_models = True
+        try:
+            curr = selected_model or settings.get("model") or self.model_combo.currentText()
+            avail = settings.get_available_models()
+            self.model_combo.blockSignals(True)
+            self.model_combo.clear()
+            self.model_combo.addItems(avail)
+            idx = self.model_combo.findText(curr)
+            if idx >= 0:
+                self.model_combo.setCurrentIndex(idx)
+            elif curr:
+                self.model_combo.addItem(curr)
+                self.model_combo.setCurrentText(curr)
+            self.model_combo.blockSignals(False)
+        finally:
+            self._refreshing_models = False
+
+    def _on_add_model_dialog(self):
+        """Shows a dialog allowing the user to add or pull any AI model instantly."""
+        try:
+            from friday_ui.widgets.add_model_dialog import AddModelDialog
+            dlg = AddModelDialog(self)
+            if dlg.exec():
+                new_model = dlg.selected_model
+                if new_model:
+                    self.refresh_models(selected_model=new_model)
+                    self.model_changed.emit(new_model)
+        except Exception as e:
+            logger.error(f"Error launching AddModelDialog: {e}")
+
     def _on_new_session(self):
         new_id = self.session_store.create_session("New Tactical Session")
         self._load_sessions_list()
