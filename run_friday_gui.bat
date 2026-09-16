@@ -12,7 +12,7 @@ if exist ".venv\Scripts\python.exe" (
 "%PYTHON_EXE%" run_friday_gui.py
 if errorlevel 1 (
     echo.
-    echo [Notice]: F.R.I.D.A.Y. failed to start.
-    echo If dependencies are missing, please run setup.bat first.
+    echo [Notice]: F.R.I.D.A.Y. exited with error. If dependencies are missing, please run setup.bat first.
     pause
 )
+exit /b 0

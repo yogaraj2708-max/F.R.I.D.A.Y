@@ -1789,7 +1789,8 @@ class FridayVoiceLoop:
                         calib_chunks.append(d)
                     if calib_chunks:
                         all_c = np.concatenate(calib_chunks, axis=0)
-                        self.ambient_rms = max(float(np.sqrt(np.mean(all_c.astype(np.float32) ** 2))), 15.0)
+                        # Cap baseline to 120 so fan noise does not raise speech threshold impossibly high
+                        self.ambient_rms = min(max(float(np.sqrt(np.mean(all_c.astype(np.float32) ** 2))), 10.0), 120.0)
 
                     if not self.notified_online:
                         self.notified_online = True
@@ -1942,13 +1943,22 @@ class FridayVoiceLoop:
             norm_level = min(1.0, float(np.sqrt(speech_delta / 2500.0)))
             self.signals.speech_level_changed.emit(norm_level)
 
+            sens = settings.get("mic_sensitivity", "high")
+            if sens == "high":
+                effective_threshold = max(self.ambient_rms * 1.15 + 10.0, 24.0)
+                continuation_threshold = max(self.ambient_rms * 1.08 + 5.0, 18.0)
+            elif sens == "low":
+                effective_threshold = max(self.ambient_rms * 1.50 + 35.0, 60.0)
+                continuation_threshold = max(self.ambient_rms * 1.25 + 18.0, 45.0)
+            else:  # normal
+                effective_threshold = max(self.ambient_rms * 1.25 + 18.0, 35.0)
+                continuation_threshold = max(self.ambient_rms * 1.12 + 10.0, 26.0)
+
             if not speaking:
-                if rms < self.ambient_rms * 1.25:
+                if rms < self.ambient_rms * 1.20:
                     self.ambient_rms = 0.98 * self.ambient_rms + 0.02 * rms
                 elif rms < self.ambient_rms:
                     self.ambient_rms = 0.95 * self.ambient_rms + 0.05 * rms
-
-                effective_threshold = max(self.ambient_rms * 1.40 + 25.0, 50.0)
 
                 pre_roll.append(data.copy())
                 if rms > effective_threshold:
@@ -1960,7 +1970,6 @@ class FridayVoiceLoop:
                     return None
             else:
                 recorded_chunks.append(data.copy())
-                continuation_threshold = max(self.ambient_rms * 1.18 + 12.0, 40.0)
                 if rms > continuation_threshold:
                     silence_start = None
                 else:
@@ -1976,8 +1985,15 @@ class FridayVoiceLoop:
             return None
 
         total_samples = sum(len(c) for c in recorded_chunks)
-        if (total_samples / SAMPLE_RATE) < 0.25:
+        if (total_samples / SAMPLE_RATE) < 0.20:
             return None
 
-        audio_bytes = np.concatenate(recorded_chunks, axis=0).tobytes()
+        # Auto-Gain Control (AGC): boost quiet audio cleanly to optimal recognition level
+        audio_np = np.concatenate(recorded_chunks, axis=0).astype(np.float32)
+        peak = float(np.max(np.abs(audio_np)))
+        if peak > 0 and peak < 18000:
+            gain = min(22000.0 / peak, 4.0)
+            audio_np = np.clip(audio_np * gain, -32767, 32767)
+
+        audio_bytes = audio_np.astype(np.int16).tobytes()
         return sr.AudioData(audio_bytes, SAMPLE_RATE, 2)

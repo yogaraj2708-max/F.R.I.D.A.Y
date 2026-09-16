@@ -46,6 +46,7 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "last_x": -1,
     "last_y": -1,
     "audio_input_device": None,
+    "mic_sensitivity": "high",
     "theme_mode": "dark"
 }
 

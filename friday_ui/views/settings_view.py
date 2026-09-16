@@ -244,6 +244,22 @@ class SettingsView(QWidget):
         audio_row.addStretch(1)
         audio_layout.addLayout(audio_row)
 
+        sens_row = QHBoxLayout()
+        sens_row.addWidget(QLabel("Microphone Sensitivity:"))
+        self.sens_combo = ComboBox(self)
+        self.sens_combo.addItem("High (Laptop Built-in Mic / Quiet Voice) - Recommended", userData="high")
+        self.sens_combo.addItem("Normal (Standard Headset)", userData="normal")
+        self.sens_combo.addItem("Low (Noisy Background)", userData="low")
+        self.sens_combo.setFixedWidth(360)
+        curr_sens = settings.get("mic_sensitivity", "high")
+        for i in range(self.sens_combo.count()):
+            if self.sens_combo.itemData(i) == curr_sens:
+                self.sens_combo.setCurrentIndex(i)
+                break
+        sens_row.addWidget(self.sens_combo)
+        sens_row.addStretch(1)
+        audio_layout.addLayout(sens_row)
+
         layout.addWidget(audio_card)
 
         # 4. HUD Personalization & Appearance
@@ -490,6 +506,7 @@ class SettingsView(QWidget):
             "ollama_host": ollama_host,
             "voice": self.voice_combo.currentText().split(" ")[0],
             "audio_input_device": self.mic_combo.currentData(),
+            "mic_sensitivity": self.sens_combo.currentData() or "high",
             "theme_mode": self.theme_combo.currentData() or "dark",
             "chimes_enabled": self.chimes_switch.isChecked(),
             "auto_start_voice_loop": self.auto_voice_switch.isChecked(),

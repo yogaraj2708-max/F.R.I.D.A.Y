@@ -66,7 +66,7 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("F.R.I.D.A.Y. 2.0")
     app.setOrganizationName("Stark Industries")
-    app.setQuitOnLastWindowClosed(False)  # Keep alive in system tray when window closes
+    app.setQuitOnLastWindowClosed(True)   # Cleanly terminate process when user closes window
 
     stark_icon = create_stark_icon()
     app.setWindowIcon(stark_icon)

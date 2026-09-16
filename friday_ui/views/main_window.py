@@ -474,16 +474,24 @@ class FridayMainWindow(FluentWindow):
             self.titleBar.raise_()
 
     def closeEvent(self, event):
-        """Minimizes to system tray instead of terminating application."""
-        event.ignore()
-        self.hide()
-        InfoBar.info(
-            "Running in System Tray",
-            "F.R.I.D.A.Y. 2.0 minimized to taskbar tray. Click the tray icon to restore.",
-            parent=self,
-            position=InfoBarPosition.TOP_RIGHT,
-            duration=3000
-        )
+        """Cleanly terminates all background loops, audio streams, and exits the application."""
+        try:
+            if hasattr(self, 'voice_loop') and self.voice_loop:
+                self.voice_loop.stop()
+            if hasattr(self, 'tts') and self.tts:
+                self.tts.stop_speaking()
+            if hasattr(self, 'hud_dock') and hasattr(self.hud_dock, 'visualizer') and hasattr(self.hud_dock.visualizer, 'timer'):
+                self.hud_dock.visualizer.timer.stop()
+            if hasattr(self, 'chat_view') and hasattr(self.chat_view, 'arc_reactor') and hasattr(self.chat_view.arc_reactor, 'timer'):
+                self.chat_view.arc_reactor.timer.stop()
+            if hasattr(self, 'command_bar') and self.command_bar:
+                self.command_bar.unregister_hotkey()
+                self.command_bar.close()
+        except Exception as e:
+            logger.debug(f"Shutdown cleanup error: {e}")
+
+        event.accept()
+        QApplication.quit()
 
     def hideEvent(self, event):
         """Pauses custom-paint 60fps timers to save CPU & battery when window is not visible."""
@@ -538,6 +546,9 @@ class FridayMainWindow(FluentWindow):
             updates["user_title"] = user_title
         if ollama_host:
             updates["ollama_host"] = ollama_host
+        mic_sens = settings_data.get("mic_sensitivity")
+        if mic_sens:
+            updates["mic_sensitivity"] = mic_sens
         if audio_dev is not None:
             updates["audio_input_device"] = audio_dev
         if new_theme is not None:
