@@ -2,17 +2,21 @@
 title F.R.I.D.A.Y. 2.0 - Tactical Personal Assistant
 cd /d "%~dp0"
 
-set "PYTHON_EXE=python"
-if exist ".venv\Scripts\python.exe" (
-    set "PYTHON_EXE=.venv\Scripts\python.exe"
-) else if exist ".venv\bin\python.exe" (
-    set "PYTHON_EXE=.venv\bin\python.exe"
+:: Prefer windowless Python (pythonw.exe) so no black CMD window is left open
+if exist ".venv\Scripts\pythonw.exe" (
+    start "" ".venv\Scripts\pythonw.exe" run_friday_gui.py
+    exit /b 0
 )
 
-"%PYTHON_EXE%" run_friday_gui.py
-if errorlevel 1 (
-    echo.
-    echo [Notice]: F.R.I.D.A.Y. exited with error. If dependencies are missing, please run setup.bat first.
-    pause
+if exist ".venv\Scripts\python.exe" (
+    start "" ".venv\Scripts\python.exe" run_friday_gui.py
+    exit /b 0
 )
-exit /b 0
+
+where pythonw >nul 2>&1
+if %errorlevel% equ 0 (
+    start "" pythonw run_friday_gui.py
+    exit /b 0
+)
+
+python run_friday_gui.py

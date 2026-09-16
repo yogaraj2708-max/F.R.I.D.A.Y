@@ -21,10 +21,12 @@ def get_default_owner_name() -> str:
         raw_user = getpass.getuser().strip()
         if raw_user:
             cleaned = raw_user.replace(".", " ").replace("_", " ").title()
-            return cleaned
+            parts = cleaned.split()
+            if parts:
+                return parts[0]
     except Exception:
         pass
-    return "Boss"
+    return "Operator"
 
 DEFAULT_SETTINGS: Dict[str, Any] = {
     "user_name": get_default_owner_name(),

@@ -1797,7 +1797,7 @@ class FridayVoiceLoop:
                         play_chime(CHIME_CONFIRM)
                         self.signals.transcript_received.emit(
                             "system",
-                            f"F.R.I.D.A.Y. 2.0 acoustic sensors online. Standing by for {USER_NAME}."
+                            f"F.R.I.D.A.Y. 2.0 acoustic sensors online. Standing by for {settings.get('user_name') or USER_NAME}."
                         )
 
                     while self.running:
@@ -1899,7 +1899,7 @@ class FridayVoiceLoop:
                 if self.running:
                     await asyncio.sleep(1.5)
 
-    def _record_phrase(self, stream, timeout=None, silence_limit=1.1):
+    def _record_phrase(self, stream, timeout=None, silence_limit=1.4):
         flush_stream(stream)
         start_time = time.time()
         speaking = False
@@ -1943,16 +1943,24 @@ class FridayVoiceLoop:
             norm_level = min(1.0, float(np.sqrt(speech_delta / 2500.0)))
             self.signals.speech_level_changed.emit(norm_level)
 
-            sens = settings.get("mic_sensitivity", "high")
-            if sens == "high":
-                effective_threshold = max(self.ambient_rms * 1.15 + 10.0, 24.0)
-                continuation_threshold = max(self.ambient_rms * 1.08 + 5.0, 18.0)
+            sens = str(settings.get("mic_sensitivity", "high")).lower()
+            if sens == "ultra":
+                effective_threshold = max(self.ambient_rms * 1.08 + 4.0, 12.0)
+                continuation_threshold = max(self.ambient_rms * 1.04 + 2.0, 8.0)
+            elif sens == "high":
+                effective_threshold = max(self.ambient_rms * 1.12 + 7.0, 18.0)
+                continuation_threshold = max(self.ambient_rms * 1.06 + 3.5, 13.0)
             elif sens == "low":
-                effective_threshold = max(self.ambient_rms * 1.50 + 35.0, 60.0)
-                continuation_threshold = max(self.ambient_rms * 1.25 + 18.0, 45.0)
+                effective_threshold = max(self.ambient_rms * 1.45 + 30.0, 50.0)
+                continuation_threshold = max(self.ambient_rms * 1.20 + 15.0, 35.0)
             else:  # normal
-                effective_threshold = max(self.ambient_rms * 1.25 + 18.0, 35.0)
-                continuation_threshold = max(self.ambient_rms * 1.12 + 10.0, 26.0)
+                effective_threshold = max(self.ambient_rms * 1.20 + 12.0, 26.0)
+                continuation_threshold = max(self.ambient_rms * 1.10 + 6.0, 20.0)
+
+            # When user clicked mic or in continuous follow-up, be ultra-receptive
+            if self.force_listen:
+                effective_threshold = min(effective_threshold, max(self.ambient_rms * 1.05 + 3.0, 10.0))
+                continuation_threshold = min(continuation_threshold, max(self.ambient_rms * 1.03 + 2.0, 7.0))
 
             if not speaking:
                 if rms < self.ambient_rms * 1.20:
@@ -1991,8 +1999,8 @@ class FridayVoiceLoop:
         # Auto-Gain Control (AGC): boost quiet audio cleanly to optimal recognition level
         audio_np = np.concatenate(recorded_chunks, axis=0).astype(np.float32)
         peak = float(np.max(np.abs(audio_np)))
-        if peak > 0 and peak < 18000:
-            gain = min(22000.0 / peak, 4.0)
+        if peak > 0 and peak < 24000:
+            gain = min(26000.0 / peak, 5.0)
             audio_np = np.clip(audio_np * gain, -32767, 32767)
 
         audio_bytes = audio_np.astype(np.int16).tobytes()

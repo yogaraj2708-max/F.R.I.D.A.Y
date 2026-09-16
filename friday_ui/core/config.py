@@ -8,12 +8,21 @@ from friday_core.settings import settings
 
 # User & Owner Identity Settings (dynamically queried)
 def get_user_name() -> str:
-    return settings.get("user_name", "Boss")
+    return settings.get("user_name") or get_default_owner_name()
 
 def get_user_role() -> str:
-    return settings.get("user_title", "Boss")
+    return settings.get("user_title") or "Boss"
 
-USER_NAME = get_user_name()
+class _DynamicIdentityProxy(str):
+    """Proxy string that dynamically retrieves current user_name so legacy imports reflect updates."""
+    def __str__(self):
+        return get_user_name()
+    def __repr__(self):
+        return repr(get_user_name())
+    def __format__(self, format_spec):
+        return format(get_user_name(), format_spec)
+
+USER_NAME = _DynamicIdentityProxy("Operator")
 USER_ROLE = get_user_role()
 USER_LOCATION = "Local Workstation"
 LOCALE = "en-US"

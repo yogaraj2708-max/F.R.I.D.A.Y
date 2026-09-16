@@ -502,6 +502,8 @@ class FridayMainWindow(FluentWindow):
 
         event.accept()
         QApplication.quit()
+        import os
+        os._exit(0)
 
     def hideEvent(self, event):
         """Pauses custom-paint 60fps timers to save CPU & battery when window is not visible."""

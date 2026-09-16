@@ -227,6 +227,12 @@ class ChatView(QWidget):
         settings.add_listener(self._on_settings_updated)
         quick_switcher_layout.addWidget(self.model_combo)
 
+        self.add_model_btn = TransparentToolButton(FluentIcon.ADD, header_card)
+        self.add_model_btn.setFixedSize(28, 28)
+        self.add_model_btn.setToolTip("Add / Pull AI Model")
+        self.add_model_btn.clicked.connect(self._on_add_model_dialog)
+        quick_switcher_layout.addWidget(self.add_model_btn)
+
         voice_label = QLabel("VOICE:")
         voice_label.setFont(QFont("Segoe UI", 8, QFont.Bold))
         voice_label.setStyleSheet("color: #71717A; font-family: monospace;")

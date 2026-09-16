@@ -114,6 +114,10 @@ class OnboardingDialog(QDialog):
             self.model_combo.setCurrentIndex(idx_m)
         card_layout.addWidget(self.model_combo)
 
+        self.custom_model_input = LineEdit(card)
+        self.custom_model_input.setPlaceholderText("Or enter custom model name (e.g. mistral:7b, deepseek-r1:8b)...")
+        card_layout.addWidget(self.custom_model_input)
+
         layout.addWidget(card)
 
         # Action Buttons
@@ -142,12 +146,14 @@ class OnboardingDialog(QDialog):
     def _on_initialize(self):
         name = self.name_input.text().strip() or get_default_owner_name()
         title = self.title_combo.currentText()
-        model = self.model_combo.currentText()
+        custom_m = self.custom_model_input.text().strip()
+        model = custom_m if custom_m else self.model_combo.currentText()
 
-        settings.set("user_name", name)
-        settings.set("user_title", title)
+        if custom_m:
+            settings.add_custom_model(custom_m)
+
+        settings.set_owner_identity(name, title)
         settings.set("model", model)
-        settings.set("onboarding_completed", True)
 
         self.initialized.emit(name, title, model)
         self.accept()
