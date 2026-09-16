@@ -418,9 +418,34 @@ class FloatingCommandBar(QWidget):
             self.set_state("thinking")
             self.command_submitted.emit(text)
 
+    def _on_settings_model_sync(self, key: str, value):
+        if key in ("model", "custom_models"):
+            self.refresh_models()
+
+    def refresh_models(self):
+        self._refreshing_models = True
+        try:
+            curr = settings.get("model") or self.model_combo.currentText()
+            avail = settings.get_available_models()
+            self.model_combo.blockSignals(True)
+            self.model_combo.clear()
+            self.model_combo.addItems(avail)
+            idx = self.model_combo.findText(curr)
+            if idx >= 0:
+                self.model_combo.setCurrentIndex(idx)
+            elif curr:
+                self.model_combo.addItem(curr)
+                self.model_combo.setCurrentText(curr)
+            self.model_combo.blockSignals(False)
+        finally:
+            self._refreshing_models = False
+
     def _on_model_changed(self, model: str):
+        if getattr(self, "_refreshing_models", False) or not model:
+            return
         settings.set("model", model)
         self.model_changed.emit(model)
+
 
     def _cycle_mode(self):
         modes = ["⚡ Tactical", "🎯 Deep", "🚀 Turbo"]
