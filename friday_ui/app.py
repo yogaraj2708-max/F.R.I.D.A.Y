@@ -133,6 +133,7 @@ def main():
     window.command_bar = command_bar
     window.signals.state_changed.connect(command_bar.set_state)
     command_bar.voice_toggle_requested.connect(window.toggle_voice_loop)
+    command_bar.stop_requested.connect(window.handle_stop_requested)
 
     async def handle_bar_command(command: str):
         command_bar.set_state("thinking")

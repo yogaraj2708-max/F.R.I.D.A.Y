@@ -150,5 +150,45 @@ class TestVoiceEngineParsing(unittest.TestCase):
         self.assertTrue("This function returns the integer 42" in summary)
         self.assertLessEqual(len(summary.split()), 30)
 
+    def test_extract_spoken_summary_full_paragraphs(self):
+        from friday_ui.core.engine import FridayVoiceEngine, FridaySignals
+        tts = FridayVoiceEngine(FridaySignals())
+        multi_para = (
+            "Paragraph one gives initial context and information. It does not stop here.\n\n"
+            "Paragraph two provides detailed technical depth and tactical intelligence. It continues further.\n\n"
+            "Paragraph three closes out the final directives for the operator."
+        )
+        spoken = tts.extract_spoken_summary(multi_para)
+        # Must retain all three paragraphs and not truncate after the first sentence
+        self.assertIn("Paragraph one gives initial context", spoken)
+        self.assertIn("Paragraph two provides detailed", spoken)
+        self.assertIn("Paragraph three closes out", spoken)
+
+    def test_chunk_text_for_speech(self):
+        from friday_ui.core.engine import FridayVoiceEngine, FridaySignals
+        tts = FridayVoiceEngine(FridaySignals())
+        long_speech = (
+            "Sentence one is simple and brief. "
+            "Sentence two explains the situation in clear tactical detail. "
+            "Sentence three follows up with additional observations. "
+            "Sentence four concludes the primary transmission to the operator."
+        )
+        chunks = tts._chunk_text_for_speech(long_speech, target_chunk_words=15)
+        self.assertTrue(len(chunks) >= 2)
+        # All sentences must be present in order across the chunks
+        full_reconstructed = " ".join(chunks)
+        self.assertIn("Sentence one", full_reconstructed)
+        self.assertIn("Sentence two", full_reconstructed)
+        self.assertIn("Sentence three", full_reconstructed)
+        self.assertIn("Sentence four", full_reconstructed)
+
+    def test_stop_speaking(self):
+        from friday_ui.core.engine import FridayVoiceEngine, FridaySignals
+        tts = FridayVoiceEngine(FridaySignals())
+        tts.is_speaking = True
+        tts.stop_speaking()
+        self.assertFalse(tts.is_speaking)
+        self.assertTrue(tts.cancel_event.is_set())
+
 if __name__ == "__main__":
     unittest.main()

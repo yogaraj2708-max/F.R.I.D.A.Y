@@ -508,6 +508,33 @@ class ChatView(QWidget):
         self.send_btn.clicked.connect(self._on_send_btn_clicked)
         input_layout.addWidget(self.send_btn)
 
+        # Dedicated Stop Voice Button — Prominent crimson button for interrupting vocal playback immediately
+        self.stop_btn = PushButton("■ Stop Voice", self)
+        self.stop_btn.setFixedSize(102, 34)
+        self.stop_btn.setCursor(Qt.PointingHandCursor)
+        self.stop_btn.setToolTip("Immediately stop vocal playback and generation (Esc)")
+        self.stop_btn.setStyleSheet("""
+            PushButton {
+                background-color: #DC2626;
+                border: 1px solid #EF4444;
+                font-weight: bold;
+                font-size: 12px;
+                border-radius: 8px;
+                color: #FFFFFF;
+                letter-spacing: 0.5px;
+            }
+            PushButton:hover {
+                background-color: #EF4444;
+                border: 1px solid #F87171;
+            }
+            PushButton:pressed {
+                background-color: #991B1B;
+            }
+        """)
+        self.stop_btn.clicked.connect(self.stop_generation)
+        self.stop_btn.hide()
+        input_layout.addWidget(self.stop_btn)
+
         self.esc_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
         self.esc_shortcut.activated.connect(self._on_escape_pressed)
 
@@ -555,7 +582,7 @@ class ChatView(QWidget):
             self._submit_prompt()
 
     def _on_escape_pressed(self):
-        if self._is_generating:
+        if self._is_generating or getattr(self, '_current_engine_state', '') == 'speaking':
             self.stop_generation()
 
     def stop_generation(self):
@@ -567,6 +594,7 @@ class ChatView(QWidget):
     def _set_generating_state(self, generating: bool):
         self._is_generating = generating
         if generating:
+            self.stop_btn.show()
             self.send_btn.setText("■ Stop")
             self.send_btn.setToolTip("Halt response generation and speech (Esc)")
             self.send_btn.setStyleSheet("""
@@ -588,6 +616,7 @@ class ChatView(QWidget):
                 }
             """)
         else:
+            self.stop_btn.hide()
             self.send_btn.setText("Send")
             self.send_btn.setToolTip("Send directive (Enter)")
             self.send_btn.setStyleSheet("""
@@ -955,7 +984,8 @@ class ChatView(QWidget):
 
     def finish_stream(self, final_text: str = None):
         """Finalizes the active streaming bubble."""
-        self._set_generating_state(False)
+        if getattr(self, '_current_engine_state', '') != 'speaking':
+            self._set_generating_state(False)
         if self._current_streaming_bubble:
             self._current_streaming_bubble.finish_stream(final_text)
             self._last_streamed_text = self._current_streaming_bubble.raw_text.strip()
@@ -1013,6 +1043,7 @@ class ChatView(QWidget):
     def update_state(self, state: str):
         """Updates status pill and header indicators with smooth transitions."""
         st = state.upper()
+        self._current_engine_state = st.lower()
         self.arc_reactor.set_state(state)
 
         base_style = """
@@ -1024,6 +1055,8 @@ class ChatView(QWidget):
         """
 
         if st == "LISTENING":
+            if not self._current_streaming_bubble:
+                self._set_generating_state(False)
             self.status_pill.setText("● LISTENING")
             self.status_pill.setStyleSheet(f"""
                 color: #10B981;

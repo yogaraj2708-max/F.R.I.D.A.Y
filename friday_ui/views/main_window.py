@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 )
 from qfluentwidgets import (
     FluentWindow, NavigationItemPosition, FluentIcon,
-    setTheme, Theme, InfoBar, InfoBarPosition
+    setTheme, Theme, InfoBar, InfoBarPosition, PushButton
 )
 
 from friday_ui.core.config import USER_NAME, ACCENT_COLOR, STARK_CYAN
@@ -75,6 +75,32 @@ class HUDDockWidget(GlassPanel):
         self.visualizer.setFixedHeight(36)
         dock_layout.addWidget(self.visualizer, 1)
 
+        # ── Stop Voice Button (Prominently visible across all views during active speech) ──
+        self.stop_voice_btn = PushButton("■ Stop Voice", self)
+        self.stop_voice_btn.setFixedSize(104, 28)
+        self.stop_voice_btn.setCursor(Qt.PointingHandCursor)
+        self.stop_voice_btn.setToolTip("Immediately stop vocal playback (Esc)")
+        self.stop_voice_btn.setStyleSheet("""
+            PushButton {
+                background-color: #DC2626;
+                border: 1px solid #EF4444;
+                font-weight: bold;
+                font-size: 11px;
+                border-radius: 6px;
+                color: #FFFFFF;
+                letter-spacing: 0.5px;
+            }
+            PushButton:hover {
+                background-color: #EF4444;
+                border: 1px solid #F87171;
+            }
+            PushButton:pressed {
+                background-color: #991B1B;
+            }
+        """)
+        self.stop_voice_btn.hide()
+        dock_layout.addWidget(self.stop_voice_btn)
+
         # ── Right: Single glanceable Telemetry chip ──
         self.telemetry_label = QLabel("⚡ NOMINAL")
         self.telemetry_label.setObjectName("hudTelemetryLabel")
@@ -119,12 +145,20 @@ class FridayMainWindow(FluentWindow):
         self._connect_signals()
         self._apply_global_style()
 
+        # Global Escape Shortcut to halt speech & generation
+        self.esc_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
+        self.esc_shortcut.activated.connect(self._on_global_escape_pressed)
+
         # Telemetry Polling Timer
         self.telemetry_timer = QTimer(self)
         self.telemetry_timer.timeout.connect(self._poll_telemetry)
         poll_ms = int(settings.get("telemetry_poll_interval", 20)) * 1000
         self.telemetry_timer.start(poll_ms)
         QTimer.singleShot(1000, self._poll_telemetry)
+
+    def _on_global_escape_pressed(self):
+        if getattr(self.tts, "is_speaking", False) or (getattr(self, '_current_command_task', None) and not self._current_command_task.done()):
+            self.handle_stop_requested()
 
     def _create_task(self, coro):
         """Standard fire-and-forget task tracker to prevent premature garbage collection."""
@@ -247,7 +281,7 @@ class FridayMainWindow(FluentWindow):
         self.signals.confirmation_requested.connect(self._on_confirmation_requested)
         self.signals.error_occurred.connect(self._on_error)
 
-        # UI -> Engine signals
+        self.hud_dock.stop_voice_btn.clicked.connect(self.handle_stop_requested)
         self.chat_view.command_submitted.connect(self.handle_user_command)
         self.chat_view.doc_ingest_requested.connect(self.handle_doc_ingest)
         self.chat_view.deep_research_requested.connect(lambda topic: self.handle_research(topic, "Deep Comprehensive"))
@@ -286,22 +320,27 @@ class FridayMainWindow(FluentWindow):
             self.hud_dock.hud_state_label.setText("ACTIVE // LISTENING")
             self.hud_dock.hud_state_label.setProperty("state", "listening")
             self.hud_dock.visualizer.set_active(True)
+            self.hud_dock.stop_voice_btn.hide()
         elif st == "idle":
             self.hud_dock.hud_state_label.setText("MUTED // OFFLINE")
             self.hud_dock.hud_state_label.setProperty("state", "idle")
             self.hud_dock.visualizer.set_active(False)
+            self.hud_dock.stop_voice_btn.hide()
         elif st == "thinking":
             self.hud_dock.hud_state_label.setText("ACTIVE // THINKING")
             self.hud_dock.hud_state_label.setProperty("state", "thinking")
             self.hud_dock.visualizer.set_active(True)
+            self.hud_dock.stop_voice_btn.hide()
         elif st == "speaking":
             self.hud_dock.hud_state_label.setText("ACTIVE // TRANSMITTING")
             self.hud_dock.hud_state_label.setProperty("state", "speaking")
             self.hud_dock.visualizer.set_active(True)
+            self.hud_dock.stop_voice_btn.show()
         else:
             self.hud_dock.hud_state_label.setText(f"ACTIVE // {st.upper()}")
             self.hud_dock.hud_state_label.setProperty("state", "standby")
             self.hud_dock.visualizer.set_active(False)
+            self.hud_dock.stop_voice_btn.hide()
 
         self.hud_dock.hud_state_label.style().unpolish(self.hud_dock.hud_state_label)
         self.hud_dock.hud_state_label.style().polish(self.hud_dock.hud_state_label)

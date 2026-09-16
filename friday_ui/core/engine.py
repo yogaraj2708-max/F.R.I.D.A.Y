@@ -277,11 +277,11 @@ class FridayVoiceEngine:
         # 8. Clean excessive punctuation and whitespace
         return re.sub(r"\s+", " ", text).strip()
 
-    def extract_spoken_summary(self, text: str, max_sentences: int = 3, max_words: int = 60) -> str:
+    def extract_spoken_summary(self, text: str, max_sentences: Optional[int] = None, max_words: Optional[int] = None) -> str:
         """
-        Extracts a concise, natural conversational summary suitable for vocal playback.
+        Extracts natural conversational speech suitable for vocal playback.
         Strips code blocks, markdown tables, markdown formatting, and long URLs.
-        Delivers instant, seamless speech without reading out pages of source code.
+        Delivers complete, natural speech across all paragraphs without cutting off after a full stop.
         """
         if not text:
             return ""
@@ -295,8 +295,12 @@ class FridayVoiceEngine:
         speech_text = re.sub(r"\.{2,}", ".", speech_text)
         speech_text = re.sub(r"\s+", " ", speech_text).strip()
 
+        # If no limits specified, deliver the complete conversational text
+        if max_words is None and max_sentences is None:
+            return speech_text
+
         words = speech_text.split()
-        if len(words) <= max_words:
+        if max_words is not None and len(words) <= max_words and max_sentences is None:
             return speech_text
 
         sentences = re.split(r'(?<=[.!?])\s+', speech_text)
@@ -307,15 +311,18 @@ class FridayVoiceEngine:
             if not s:
                 continue
             w_len = len(s.split())
-            if count + w_len > max_words and selected:
+            if max_words is not None and (count + w_len > max_words and selected):
                 break
             selected.append(s)
             count += w_len
-            if len(selected) >= max_sentences:
+            if max_sentences is not None and len(selected) >= max_sentences:
                 break
 
         if not selected:
-            summary = " ".join(words[:max_words])
+            if max_words is not None:
+                summary = " ".join(words[:max_words])
+            else:
+                summary = speech_text
             if not summary.endswith((".", "!", "?")):
                 summary += "."
             return summary
@@ -445,6 +452,45 @@ class FridayVoiceEngine:
         else:
             await self.speak_phrase_sapi(phrase, cancel_event=cancel_event)
 
+    def _chunk_text_for_speech(self, text: str, target_chunk_words: int = 40) -> list:
+        """
+        Splits multi-paragraph or long responses into natural sentence-boundary chunks.
+        Ensures voice starts speaking immediately on the first chunk, continues
+        reading all paragraphs to completion without cutoff, and responds instantly to stop/interrupt.
+        """
+        if not text:
+            return []
+        clean = self.clean_text_for_speech(text)
+        if not clean:
+            return []
+
+        # Split on sentence terminals (. ! ?) followed by whitespace or linebreaks
+        raw_sentences = re.split(r'(?<=[.!?])\s+', clean)
+        chunks = []
+        current_chunk = []
+        current_words = 0
+
+        for s in raw_sentences:
+            s = s.strip()
+            if not s:
+                continue
+            words = s.split()
+            if not words:
+                continue
+            # If adding this sentence exceeds target_chunk_words and we already have content, push current chunk
+            if current_words + len(words) > target_chunk_words and current_chunk:
+                chunks.append(" ".join(current_chunk))
+                current_chunk = [s]
+                current_words = len(words)
+            else:
+                current_chunk.append(s)
+                current_words += len(words)
+
+        if current_chunk:
+            chunks.append(" ".join(current_chunk))
+
+        return chunks
+
     async def speak(self, text: str, display_text: str = None, emit_transcript: bool = True):
         self.cancel_event.clear()
         self.is_speaking = True
@@ -459,20 +505,24 @@ class FridayVoiceEngine:
         if emit_transcript and full_display:
             self.signals.transcript_received.emit("friday", full_display)
 
-        clean_text = self.clean_text_for_speech(text)
-        if not clean_text or self.cancel_event.is_set():
+        chunks = self._chunk_text_for_speech(text)
+        if not chunks or self.cancel_event.is_set():
             self.signals.speech_level_changed.emit(0.0)
             self.signals.state_changed.emit("idle")
             return
 
-        # Unified Tier 1 (Local Kokoro) & Tier 2 (Cloud Neural) synthesis
-        audio_stream = await self.synthesize_audio(clean_text, cancel_event=self.cancel_event)
+        for chunk in chunks:
+            if self.cancel_event.is_set():
+                break
 
-        if audio_stream and not self.cancel_event.is_set():
-            await self.play_audio_stream(audio_stream, cancel_event=self.cancel_event)
-        elif not self.cancel_event.is_set():
-            # Tier 3: In-process Windows SAPI COM fallback
-            await self.speak_phrase_sapi(clean_text, cancel_event=self.cancel_event)
+            # Unified Tier 1 (Local Kokoro) & Tier 2 (Cloud Neural) synthesis
+            audio_stream = await self.synthesize_audio(chunk, cancel_event=self.cancel_event)
+
+            if audio_stream and not self.cancel_event.is_set():
+                await self.play_audio_stream(audio_stream, cancel_event=self.cancel_event)
+            elif not self.cancel_event.is_set():
+                # Tier 3: In-process Windows SAPI COM fallback
+                await self.speak_phrase_sapi(chunk, cancel_event=self.cancel_event)
 
         self.signals.speech_level_changed.emit(0.0)
         next_state = "listening" if self.voice_loop_active else "idle"

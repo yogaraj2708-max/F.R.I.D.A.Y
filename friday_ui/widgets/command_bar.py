@@ -89,6 +89,7 @@ class FloatingCommandBar(QWidget):
     command_submitted = Signal(str)
     voice_toggle_requested = Signal()
     model_changed = Signal(str)
+    stop_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -225,6 +226,31 @@ class FloatingCommandBar(QWidget):
         self.mode_btn.clicked.connect(self._cycle_mode)
         bar_layout.addWidget(self.mode_btn)
 
+        # Stop Button in Floating Bar
+        self.stop_btn = PillPushButton("■ Stop", self.bar_card)
+        self.stop_btn.setFixedWidth(68)
+        self.stop_btn.setCursor(Qt.PointingHandCursor)
+        self.stop_btn.setToolTip("Immediately halt voice playback (Esc)")
+        self.stop_btn.setStyleSheet("""
+            PillPushButton {
+                background-color: #DC2626;
+                border: 1px solid #EF4444;
+                color: #FFFFFF;
+                font-size: 11px;
+                font-weight: bold;
+                padding: 4px 8px;
+            }
+            PillPushButton:hover {
+                background-color: #EF4444;
+            }
+            PillPushButton:pressed {
+                background-color: #991B1B;
+            }
+        """)
+        self.stop_btn.clicked.connect(self.stop_requested.emit)
+        self.stop_btn.hide()
+        bar_layout.addWidget(self.stop_btn)
+
         # Close / Dismiss Button
         self.close_btn = TransparentToolButton(FluentIcon.CLOSE, self.bar_card)
         self.close_btn.setFixedSize(28, 28)
@@ -254,6 +280,13 @@ class FloatingCommandBar(QWidget):
         self.resp_title.setStyleSheet("color: #00F0FF; letter-spacing: 1px;")
         resp_header.addWidget(self.resp_title)
         resp_header.addStretch(1)
+
+        self.resp_stop_btn = TransparentToolButton(FluentIcon.CANCEL, self.response_card)
+        self.resp_stop_btn.setFixedSize(24, 24)
+        self.resp_stop_btn.setToolTip("Halt vocal playback")
+        self.resp_stop_btn.clicked.connect(self.stop_requested.emit)
+        self.resp_stop_btn.hide()
+        resp_header.addWidget(self.resp_stop_btn)
 
         copy_btn = TransparentToolButton(FluentIcon.COPY, self.response_card)
         copy_btn.setFixedSize(24, 24)
@@ -401,6 +434,12 @@ class FloatingCommandBar(QWidget):
         self.mini_reactor.set_state(state)
         st = state.upper()
         self.resp_title.setText(f"F.R.I.D.A.Y. // {st}")
+        if state.lower() == "speaking":
+            self.stop_btn.show()
+            self.resp_stop_btn.show()
+        else:
+            self.stop_btn.hide()
+            self.resp_stop_btn.hide()
 
     def _on_submit(self):
         text = self.prompt_input.text().strip()
@@ -497,6 +536,8 @@ class FloatingCommandBar(QWidget):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
+            if hasattr(self, 'stop_btn') and self.stop_btn.isVisible():
+                self.stop_requested.emit()
             self.hide()
         else:
             super().keyPressEvent(event)
