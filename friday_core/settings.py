@@ -185,6 +185,18 @@ class SettingsManager:
 
         return models
 
+    def set_owner_identity(self, name: str, title: str = "Boss"):
+        """Updates owner name, title/call-sign, and marks onboarding completed."""
+        clean_name = name.strip() or get_default_owner_name()
+        clean_title = title.strip() or "Boss"
+        self.update({
+            "user_name": clean_name,
+            "user_title": clean_title,
+            "onboarding_completed": True
+        })
+        self.save()
+        logger.info(f"[Settings]: Calibrated owner identity to {clean_name} ({clean_title})")
+
     def add_custom_model(self, model_name: str) -> bool:
         """Adds a custom model to the custom models list and persists it."""
         model_name = model_name.strip()

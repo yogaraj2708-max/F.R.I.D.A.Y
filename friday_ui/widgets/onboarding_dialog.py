@@ -144,16 +144,28 @@ class OnboardingDialog(QDialog):
         layout.addLayout(button_layout)
 
     def _on_initialize(self):
-        name = self.name_input.text().strip() or get_default_owner_name()
-        title = self.title_combo.currentText()
-        custom_m = self.custom_model_input.text().strip()
-        model = custom_m if custom_m else self.model_combo.currentText()
+        try:
+            name = self.name_input.text().strip() or get_default_owner_name()
+            title = self.title_combo.currentText()
+            custom_m = self.custom_model_input.text().strip()
+            model = custom_m if custom_m else self.model_combo.currentText()
 
-        if custom_m:
-            settings.add_custom_model(custom_m)
+            if custom_m:
+                settings.add_custom_model(custom_m)
 
-        settings.set_owner_identity(name, title)
-        settings.set("model", model)
+            if hasattr(settings, "set_owner_identity"):
+                settings.set_owner_identity(name, title)
+            else:
+                settings.set("user_name", name)
+                settings.set("user_title", title)
+                settings.set("onboarding_completed", True)
 
-        self.initialized.emit(name, title, model)
-        self.accept()
+            settings.set("model", model)
+            settings.save()
+
+            self.initialized.emit(name, title, model)
+        except Exception as e:
+            import logging
+            logging.getLogger("FRIDAY.Onboarding").error(f"Onboarding init error: {e}")
+        finally:
+            self.accept()
