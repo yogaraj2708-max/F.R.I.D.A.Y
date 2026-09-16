@@ -204,7 +204,7 @@ def generate_global_qss(theme_mode: str = "dark") -> str:
 # ── 2. Reusable Animation Toolkit ──────────────────────────────────────
 
 def fade_in(widget: QWidget, duration: int = 200, start_opacity: float = 0.0, end_opacity: float = 1.0) -> QPropertyAnimation:
-    """Applies a smooth fade-in entrance to any widget."""
+    """Applies a smooth fade-in entrance to any widget and cleanly removes the effect upon completion."""
     effect = widget.graphicsEffect()
     if not isinstance(effect, QGraphicsOpacityEffect):
         effect = QGraphicsOpacityEffect(widget)
@@ -215,6 +215,15 @@ def fade_in(widget: QWidget, duration: int = 200, start_opacity: float = 0.0, en
     anim.setStartValue(start_opacity)
     anim.setEndValue(end_opacity)
     anim.setEasingCurve(QEasingCurve.OutCubic)
+
+    def _cleanup():
+        try:
+            if widget.graphicsEffect() == effect:
+                widget.setGraphicsEffect(None)
+        except Exception:
+            pass
+
+    anim.finished.connect(_cleanup)
     anim.start(QPropertyAnimation.DeleteWhenStopped)
     return anim
 

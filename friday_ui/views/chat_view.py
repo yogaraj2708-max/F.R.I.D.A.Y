@@ -172,9 +172,7 @@ class ChatView(QWidget):
             bg_color="rgba(18, 18, 24, 0.65)",
             border_color="rgba(255, 255, 255, 0.08)",
             radius=12,
-            enable_shadow=True,
-            shadow_blur=28,
-            shadow_alpha=45
+            enable_shadow=False
         )
         header_card.setObjectName("fridayHeader")
 
@@ -190,6 +188,22 @@ class ChatView(QWidget):
         quick_switcher_layout = QHBoxLayout()
         quick_switcher_layout.setSpacing(8)
 
+        combo_style = """
+            ComboBox {
+                background-color: rgba(22, 24, 34, 0.85);
+                border: 1px solid rgba(255, 255, 255, 0.14);
+                border-radius: 6px;
+                color: #FFFFFF;
+                font-size: 11px;
+                font-weight: 500;
+                padding-left: 6px;
+            }
+            ComboBox:hover {
+                border: 1px solid rgba(0, 240, 255, 0.40);
+                background-color: rgba(30, 34, 48, 0.95);
+            }
+        """
+
         # Session Switcher
         session_label = QLabel("SESSION:")
         session_label.setFont(QFont("Segoe UI", 8, QFont.Bold))
@@ -199,6 +213,7 @@ class ChatView(QWidget):
         self.session_combo = ComboBox(header_card)
         self.session_combo.setFixedHeight(28)
         self.session_combo.setFixedWidth(160)
+        self.session_combo.setStyleSheet(combo_style)
         self.session_combo.currentIndexChanged.connect(self._on_session_combo_changed)
         quick_switcher_layout.addWidget(self.session_combo)
 
@@ -216,6 +231,7 @@ class ChatView(QWidget):
         self.model_combo = ComboBox(header_card)
         self.model_combo.setFixedHeight(28)
         self.model_combo.setFixedWidth(155)
+        self.model_combo.setStyleSheet(combo_style)
         self._refreshing_models = False
         avail_models = settings.get_available_models()
         self.model_combo.addItems(avail_models)
@@ -244,6 +260,7 @@ class ChatView(QWidget):
         self.voice_combo = ComboBox(header_card)
         self.voice_combo.setFixedHeight(28)
         self.voice_combo.setFixedWidth(160)
+        self.voice_combo.setStyleSheet(combo_style)
         self.voice_combo.addItems([
             "bf_emma (Local FRIDAY)",
             "af_sarah (Local Sarah)",
@@ -417,13 +434,6 @@ class ChatView(QWidget):
                 border: 1px solid rgba(255, 255, 255, 0.35);
             }
         """)
-
-        # Drop shadow for input
-        input_shadow = QGraphicsDropShadowEffect(input_frame)
-        input_shadow.setBlurRadius(16)
-        input_shadow.setColor(QColor(0, 0, 0, 160))
-        input_shadow.setOffset(0, 4)
-        input_frame.setGraphicsEffect(input_shadow)
 
         input_layout = QHBoxLayout(input_frame)
         input_layout.setContentsMargins(8, 6, 8, 6)

@@ -183,14 +183,8 @@ class FridayMainWindow(FluentWindow):
             "Settings",
             NavigationItemPosition.BOTTOM
         )
-
         if hasattr(self, 'stackedWidget'):
-            self.stackedWidget.currentChanged.connect(self._on_view_switched)
-
-    def _on_view_switched(self, index: int):
-        widget = self.stackedWidget.widget(index)
-        if widget:
-            fade_in(widget, duration=220)
+            self.stackedWidget.setAnimationEnabled(False)
 
     def _init_hud_dock(self):
         """
