@@ -34,11 +34,18 @@
 
 ## ⚙️ Quick Start & Installation
 
-Clone the repository first:
+### Step 1: Get the Code
+
+**Option A — Using Git (Recommended for developers)**:
 ```powershell
 git clone https://github.com/yogaraj2708-max/F.R.I.D.A.Y.git
 cd F.R.I.D.A.Y
 ```
+
+**Option B — Without Git (Fastest for anyone)**:
+1. Click the green **`<> Code`** button at the top of this GitHub page.
+2. Click **`Download ZIP`**.
+3. Right-click the downloaded `.zip` file, choose **"Extract All..."**, and open the folder.
 
 Choose either setup method below:
 
