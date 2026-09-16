@@ -468,6 +468,16 @@ class FridayMainWindow(FluentWindow):
         mem = get_memory_info()
         self.signals.telemetry_updated.emit({"battery": bat, "charging": chg, "memory": mem})
 
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_F11:
+            if self.isFullScreen():
+                self.showMaximized()
+            else:
+                self.showFullScreen()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
     def resizeEvent(self, event):
         super().resizeEvent(event)
         if hasattr(self, 'titleBar'):

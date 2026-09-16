@@ -78,7 +78,7 @@ def main():
     # Initialize Main Window and Floating Command Bar
     window = FridayMainWindow()
     window.setWindowIcon(stark_icon)
-    window.show()
+    window.showMaximized()
 
     # First-run Onboarding & Operator Call-Sign Calibration
     if not settings.get("onboarding_completed", False):
@@ -133,7 +133,7 @@ def main():
     tray_menu = QMenu()
 
     show_action = tray_menu.addAction("Show F.R.I.D.A.Y.")
-    show_action.triggered.connect(window.show)
+    show_action.triggered.connect(window.showMaximized)
 
     bar_action = tray_menu.addAction("Toggle Command Bar (Ctrl+Space)")
     bar_action.triggered.connect(command_bar.toggle_visibility)
@@ -159,7 +159,7 @@ def main():
     exit_action.triggered.connect(app.quit)
 
     tray_icon.setContextMenu(tray_menu)
-    tray_icon.activated.connect(lambda reason: window.show() if reason == QSystemTrayIcon.Trigger else None)
+    tray_icon.activated.connect(lambda reason: window.showMaximized() if reason == QSystemTrayIcon.Trigger else None)
     tray_icon.show()
 
     # Initial Welcome Voice Greeting & Voice Loop Start
