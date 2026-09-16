@@ -576,15 +576,28 @@ class FridayBrain:
     def __init__(self, signals: FridaySignals, tts_engine: FridayVoiceEngine):
         self.signals = signals
         self.tts = tts_engine
-        self.client = AsyncClient()
-        self.model = self._detect_best_model()
+        host = settings.get("ollama_host", "http://localhost:11434")
+        self.client = AsyncClient(host=host)
+        saved_m = settings.get("model")
+        self.model = saved_m if saved_m else self._detect_best_model()
         self.conversation_history = []
         self.vector_store = None
         self._init_system_prompt()
+        settings.add_listener(self._on_settings_change)
+
+    def _on_settings_change(self, key: str, value):
+        if key == "model" and value:
+            self.model = value
+        elif key == "ollama_host" and value:
+            self.client = AsyncClient(host=value)
+        elif key in ("user_name", "user_title"):
+            self.reload_persona()
 
     def _detect_best_model(self) -> str:
+        host = settings.get("ollama_host", "http://localhost:11434")
         try:
-            installed = [m.model for m in ollama.list().models]
+            client = ollama.Client(host=host)
+            installed = [m.model for m in client.list().models]
             for pref in PREFERRED_MODELS:
                 for inst in installed:
                     if pref in inst:
@@ -593,39 +606,39 @@ class FridayBrain:
                 return installed[0]
         except Exception as ex:
             logger.warning("Ollama model list detection warning: %s", ex)
-        return "friday-model:latest"
+        return "llama3.2:3b"
 
     def _init_system_prompt(self):
         now = datetime.now()
         current_time = now.strftime("%I:%M %p")
         current_date = now.strftime("%A, %B %d, %Y")
+        user_name = settings.get("user_name", "Operator")
+        user_title = settings.get("user_title", "Boss")
+        call_sign = user_title if user_title and str(user_title).lower() != "none" else user_name
 
-        self.system_prompt = (
-            f"You are F.R.I.D.A.Y. 2.0, {USER_NAME}'s elite tactical AI assistant and engineering copilot, "
-            f"modeled after Tony Stark's AI in Marvel's Iron Man.\n"
-            f"Core Persona Rules:\n"
-            f"1. Address the user naturally as 'Boss' or '{USER_NAME}'.\n"
-            f"2. Tone: Calm, sharp, tactically aware, subtly witty, and professional.\n"
-            f"3. Dynamic Intelligence: For quick chit-chat and simple status requests, keep replies punchy and conversational. "
-            f"For file analyses, programming tasks, document reviews, technical inquiries, and deep explanations, provide "
-            f"complete, multi-paragraph, professional breakdowns with structured Markdown headers, bullet points, and code blocks.\n"
-            f"4. Real-World Context: Current time is {current_time} on {current_date}. Running on Windows 11.\n"
-            f"5. Honesty: If you don't know something or can't perform an action, admit it clearly with style.\n"
-            f"6. CRITICAL - Your Real Capabilities: You are NOT a plain chatbot. You have REAL integrated subsystems:\n"
-            f"   - WEB SEARCH: You CAN search the internet via DuckDuckGo. When the user asks about a topic, company, "
-            f"person, product, news, or anything that needs live information, you MUST use your search capability. "
-            f"NEVER say 'I can't search the web' or 'I don't have internet access' — that is FALSE. "
-            f"If a query needs web data, tell Boss you're searching now and provide the results.\n"
-            f"   - WEATHER: You CAN get real-time weather data from wttr.in for any city worldwide.\n"
-            f"   - APP LAUNCHING: You CAN open apps (VS Code, Edge, Spotify, Calculator, etc.) on this Windows PC.\n"
-            f"   - FILE ANALYSIS: You CAN read, analyze, and review code files and documents attached by the user.\n"
-            f"   - SYSTEM TELEMETRY: You CAN check battery level, RAM usage, and system diagnostics.\n"
-            f"   - CALCULATIONS: You CAN perform mathematical calculations.\n"
-            f"   - YOUTUBE: You CAN search and open YouTube videos.\n"
-            f"7. When the user asks about a real-world topic (like a company, product, historical event, technology, etc.), "
-            f"provide your best knowledge and offer to run a deep web search for the latest information."
-        )
+        self.system_prompt = f"""You are F.R.I.D.A.Y. 2.0, {user_name}'s elite tactical AI assistant and engineering copilot, modeled after Tony Stark's AI in Marvel's Iron Man.
+Core Persona Rules:
+1. Address the user naturally as '{call_sign}' or '{user_name}'.
+2. Tone: Calm, sharp, tactically aware, subtly witty, and professional.
+3. Dynamic Intelligence: For quick chit-chat and simple status requests, keep replies punchy and conversational. For file analyses, programming tasks, document reviews, technical inquiries, and deep explanations, provide complete, multi-paragraph, professional breakdowns with structured Markdown headers, bullet points, and code blocks.
+4. Real-World Context: Current time is {current_time} on {current_date}. Running on Windows 11.
+5. Honesty: If you don't know something or can't perform an action, admit it clearly with style.
+6. CRITICAL - Your Real Capabilities: You are NOT a plain chatbot. You have REAL integrated subsystems:
+   - WEB SEARCH: You CAN search the internet via DuckDuckGo. When the user asks about a topic, company, person, product, news, or anything that needs live information, you MUST use your search capability. NEVER say 'I can't search the web' or 'I don't have internet access' — that is FALSE. If a query needs web data, tell {call_sign} you're searching now and provide the results.
+   - WEATHER: You CAN get real-time weather data from wttr.in for any city worldwide.
+   - APP LAUNCHING: You CAN open apps (VS Code, Edge, Spotify, Calculator, etc.) on this Windows PC.
+   - FILE ANALYSIS: You CAN read, analyze, and review code files and documents attached by the user.
+   - SYSTEM TELEMETRY: You CAN check battery level, RAM usage, and system diagnostics.
+   - CALCULATIONS: You CAN perform mathematical calculations.
+   - YOUTUBE: You CAN search and open YouTube videos.
+7. When the user asks about a real-world topic (like a company, product, historical event, technology, etc.), provide your best knowledge and offer to run a deep web search for the latest information."""
         self.conversation_history = [{'role': 'system', 'content': self.system_prompt}]
+
+    def reload_persona(self):
+        """Reloads system prompt with updated user name and title."""
+        self._init_system_prompt()
+
+
 
     def capture_screen_base64(self) -> Tuple[Optional[str], Optional[str]]:
         """Captures full desktop screenshot via Qt, saves to SCREENSHOTS_DIR, and returns (b64_str, path)."""

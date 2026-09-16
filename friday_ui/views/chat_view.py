@@ -212,19 +212,19 @@ class ChatView(QWidget):
 
         self.model_combo = ComboBox(header_card)
         self.model_combo.setFixedHeight(28)
-        self.model_combo.setFixedWidth(145)
-        self.model_combo.addItems([
-            "friday-model:latest",
-            "qwen2.5-coder:latest",
-            "deepseek-r1:8b",
-            "llama3.1:latest",
-            "qwen3.5:9b"
-        ])
-        saved_model = settings.get("model", "friday-model:latest")
+        self.model_combo.setFixedWidth(155)
+        self._refreshing_models = False
+        avail_models = settings.get_available_models()
+        self.model_combo.addItems(avail_models)
+        saved_model = settings.get("model", avail_models[0] if avail_models else "llama3.2:3b")
         idx_m = self.model_combo.findText(saved_model)
         if idx_m >= 0:
             self.model_combo.setCurrentIndex(idx_m)
-        self.model_combo.currentTextChanged.connect(self.model_changed.emit)
+        else:
+            self.model_combo.addItem(saved_model)
+            self.model_combo.setCurrentText(saved_model)
+        self.model_combo.currentTextChanged.connect(self._on_model_combo_changed)
+        settings.add_listener(self._on_settings_updated)
         quick_switcher_layout.addWidget(self.model_combo)
 
         voice_label = QLabel("VOICE:")

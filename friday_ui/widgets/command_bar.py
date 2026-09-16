@@ -175,25 +175,19 @@ class FloatingCommandBar(QWidget):
 
         # Model Selector ComboBox
         self.model_combo = ComboBox(self.bar_card)
-        self.model_combo.setFixedWidth(135)
-        saved_model = settings.get("model", "friday-model:latest")
-        self.model_combo.addItems([
-            saved_model,
-            "friday-model:latest",
-            "llama3:latest",
-            "mistral:latest",
-            "qwen2.5:latest"
-        ])
-        # Deduplicate items
-        items = []
-        for i in range(self.model_combo.count()):
-            txt = self.model_combo.itemText(i)
-            if txt not in items:
-                items.append(txt)
-        self.model_combo.clear()
-        self.model_combo.addItems(items)
-        self.model_combo.setCurrentText(saved_model)
+        self.model_combo.setFixedWidth(145)
+        self._refreshing_models = False
+        avail_models = settings.get_available_models()
+        self.model_combo.addItems(avail_models)
+        saved_model = settings.get("model", avail_models[0] if avail_models else "llama3.2:3b")
+        idx_cb = self.model_combo.findText(saved_model)
+        if idx_cb >= 0:
+            self.model_combo.setCurrentIndex(idx_cb)
+        else:
+            self.model_combo.addItem(saved_model)
+            self.model_combo.setCurrentText(saved_model)
         self.model_combo.currentTextChanged.connect(self._on_model_changed)
+        settings.add_listener(self._on_settings_model_sync)
         self.model_combo.setStyleSheet("""
             ComboBox {
                 background-color: rgba(255, 255, 255, 0.06);

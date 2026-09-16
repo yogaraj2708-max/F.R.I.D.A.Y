@@ -1,34 +1,63 @@
 """
 F.R.I.D.A.Y. 2.0 - Tactical Settings & Hardware View
-Controls active LLM, TTS voice parameters, animation levels, and system parameters.
+Controls owner profile, active LLM, dynamic model pulling, TTS voice parameters, animation levels, and system parameters.
 """
 
 import logging
 import ollama
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QThread
 from PySide6.QtGui import QFont
-
-logger = logging.getLogger("FRIDAY.SettingsView")
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QScrollArea
 )
 from qfluentwidgets import (
-    ComboBox, SwitchButton, PrimaryPushButton, FluentIcon,
+    ComboBox, SwitchButton, PrimaryPushButton, PushButton, LineEdit,
     CardWidget, InfoBar, InfoBarPosition
 )
 
-from friday_core.settings import settings
+from friday_core.settings import settings, get_default_owner_name
+
+logger = logging.getLogger("FRIDAY.SettingsView")
+
+
+class ModelPullWorker(QThread):
+    """Background worker for pulling Ollama models asynchronously with progress feedback."""
+    progress_signal = Signal(str)
+    completed_signal = Signal(bool, str)
+
+    def __init__(self, model_name: str, host: str):
+        super().__init__()
+        self.model_name = model_name
+        self.host = host
+
+    def run(self):
+        try:
+            client = ollama.Client(host=self.host)
+            for status in client.pull(self.model_name, stream=True):
+                stat = status.get("status", "")
+                completed = status.get("completed", 0)
+                total = status.get("total", 0)
+                if total > 0:
+                    pct = int(completed / total * 100)
+                    self.progress_signal.emit(f"{stat} ({pct}%)")
+                else:
+                    self.progress_signal.emit(stat or "Downloading...")
+            self.completed_signal.emit(True, f"Model '{self.model_name}' installed successfully!")
+        except Exception as e:
+            self.completed_signal.emit(False, str(e))
+
 
 class SettingsView(QWidget):
     """
-    Hardware, Model Routing & Security Settings.
+    Hardware, Model Routing, Owner Identity & Security Settings.
     Controls active LLM, TTS voice parameters, animation performance, and security posture.
     """
     settings_saved = Signal(dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._pull_worker = None
         self._init_ui()
 
     def _init_ui(self):
@@ -49,7 +78,7 @@ class SettingsView(QWidget):
         title.setFont(QFont("Segoe UI", 13, QFont.Bold))
         title.setStyleSheet("color: #00F0FF; letter-spacing: 1px;")
 
-        subtitle = QLabel("Configure local neural models, speech acoustics, power/animation scaling, and security controls")
+        subtitle = QLabel("Configure owner identity, local neural models, speech acoustics, power/animation scaling, and security controls")
         subtitle.setFont(QFont("Segoe UI", 9))
         subtitle.setStyleSheet("color: #9CA3AF;")
 
@@ -57,30 +86,105 @@ class SettingsView(QWidget):
         title_box.addWidget(subtitle)
         layout.addLayout(title_box)
 
-        # 1. Neural LLM Core Selection
+        # 0. Owner Profile & Identity Card
+        owner_card = CardWidget(content_widget)
+        owner_layout = QVBoxLayout(owner_card)
+        owner_layout.setContentsMargins(16, 16, 16, 16)
+        owner_layout.setSpacing(12)
+
+        owner_header = QLabel("Owner Profile & Identity")
+        owner_header.setFont(QFont("Segoe UI", 11, QFont.Bold))
+        owner_header.setStyleSheet("color: #FFFFFF;")
+        owner_layout.addWidget(owner_header)
+
+        # Owner Name Row
+        name_row = QHBoxLayout()
+        name_label = QLabel("Owner Name:")
+        name_label.setFixedWidth(140)
+        self.owner_name_input = LineEdit(owner_card)
+        self.owner_name_input.setPlaceholderText("Enter your name (e.g. Alphin, Renit, Yogi)...")
+        self.owner_name_input.setText(settings.get("user_name", get_default_owner_name()))
+        name_row.addWidget(name_label)
+        name_row.addWidget(self.owner_name_input)
+        owner_layout.addLayout(name_row)
+
+        # Preferred Title / Call-Sign Row
+        title_row = QHBoxLayout()
+        title_label = QLabel("Call-Sign / Title:")
+        title_label.setFixedWidth(140)
+        self.title_combo = ComboBox(owner_card)
+        self.title_combo.addItems(["Boss", "Sir", "Ma'am", "Commander", "Doctor", "Friend", "None"])
+        self.title_combo.setFixedWidth(200)
+        saved_title = settings.get("user_title", "Boss")
+        idx_t = self.title_combo.findText(saved_title)
+        if idx_t >= 0:
+            self.title_combo.setCurrentIndex(idx_t)
+        title_row.addWidget(title_label)
+        title_row.addWidget(self.title_combo)
+        title_row.addStretch(1)
+        owner_layout.addLayout(title_row)
+
+        layout.addWidget(owner_card)
+
+        # 1. Neural LLM Core Selection & Model Manager
         llm_card = CardWidget(content_widget)
         llm_layout = QVBoxLayout(llm_card)
         llm_layout.setContentsMargins(16, 16, 16, 16)
-        llm_layout.setSpacing(10)
+        llm_layout.setSpacing(12)
 
         llm_header = QLabel("Neural Intelligence Core (Ollama)")
         llm_header.setFont(QFont("Segoe UI", 11, QFont.Bold))
         llm_header.setStyleSheet("color: #FFFFFF;")
         llm_layout.addWidget(llm_header)
 
+        # Active Model Row
         llm_row = QHBoxLayout()
-        llm_row.addWidget(QLabel("Active LLM Model:"))
-        self.model_combo = ComboBox(self)
-        self._populate_models()
+        llm_label = QLabel("Active LLM Model:")
+        llm_label.setFixedWidth(140)
+        self.model_combo = ComboBox(llm_card)
         self.model_combo.setFixedWidth(280)
-        # Select currently saved model
-        saved_model = settings.get("model", "friday-model:latest")
-        idx = self.model_combo.findText(saved_model)
-        if idx >= 0:
-            self.model_combo.setCurrentIndex(idx)
+        self._populate_models()
+        self.refresh_models_btn = PushButton("Refresh Models", llm_card)
+        self.refresh_models_btn.clicked.connect(self._on_refresh_models_clicked)
+        llm_row.addWidget(llm_label)
         llm_row.addWidget(self.model_combo)
+        llm_row.addWidget(self.refresh_models_btn)
         llm_row.addStretch(1)
         llm_layout.addLayout(llm_row)
+
+        # Add Custom Model Row
+        custom_row = QHBoxLayout()
+        custom_label = QLabel("Add / Pull Model:")
+        custom_label.setFixedWidth(140)
+        self.new_model_input = LineEdit(llm_card)
+        self.new_model_input.setPlaceholderText("e.g. llama3.2:1b, mistral:7b, qwen2.5:3b...")
+        self.add_custom_btn = PushButton("Add Model", llm_card)
+        self.add_custom_btn.clicked.connect(self._on_add_custom_model)
+        self.pull_btn = PrimaryPushButton("Pull via Ollama", llm_card)
+        self.pull_btn.clicked.connect(self._on_pull_model)
+        custom_row.addWidget(custom_label)
+        custom_row.addWidget(self.new_model_input)
+        custom_row.addWidget(self.add_custom_btn)
+        custom_row.addWidget(self.pull_btn)
+        llm_layout.addLayout(custom_row)
+
+        # Pull Progress / Status Label
+        self.pull_status_label = QLabel("")
+        self.pull_status_label.setFont(QFont("Segoe UI", 9))
+        self.pull_status_label.setStyleSheet("color: #00F0FF; font-family: monospace;")
+        self.pull_status_label.setVisible(False)
+        llm_layout.addWidget(self.pull_status_label)
+
+        # Ollama Server Host URL Row
+        host_row = QHBoxLayout()
+        host_label = QLabel("Ollama Host URL:")
+        host_label.setFixedWidth(140)
+        self.ollama_host_input = LineEdit(llm_card)
+        self.ollama_host_input.setText(settings.get("ollama_host", "http://localhost:11434"))
+        host_row.addWidget(host_label)
+        host_row.addWidget(self.ollama_host_input)
+        llm_layout.addLayout(host_row)
+
         layout.addWidget(llm_card)
 
         # 2. Voice & Speech Acoustics
@@ -118,79 +222,94 @@ class SettingsView(QWidget):
         voice_row.addStretch(1)
         voice_layout.addLayout(voice_row)
 
-        # Microphone Input Device
-        mic_row = QHBoxLayout()
-        mic_row.addWidget(QLabel("Microphone Input Device:"))
+        layout.addWidget(voice_card)
+
+        # 3. Hardware Audio Input Device
+        audio_card = CardWidget(content_widget)
+        audio_layout = QVBoxLayout(audio_card)
+        audio_layout.setContentsMargins(16, 16, 16, 16)
+        audio_layout.setSpacing(10)
+
+        audio_header = QLabel("Hardware Input Microphone")
+        audio_header.setFont(QFont("Segoe UI", 11, QFont.Bold))
+        audio_header.setStyleSheet("color: #FFFFFF;")
+        audio_layout.addWidget(audio_header)
+
+        audio_row = QHBoxLayout()
+        audio_row.addWidget(QLabel("Select Input Device:"))
         self.mic_combo = ComboBox(self)
         self.mic_combo.setFixedWidth(360)
         self._populate_audio_devices()
-        mic_row.addWidget(self.mic_combo)
-        mic_row.addStretch(1)
-        voice_layout.addLayout(mic_row)
+        audio_row.addWidget(self.mic_combo)
+        audio_row.addStretch(1)
+        audio_layout.addLayout(audio_row)
 
-        # Seamless Speech Mode Toggle
+        layout.addWidget(audio_card)
+
+        # 4. HUD Personalization & Appearance
+        ui_card = CardWidget(content_widget)
+        ui_layout = QVBoxLayout(ui_card)
+        ui_layout.setContentsMargins(16, 16, 16, 16)
+        ui_layout.setSpacing(10)
+
+        ui_header = QLabel("HUD Personalization & Appearance")
+        ui_header.setFont(QFont("Segoe UI", 11, QFont.Bold))
+        ui_header.setStyleSheet("color: #FFFFFF;")
+        ui_layout.addWidget(ui_header)
+
+        theme_row = QHBoxLayout()
+        theme_row.addWidget(QLabel("Visual Theme:"))
+        self.theme_combo = ComboBox(self)
+        self.theme_combo.addItem("Midnight Void (Pure Dark OLED)", userData="dark")
+        self.theme_combo.addItem("Stark Tactical Cyan (Military HUD)", userData="tactical")
+        self.theme_combo.addItem("Deep Space Purple (Neon Tech)", userData="neon")
+        self.theme_combo.setFixedWidth(280)
+        saved_theme = settings.get("theme_mode", "dark")
+        for i in range(self.theme_combo.count()):
+            if self.theme_combo.itemData(i) == saved_theme:
+                self.theme_combo.setCurrentIndex(i)
+                break
+        theme_row.addWidget(self.theme_combo)
+        theme_row.addStretch(1)
+        ui_layout.addLayout(theme_row)
+
+        chimes_row = QHBoxLayout()
+        chimes_row.addWidget(QLabel("Stark Auditory Feedback Chimes:"))
+        self.chimes_switch = SwitchButton(self)
+        self.chimes_switch.setChecked(settings.get("chimes_enabled", True))
+        chimes_row.addWidget(self.chimes_switch)
+        chimes_row.addStretch(1)
+        ui_layout.addLayout(chimes_row)
+
+        auto_voice_row = QHBoxLayout()
+        auto_voice_row.addWidget(QLabel("Auto-Start Voice Loop on Launch:"))
+        self.auto_voice_switch = SwitchButton(self)
+        self.auto_voice_switch.setChecked(settings.get("auto_start_voice_loop", True))
+        auto_voice_row.addWidget(self.auto_voice_switch)
+        auto_voice_row.addStretch(1)
+        ui_layout.addLayout(auto_voice_row)
+
         seamless_row = QHBoxLayout()
-        seamless_row.addWidget(QLabel("Seamless Unbroken Speech (Synthesize Complete Response Without Stuttering):"))
-        seamless_row.addStretch(1)
+        seamless_row.addWidget(QLabel("Seamless High-Fidelity Speech (Unbroken audio playback):"))
         self.seamless_switch = SwitchButton(self)
         self.seamless_switch.setChecked(settings.get("seamless_speech", True))
         seamless_row.addWidget(self.seamless_switch)
-        voice_layout.addLayout(seamless_row)
+        seamless_row.addStretch(1)
+        ui_layout.addLayout(seamless_row)
 
-        # Continuous Conversation Follow-Up Toggle
         conv_row = QHBoxLayout()
-        conv_row.addWidget(QLabel("Continuous Conversation (Auto-Listen for Second Question Without Button Press):"))
-        conv_row.addStretch(1)
+        conv_row.addWidget(QLabel("Continuous Conversation Mode (Listen automatically after responses):"))
         self.conv_switch = SwitchButton(self)
         self.conv_switch.setChecked(settings.get("continuous_conversation", True))
         conv_row.addWidget(self.conv_switch)
-        voice_layout.addLayout(conv_row)
-
-        layout.addWidget(voice_card)
-
-        # 3. Audio & Acoustic Earcons
-        acoustics_card = CardWidget(content_widget)
-        acoustics_layout = QVBoxLayout(acoustics_card)
-        acoustics_layout.setContentsMargins(16, 16, 16, 16)
-        acoustics_layout.setSpacing(10)
-
-        acoustics_header = QLabel("Tactical HUD Acoustics")
-        acoustics_header.setFont(QFont("Segoe UI", 11, QFont.Bold))
-        acoustics_header.setStyleSheet("color: #FFFFFF;")
-        acoustics_layout.addWidget(acoustics_header)
-
-        switch_row = QHBoxLayout()
-        switch_row.addWidget(QLabel("Enable Procedural Stark Audio Chimes (Wake, Confirm, Sleep):"))
-        switch_row.addStretch(1)
-        self.chimes_switch = SwitchButton(self)
-        self.chimes_switch.setChecked(settings.get("chimes_enabled", True))
-        switch_row.addWidget(self.chimes_switch)
-        acoustics_layout.addLayout(switch_row)
-
-        voice_loop_row = QHBoxLayout()
-        voice_loop_row.addWidget(QLabel("Always Listen Hands-Free (Auto-Start Voice Loop on Launch):"))
-        voice_loop_row.addStretch(1)
-        self.auto_voice_switch = SwitchButton(self)
-        self.auto_voice_switch.setChecked(settings.get("auto_start_voice_loop", True))
-        voice_loop_row.addWidget(self.auto_voice_switch)
-        acoustics_layout.addLayout(voice_loop_row)
-        layout.addWidget(acoustics_card)
-
-        # 4. Performance & Animation Scaling (Power Guard)
-        perf_card = CardWidget(content_widget)
-        perf_layout = QVBoxLayout(perf_card)
-        perf_layout.setContentsMargins(16, 16, 16, 16)
-        perf_layout.setSpacing(10)
-
-        perf_header = QLabel("Laptop Protection & Animation Budget")
-        perf_header.setFont(QFont("Segoe UI", 11, QFont.Bold))
-        perf_header.setStyleSheet("color: #FFFFFF;")
-        perf_layout.addWidget(perf_header)
+        conv_row.addStretch(1)
+        ui_layout.addLayout(conv_row)
 
         anim_row = QHBoxLayout()
-        anim_row.addWidget(QLabel("Visual Animation Fidelity:"))
+        anim_row.addWidget(QLabel("Particle & Visualizer Performance:"))
         self.anim_combo = ComboBox(self)
-        self.anim_combo.addItems(["Full (60 FPS Holographic)", "Reduced (30 FPS Low Power)", "Off (Battery Saver)"])
+        self.anim_combo.addItems(["Full (60 FPS GPU)", "Reduced (30 FPS Power Saving)", "Off (Static HUD)"])
+        self.anim_combo.setFixedWidth(240)
         saved_anim = settings.get("animation_level", "Full")
         for i in range(self.anim_combo.count()):
             if saved_anim in self.anim_combo.itemText(i):
@@ -198,75 +317,140 @@ class SettingsView(QWidget):
                 break
         anim_row.addWidget(self.anim_combo)
         anim_row.addStretch(1)
-        perf_layout.addLayout(anim_row)
+        ui_layout.addLayout(anim_row)
 
-        cmd_pos_row = QHBoxLayout()
-        cmd_pos_row.addWidget(QLabel("Floating Command Bar Screen Anchor:"))
+        pos_row = QHBoxLayout()
+        pos_row.addWidget(QLabel("Floating Command Bar Dock Position:"))
         self.pos_combo = ComboBox(self)
-        self.pos_combo.addItems(["Top of Screen", "Bottom of Screen", "Last Dragged Position"])
-        saved_pos = (settings.get("command_bar_position") or "top").lower()
-        if "bottom" in saved_pos:
-            self.pos_combo.setCurrentIndex(1)
-        elif "last" in saved_pos:
-            self.pos_combo.setCurrentIndex(2)
-        else:
-            self.pos_combo.setCurrentIndex(0)
-        cmd_pos_row.addWidget(self.pos_combo)
-        cmd_pos_row.addStretch(1)
-        perf_layout.addLayout(cmd_pos_row)
-        layout.addWidget(perf_card)
+        self.pos_combo.addItems(["Top Edge", "Bottom Edge", "Last Remembered Position"])
+        self.pos_combo.setFixedWidth(240)
+        saved_pos = settings.get("command_bar_position", "top")
+        pos_map = {"top": 0, "bottom": 1, "last": 2}
+        self.pos_combo.setCurrentIndex(pos_map.get(saved_pos, 0))
+        pos_row.addWidget(self.pos_combo)
+        pos_row.addStretch(1)
+        ui_layout.addLayout(pos_row)
 
-        # 5. Visual Theme & Desktop Palette
-        theme_card = CardWidget(content_widget)
-        theme_layout = QVBoxLayout(theme_card)
-        theme_layout.setContentsMargins(16, 16, 16, 16)
-        theme_layout.setSpacing(10)
+        layout.addWidget(ui_card)
 
-        theme_header = QLabel("Desktop Aesthetics & Backdrop Palette")
-        theme_header.setFont(QFont("Segoe UI", 11, QFont.Bold))
-        theme_header.setStyleSheet("color: #FFFFFF;")
-        theme_layout.addWidget(theme_header)
+        # 5. Security & Gatekeeper Telemetry
+        sec_card = CardWidget(content_widget)
+        sec_layout = QVBoxLayout(sec_card)
+        sec_layout.setContentsMargins(16, 16, 16, 16)
+        sec_layout.setSpacing(10)
 
-        theme_row = QHBoxLayout()
-        theme_row.addWidget(QLabel("Visual Theme Palette:"))
-        self.theme_combo = ComboBox(self)
-        self.theme_combo.addItem("Tactical Dark (Cyan Accent)", userData="tactical")
-        self.theme_combo.addItem("Monochrome Dark (Minimalist)", userData="dark")
-        self.theme_combo.addItem("Light Mode (High Contrast)", userData="light")
-        self.theme_combo.setFixedWidth(280)
+        sec_header = QLabel("Security Gatekeeper Policy")
+        sec_header.setFont(QFont("Segoe UI", 11, QFont.Bold))
+        sec_header.setStyleSheet("color: #FFFFFF;")
+        sec_layout.addWidget(sec_header)
 
-        saved_theme = (settings.get("theme_mode") or "dark").lower()
-        for i in range(self.theme_combo.count()):
-            if self.theme_combo.itemData(i) == saved_theme:
-                self.theme_combo.setCurrentIndex(i)
-                break
-        theme_row.addWidget(self.theme_combo)
-        theme_row.addStretch(1)
-        theme_layout.addLayout(theme_row)
-        layout.addWidget(theme_card)
+        sec_desc = QLabel(
+            "Controls autonomous action execution safety fences:\n"
+            "• Tier 0: Read-only Telemetry & Diagnostics\n"
+            "• Tier 1: Safe Autonomous Actions with Path Fencing (App Launching, Safe File Organization)\n"
+            "• Tier 2: Destructive Actions (Process Termination, File Deletion) Requires Modal Confirmation\n"
+            "• Tier 3: Critical Danger (Format Disk, Alter System Core) Strictly Blocked"
+        )
+        sec_desc.setFont(QFont("Segoe UI", 9))
+        sec_desc.setStyleSheet("color: #71717A; line-height: 1.4;")
+        sec_layout.addWidget(sec_desc)
 
-        # Save Button
-        self.save_btn = PrimaryPushButton(FluentIcon.SAVE, "Apply Preferences", content_widget)
-        self.save_btn.setFixedWidth(200)
+        layout.addWidget(sec_card)
+
+        # Save Button Bar
+        save_bar = QHBoxLayout()
+        save_bar.addStretch(1)
+        self.save_btn = PrimaryPushButton("APPLY & SAVE SETTINGS", self)
+        self.save_btn.setFixedHeight(36)
         self.save_btn.setStyleSheet("""
             PrimaryPushButton {
-                background-color: #0078D4;
-                border: 1px solid #005A9E;
+                background-color: #00F0FF;
+                color: #000000;
                 font-weight: bold;
+                border-radius: 6px;
+                padding-left: 20px;
+                padding-right: 20px;
+            }
+            PrimaryPushButton:hover {
+                background-color: #38F8FF;
             }
         """)
         self.save_btn.clicked.connect(self._save_settings)
-        layout.addWidget(self.save_btn)
+        save_bar.addWidget(self.save_btn)
+        layout.addLayout(save_bar)
 
-        layout.addStretch(1)
         scroll.setWidget(content_widget)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(scroll)
 
-        main_vbox = QVBoxLayout(self)
-        main_vbox.setContentsMargins(0, 0, 0, 0)
-        main_vbox.addWidget(scroll)
+    def _populate_models(self):
+        curr = settings.get("model")
+        avail = settings.get_available_models()
+        self.model_combo.clear()
+        self.model_combo.addItems(avail)
+        idx = self.model_combo.findText(curr)
+        if idx >= 0:
+            self.model_combo.setCurrentIndex(idx)
+        elif avail:
+            self.model_combo.setCurrentIndex(0)
+
+    def _on_refresh_models_clicked(self):
+        self._populate_models()
+        InfoBar.info(
+            "Models Scanned",
+            f"Discovered {self.model_combo.count()} available models from Ollama.",
+            parent=self,
+            position=InfoBarPosition.TOP_RIGHT,
+            duration=2500
+        )
+
+    def _on_add_custom_model(self):
+        model_name = self.new_model_input.text().strip()
+        if not model_name:
+            InfoBar.warning("Input Error", "Please enter a model name.", parent=self, position=InfoBarPosition.TOP_RIGHT)
+            return
+        settings.add_custom_model(model_name)
+        self._populate_models()
+        idx = self.model_combo.findText(model_name)
+        if idx >= 0:
+            self.model_combo.setCurrentIndex(idx)
+        self.new_model_input.clear()
+        InfoBar.success("Model Added", f"Model '{model_name}' added to available models.", parent=self, position=InfoBarPosition.TOP_RIGHT)
+
+    def _on_pull_model(self):
+        model_name = self.new_model_input.text().strip()
+        if not model_name:
+            InfoBar.warning("Input Error", "Enter model name to pull (e.g. llama3.2:1b).", parent=self, position=InfoBarPosition.TOP_RIGHT)
+            return
+        host = self.ollama_host_input.text().strip() or "http://localhost:11434"
+        self.pull_btn.setEnabled(False)
+        self.pull_status_label.setVisible(True)
+        self.pull_status_label.setText(f"Connecting to Ollama at {host}...")
+
+        self._pull_worker = ModelPullWorker(model_name, host)
+        self._pull_worker.progress_signal.connect(lambda msg: self.pull_status_label.setText(f"[Ollama]: {msg}"))
+        self._pull_worker.completed_signal.connect(self._on_pull_finished)
+        self._pull_worker.start()
+
+    def _on_pull_finished(self, success: bool, message: str):
+        self.pull_btn.setEnabled(True)
+        if success:
+            model_name = self.new_model_input.text().strip()
+            settings.add_custom_model(model_name)
+            self._populate_models()
+            idx = self.model_combo.findText(model_name)
+            if idx >= 0:
+                self.model_combo.setCurrentIndex(idx)
+            self.new_model_input.clear()
+            self.pull_status_label.setText(f"✓ {message}")
+            InfoBar.success("Ollama Download Complete", message, parent=self, position=InfoBarPosition.TOP_RIGHT)
+        else:
+            self.pull_status_label.setText(f"✗ Failed: {message}")
+            InfoBar.error("Ollama Pull Error", message, parent=self, position=InfoBarPosition.TOP_RIGHT)
 
     def _populate_audio_devices(self):
-        self.mic_combo.addItem("Default System Microphone", userData=None)
+        self.mic_combo.clear()
         try:
             import sounddevice as sd
             devices = sd.query_devices()
@@ -286,16 +470,6 @@ class SettingsView(QWidget):
                     self.mic_combo.setCurrentIndex(i)
                     break
 
-    def _populate_models(self):
-        try:
-            installed = [m.model for m in ollama.list().models]
-            if installed:
-                self.model_combo.addItems(installed)
-                return
-        except Exception as e:
-            logger.debug(f"Ollama local models query skipped: {e}")
-        self.model_combo.addItems(["friday-model:latest", "qwen2.5-coder:latest", "llama3.1:latest"])
-
     def _save_settings(self):
         anim_text = self.anim_combo.currentText().split(" ")[0]
         pos_text = "top"
@@ -304,8 +478,16 @@ class SettingsView(QWidget):
         elif "Last" in self.pos_combo.currentText():
             pos_text = "last"
 
+        user_name = self.owner_name_input.text().strip() or get_default_owner_name()
+        user_title = self.title_combo.currentText()
+        model_name = self.model_combo.currentText()
+        ollama_host = self.ollama_host_input.text().strip() or "http://localhost:11434"
+
         data = {
-            "model": self.model_combo.currentText(),
+            "user_name": user_name,
+            "user_title": user_title,
+            "model": model_name,
+            "ollama_host": ollama_host,
             "voice": self.voice_combo.currentText().split(" ")[0],
             "audio_input_device": self.mic_combo.currentData(),
             "theme_mode": self.theme_combo.currentData() or "dark",
@@ -316,10 +498,11 @@ class SettingsView(QWidget):
             "animation_level": anim_text,
             "command_bar_position": pos_text
         }
+        settings.update(data)
         self.settings_saved.emit(data)
         InfoBar.success(
             "Settings Synchronized",
-            "F.R.I.D.A.Y. tactical parameters updated and persisted to disk.",
+            f"F.R.I.D.A.Y. tactical parameters updated. Identity: {user_title} ({user_name}), Model: {model_name}",
             parent=self,
             position=InfoBarPosition.TOP_RIGHT,
             duration=3000

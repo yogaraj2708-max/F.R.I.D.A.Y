@@ -107,7 +107,16 @@ class ChatBubble(QFrame):
             self.badge.setText("● F.R.I.D.A.Y. 2.0")
             self.badge.setStyleSheet("color: #FFFFFF; font-weight: bold; background: transparent; border: none;")
         elif self.role == "user":
-            self.badge.setText("BOSS (YOGI)")
+            name = str(settings.get("user_name", "Boss")).strip()
+            title = str(settings.get("user_title", "Boss")).strip()
+            if title and title.lower() not in ("none", ""):
+                if name.lower() != title.lower():
+                    badge_str = f"{title.upper()} ({name.upper()})"
+                else:
+                    badge_str = title.upper()
+            else:
+                badge_str = name.upper() if name else "OPERATOR"
+            self.badge.setText(badge_str)
             self.badge.setStyleSheet("color: #FFFFFF; font-weight: bold; background: transparent; border: none;")
         else:
             self.badge.setText("SYSTEM")

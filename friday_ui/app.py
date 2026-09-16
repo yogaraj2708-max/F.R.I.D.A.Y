@@ -80,6 +80,21 @@ def main():
     window.setWindowIcon(stark_icon)
     window.show()
 
+    # First-run Onboarding & Operator Call-Sign Calibration
+    if not settings.get("onboarding_completed", False):
+        try:
+            from friday_ui.widgets.onboarding_dialog import OnboardingDialog
+            onboarding = OnboardingDialog(window)
+            onboarding.exec()
+            # Refresh models & persona on window
+            if hasattr(window, "brain") and hasattr(window.brain, "reload_persona"):
+                window.brain.reload_persona()
+            if hasattr(window, "chat_view") and hasattr(window.chat_view, "refresh_models"):
+                window.chat_view.refresh_models()
+        except Exception as ex:
+            import logging
+            logging.getLogger("FRIDAY.App").warning("Onboarding dialog launch skipped: %s", ex)
+
     command_bar = FloatingCommandBar()
     window.command_bar = command_bar
     app.aboutToQuit.connect(command_bar.unregister_hotkey)
@@ -150,9 +165,12 @@ def main():
     # Initial Welcome Voice Greeting & Voice Loop Start
     async def startup():
         await asyncio.sleep(0.8)
+        user_name = settings.get("user_name", "Operator")
+        user_title = settings.get("user_title", "Boss")
+        call_sign = user_title if user_title and str(user_title).lower() != "none" else user_name
         window.chat_view.add_message(
             "friday",
-            "Systems initialized, Boss. F.R.I.D.A.Y. 2.0 is online and standing by. "
+            f"Systems initialized, {call_sign}. F.R.I.D.A.Y. 2.0 is online and standing by, {user_name}. "
             "Neural intelligence cores are calibrated."
         )
         if settings.get("auto_start_voice_loop", True):

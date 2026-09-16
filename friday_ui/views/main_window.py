@@ -529,12 +529,23 @@ class FridayMainWindow(FluentWindow):
             "seamless_speech": seamless_speech,
             "continuous_conversation": continuous_conv
         }
+        user_name = settings_data.get("user_name")
+        user_title = settings_data.get("user_title")
+        ollama_host = settings_data.get("ollama_host")
+        if user_name:
+            updates["user_name"] = user_name
+        if user_title:
+            updates["user_title"] = user_title
+        if ollama_host:
+            updates["ollama_host"] = ollama_host
         if audio_dev is not None:
             updates["audio_input_device"] = audio_dev
         if new_theme is not None:
             updates["theme_mode"] = new_theme
 
         settings.update(updates)
+        if hasattr(self.brain, "reload_persona"):
+            self.brain.reload_persona()
 
         if new_model:
             self.brain.model = new_model

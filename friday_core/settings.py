@@ -5,6 +5,7 @@ Loads, stores, and synchronizes user preferences across application restarts.
 
 import json
 import os
+import getpass
 import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, Callable, List
@@ -14,8 +15,24 @@ logger = logging.getLogger("FRIDAY.Settings")
 APP_DATA_DIR = Path(os.path.expanduser("~")) / ".friday"
 SETTINGS_FILE = APP_DATA_DIR / "settings.json"
 
+def get_default_owner_name() -> str:
+    """Detects system username to personalize F.R.I.D.A.Y. dynamically on any computer."""
+    try:
+        raw_user = getpass.getuser().strip()
+        if raw_user:
+            cleaned = raw_user.replace(".", " ").replace("_", " ").title()
+            return cleaned
+    except Exception:
+        pass
+    return "Boss"
+
 DEFAULT_SETTINGS: Dict[str, Any] = {
-    "model": "friday-model:latest",
+    "user_name": get_default_owner_name(),
+    "user_title": "Boss",
+    "onboarding_completed": False,
+    "model": "llama3.2:3b",
+    "ollama_host": "http://localhost:11434",
+    "custom_models": [],
     "voice": "en-US-AriaNeural",
     "pitch": "+0Hz",
     "rate": "+0%",
@@ -120,6 +137,62 @@ class SettingsManager:
         """Removes a listener callback."""
         if callback in self._listeners:
             self._listeners.remove(callback)
+
+    def get_available_models(self) -> List[str]:
+        """Queries local Ollama for installed models, merges custom models, and ensures non-empty list."""
+        models: List[str] = []
+        host = self.get("ollama_host", "http://localhost:11434")
+        try:
+            import ollama
+            client = ollama.Client(host=host)
+            res = client.list()
+            if hasattr(res, "models"):
+                for m in res.models:
+                    m_name = getattr(m, "model", str(m))
+                    if m_name and m_name not in models:
+                        models.append(m_name)
+        except Exception as e:
+            logger.debug(f"[Settings]: Ollama discovery skipped: {e}")
+
+        # Add custom models saved in settings
+        custom_models = self.get("custom_models", [])
+        if isinstance(custom_models, list):
+            for cm in custom_models:
+                if cm and cm not in models:
+                    models.append(cm)
+
+        # Fallback list if Ollama has no models or is offline
+        fallback_models = [
+            "llama3.2:3b",
+            "llama3.1:8b",
+            "qwen2.5:3b",
+            "qwen2.5-coder:latest",
+            "mistral:7b",
+            "deepseek-r1:8b",
+            "phi3:latest"
+        ]
+        for fm in fallback_models:
+            if fm not in models:
+                models.append(fm)
+
+        # Ensure the currently active model is included in the list
+        active = self.get("model")
+        if active and active not in models:
+            models.insert(0, active)
+
+        return models
+
+    def add_custom_model(self, model_name: str) -> bool:
+        """Adds a custom model to the custom models list and persists it."""
+        model_name = model_name.strip()
+        if not model_name:
+            return False
+        custom_models = list(self.get("custom_models", []))
+        if model_name not in custom_models:
+            custom_models.append(model_name)
+            self.set("custom_models", custom_models)
+            return True
+        return False
 
 # Global singleton accessor
 settings = SettingsManager()

@@ -60,11 +60,12 @@ import edge_tts
 import pygame
 from ollama import AsyncClient
 import ollama
+from friday_core.settings import settings, get_default_owner_name
 
 # ==========================================
 # CONFIGURATION & SETTINGS
 # ==========================================
-USER_NAME = "Yogi"
+USER_NAME = settings.get("user_name", get_default_owner_name())
 
 WAKE_WORDS = [
     "friday", "hey friday", "hi friday", "ok friday",

@@ -4,10 +4,17 @@ F.R.I.D.A.Y. 2.0 - Configuration & System Settings
 
 import os
 from pathlib import Path
+from friday_core.settings import settings
 
-# User Settings
-USER_NAME = "Yogi"
-USER_ROLE = "Boss"
+# User & Owner Identity Settings (dynamically queried)
+def get_user_name() -> str:
+    return settings.get("user_name", "Boss")
+
+def get_user_role() -> str:
+    return settings.get("user_title", "Boss")
+
+USER_NAME = get_user_name()
+USER_ROLE = get_user_role()
 USER_LOCATION = "Local Workstation"
 LOCALE = "en-US"
 
@@ -31,15 +38,16 @@ ACTIVE_SESSION_TIMEOUT = 8.0
 
 # Ollama LLM Hierarchy
 PREFERRED_MODELS = [
-    "friday-model",
-    "qwen2.5-coder",
-    "qwen3.5:9b",
-    "deepseek-r1:8b",
+    "llama3.2",
     "llama3.1",
+    "qwen2.5",
+    "mistral",
+    "deepseek-r1",
+    "friday-model",
     "jarvis"
 ]
 
-FAST_MODEL = "friday-model:latest"
+FAST_MODEL = settings.get("model", "llama3.2:3b")
 CODER_MODEL = "qwen2.5-coder:latest"
 REASONING_MODEL = "deepseek-r1:8b"
 VISION_MODEL = "qwen2-vl:2b"
