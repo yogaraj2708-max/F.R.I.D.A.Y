@@ -704,7 +704,7 @@ Core Persona Rules:
 4. Real-World Context: Current time is {current_time} on {current_date}. Running on Windows 11.
 5. Honesty: If you don't know something or can't perform an action, admit it clearly with style.
 6. CRITICAL - Your Real Capabilities: You are NOT a plain chatbot. You have REAL integrated subsystems:
-   - WEB SEARCH: You CAN search the internet via DuckDuckGo. When the user asks about a topic, company, person, product, news, or anything that needs live information, you MUST use your search capability. NEVER say 'I can't search the web' or 'I don't have internet access' — that is FALSE. If a query needs web data, tell {call_sign} you're searching now and provide the results.
+   - WEB SEARCH & LIVE INTEL: Real-time web intelligence is automatically retrieved via DuckDuckGo by F.R.I.D.A.Y.'s Python engine and injected into your prompt under [LIVE WEB SOURCES]. When live web sources are present, analyze and synthesize them directly to provide accurate, up-to-date facts, citations, and specifications. NEVER simulate or pretend in text that you are running a web search (e.g. NEVER write '(Web Search Initiated... Please Standby)' or claim to query DuckDuckGo yourself in text). If live search results are not provided in your prompt and a question requires post-training or current real-time data, answer clearly using your baseline knowledge and advise {call_sign} to search the web or enable Deep Research via the '+' menu.
    - WEATHER: You CAN get real-time weather data from wttr.in for any city worldwide.
    - APP LAUNCHING: You CAN open apps (VS Code, Edge, Spotify, Calculator, etc.) on this Windows PC.
    - FILE ANALYSIS: You CAN read, analyze, and review code files and documents attached by the user.
@@ -1713,22 +1713,55 @@ Core Persona Rules:
             return "Locking workstation now."
 
         # 11. INLINE WEB SEARCH via DuckDuckGo (TIER 1)
-        # Explicit search commands only: "search the web for X", "search online for X", "google X", "web search X"
         search_prefixes = [
             "search the web for ", "search the web about ", "search web for ", "search web about ",
             "search online for ", "search online about ", "search internet for ", "search internet about ",
+            "search the internet for ", "search the internet about ",
+            "search for ", "search about ", "search ",
             "google for ", "google search for ", "google ",
-            "web search for ", "web search about ", "web search "
+            "duckduckgo for ", "duckduckgo ",
+            "web search for ", "web search about ", "web search ",
+            "look up ", "browse for ", "browse the web for ", "find out about ",
+            "what are the latest ", "what is the latest ", "what's the latest ",
+            "tell me the latest ", "tell me about latest ", "tell me about the latest ",
+            "latest news on ", "latest news about ", "recent updates on ", "recent news about "
         ]
         search_match = None
         for prefix in search_prefixes:
             if cmd.startswith(prefix):
-                search_match = cmd[len(prefix):].strip()
-                break
+                candidate = cmd[len(prefix):].strip()
+                if candidate and not any(candidate.startswith(f) for f in ["file ", "document ", "folder ", "code "]):
+                    if any(prefix.startswith(w) for w in ["what are the latest ", "what is the latest ", "what's the latest ", "tell me the latest ", "tell me about latest ", "tell me about the latest "]):
+                        search_match = f"latest {candidate}"
+                    elif prefix.startswith("latest news on ") or prefix.startswith("latest news about "):
+                        search_match = f"latest news {candidate}"
+                    else:
+                        search_match = candidate
+                    break
+
+        if not search_match:
+            # Check for temporal query or follow-up: e.g. "no tell as of 2026", "tell as of 2026", "what about 2026"
+            temporal_markers = ["as of 2026", "in 2026", "for 2026", "2026", "latest", "recent", "today"]
+            if any(m in cmd for m in temporal_markers) and any(w in cmd for w in ["tell", "what", "how", "who", "which", "news", "model", "update", "status", "price", "release", "current", "no "]):
+                context_topic = ""
+                for msg in reversed(self.conversation_history):
+                    if msg.get("role") == "user":
+                        prev_text = msg.get("content", "").lower()
+                        prev_text = re.sub(r"\[relevant.*?\]", "", prev_text).strip()
+                        if prev_text and prev_text != cmd:
+                            context_topic = prev_text
+                            break
+                if context_topic and len(cmd.split()) <= 7:
+                    clean_context = re.sub(r"^(?:what\s+is|what\s+are|tell\s+me\s+about|tell\s+me)\s+", "", context_topic).strip()
+                    raw_combined = f"{clean_context} {cmd}".strip()
+                    search_match = re.sub(r"\b(?:no|tell|me|as|of|just|please|show|give)\b", " ", raw_combined, flags=re.IGNORECASE)
+                    search_match = re.sub(r"\s+", " ", search_match).strip()
+                else:
+                    search_match = cmd
 
         if search_match:
             search_match = re.sub(
-                r"^(?:the\s+web\s+for|web\s+for|online\s+for|the\s+internet\s+for|web\s+about|the\s+web\s+about|me\s+about|me\s+abt)\s+",
+                r"^(?:the\s+web\s+for|web\s+for|online\s+for|the\s+internet\s+for|web\s+about|the\s+web\s+about|me\s+about|me\s+abt|no\s+|just\s+|please\s+)\s*",
                 "",
                 search_match,
                 flags=re.IGNORECASE
@@ -1753,11 +1786,13 @@ Core Persona Rules:
                         web_context += f"{i}. **{title}**\n   {body}\n   *Source*: {link}\n\n"
 
                     synth_prompt = (
-                        f"Boss asked: '{command}'\n"
-                        f"Live web search intelligence:\n{web_context}\n"
-                        f"Provide a structured, multi-paragraph technical breakdown for Boss based on these sources. "
-                        f"Include key specifications, pinouts, features, and code/use-cases if applicable. "
-                        f"Format with clean Markdown headers, bullet points, and code blocks."
+                        f"Boss asked: '{command}'\n\n"
+                        f"LIVE DUCKDUCKGO WEB SEARCH INTELLIGENCE:\n{web_context}\n"
+                        f"CRITICAL INSTRUCTIONS:\n"
+                        f"1. You MUST use the live web search intelligence provided above to answer Boss accurately and authoritatively.\n"
+                        f"2. Explicitly reference and cite the current developments, releases, and information from these web sources.\n"
+                        f"3. Do NOT rely on outdated pre-2024 training data. The above web intelligence reflects live current information.\n"
+                        f"4. Format with clean Markdown headers, bullet points, and source citations."
                     )
                     await self.query_llm(synth_prompt, stream_to_ui=True, stream_to_speech=True)
                     return "__STREAMED__"

@@ -52,5 +52,33 @@ class TestSafeWeb(unittest.TestCase):
         self.assertEqual(PROMPT_DELIMITER_START, "<<<EXTERNAL_WEB_REFERENCE_DATA_NOT_SYSTEM_INSTRUCTIONS>>>")
         self.assertEqual(PROMPT_DELIMITER_END, "<<<END_EXTERNAL_WEB_REFERENCE_DATA>>>")
 
+    def test_inline_web_search_temporal_and_contextual_triggers(self):
+        import asyncio
+        from unittest.mock import MagicMock, patch
+        from PySide6.QtWidgets import QApplication
+        import sys
+        from friday_ui.core.engine import FridayBrain, FridaySignals
+
+        if not QApplication.instance():
+            _ = QApplication(sys.argv)
+
+        signals = FridaySignals()
+        tts = MagicMock()
+        brain = FridayBrain(signals, tts)
+
+        # Simulate prior conversation history about AI models
+        brain.conversation_history.append({"role": "user", "content": "what are the latest ai models"})
+
+        with patch("friday_ui.core.engine.fetch_web_results", return_value=[{"title": "Test AI 2026", "body": "Latest 2026 model info", "href": "https://example.com"}]), \
+             patch.object(brain, "query_llm", return_value="Here is 2026 intel") as mock_query:
+            res = asyncio.run(brain.execute_smart_skill("no tell as of 2026"))
+            self.assertEqual(res, "__STREAMED__")
+            self.assertTrue(mock_query.called)
+            called_prompt = mock_query.call_args[0][0]
+            self.assertIn("LIVE DUCKDUCKGO WEB SEARCH INTELLIGENCE", called_prompt)
+            self.assertIn("Test AI 2026", called_prompt)
+
+
 if __name__ == "__main__":
     unittest.main()
+
