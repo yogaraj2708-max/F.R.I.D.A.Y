@@ -3,6 +3,7 @@ F.R.I.D.A.Y. 2.0 - Local Offline RAG Vector Store
 100% Private, Zero External Network Dependency, Instant Chunked Ingestion & Deterministic Retrieval
 """
 
+import asyncio
 import os
 import sqlite3
 import hashlib
@@ -120,10 +121,17 @@ class FridayVectorStore:
 
     def ingest_document(self, title: str, content: str, category: str = "general") -> int:
         """Convenience method: chunks, generates deterministic ID, and indexes document content."""
-        doc_id = str(hashlib.md5(title.encode('utf-8')).hexdigest())[:8]
+        # Hashing the title alone meant a second document with the same name
+        # silently deleted and replaced the first one's chunks.
+        fingerprint = f"{title}\x00{content}".encode("utf-8")
+        doc_id = hashlib.blake2b(fingerprint, digest_size=8).hexdigest()
         chunks = self._chunk_text(content)
         self.add_document(doc_id, title, category, content)
         return len(chunks)
+
+    async def query_async(self, query_text: str, top_k: int = 3) -> List[Dict[str, Any]]:
+        """Runs query() on a worker thread so a large knowledge base cannot freeze the window."""
+        return await asyncio.to_thread(self.query, query_text, top_k)
 
     def query(self, query_text: str, top_k: int = 3) -> List[Dict[str, Any]]:
         """Queries stored chunks by cosine similarity and returns the most relevant snippets."""
@@ -143,6 +151,11 @@ class FridayVectorStore:
         scored_results = []
         for doc_id, chunk_idx, title, category, content, emb_bytes in rows:
             chunk_vec = np.frombuffer(emb_bytes, dtype=np.float32)
+            # Rows written by an older build (or a different embedding size) have
+            # a different length; np.dot then raises and the whole query died.
+            # Skip those rows instead.
+            if chunk_vec.shape != query_vec.shape:
+                continue
             similarity = float(np.dot(query_vec, chunk_vec))
             scored_results.append({
                 "doc_id": doc_id,

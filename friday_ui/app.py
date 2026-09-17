@@ -97,6 +97,21 @@ def main():
     # Initialize Main Window and Floating Command Bar
     window = FridayMainWindow()
     window.setWindowIcon(stark_icon)
+
+    # Bind explicit AppUserModelID to main window HWND for Windows 11 Taskbar
+    if sys.platform == "win32":
+        try:
+            from win32com.propsys import propsys, pscon
+            import pythoncom
+            hwnd = int(window.winId())
+            store = propsys.SHGetPropertyStoreForWindow(hwnd, propsys.IID_IPropertyStore)
+            pv = propsys.PROPVARIANTType("StarkIndustries.FRIDAY.Assistant.2.0", pythoncom.VT_LPWSTR)
+            store.SetValue(pscon.PKEY_AppUserModel_ID, pv)
+            store.Commit()
+            del store
+        except Exception:
+            pass
+
     window.showMaximized()
 
     # First-run Onboarding & Operator Call-Sign Calibration
@@ -157,7 +172,7 @@ def main():
                 else:
                     command_bar.set_state("idle")
             else:
-                kb_results = window.vector_store.query(command, top_k=1)
+                kb_results = await window.vector_store.query_async(command, top_k=1)
                 kb_context = ""
                 if kb_results and kb_results[0]["score"] > 0.12:
                     kb_context = f"\n[Relevant Local Knowledge: {kb_results[0]['content'][:300]}]"
@@ -171,7 +186,17 @@ def main():
             command_bar.show_response(f"⚠️ Directive processing anomaly: {ex}")
             command_bar.set_state("idle")
 
-    command_bar.command_submitted.connect(lambda cmd: loop.create_task(handle_bar_command(cmd)))
+    # asyncio keeps only a weak reference to a task, so a fire-and-forget task
+    # can be garbage-collected while it is still running and simply vanish.
+    # Keeping a strong reference until it completes prevents that.
+    _bar_tasks = set()
+
+    def _launch_bar_command(cmd: str):
+        task = loop.create_task(handle_bar_command(cmd))
+        _bar_tasks.add(task)
+        task.add_done_callback(_bar_tasks.discard)
+
+    command_bar.command_submitted.connect(_launch_bar_command)
 
     # System Tray Integration
     tray_icon = QSystemTrayIcon(stark_icon, window)

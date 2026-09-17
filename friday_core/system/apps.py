@@ -4,10 +4,16 @@ Centralized application dictionary and Windows Registry App Paths extractor.
 """
 
 import os
-import winreg
 import logging
 from typing import Dict
 from friday_core.platform_guard import IS_WINDOWS
+
+# winreg only exists on Windows. Importing it unconditionally made the whole
+# package fail to import elsewhere, which also broke the test suite on CI.
+if IS_WINDOWS:
+    import winreg
+else:  # pragma: no cover - non-Windows fallback
+    winreg = None
 
 logger = logging.getLogger("FRIDAY.SystemApps")
 
@@ -85,7 +91,7 @@ KNOWN_WINDOWS_APPS: Dict[str, str] = {
 
 def get_registry_app_paths() -> Dict[str, str]:
     """Reads registered application paths from Windows 64-bit and 32-bit registry."""
-    if not IS_WINDOWS:
+    if not IS_WINDOWS or winreg is None:
         return {}
 
     apps: Dict[str, str] = {}

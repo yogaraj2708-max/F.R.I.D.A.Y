@@ -53,8 +53,10 @@ from friday_ui.core.config import (
     SEAMLESS_SPEECH
 )
 from friday_core.system import (
-    launch_application, get_battery_info, get_memory_info, adjust_volume, safe_launch
+    launch_application, get_battery_info, get_memory_info, adjust_volume, safe_launch,
+    open_blank_word, open_word_with_content
 )
+from friday_core.web import resolve_youtube_video_async
 from friday_core.calc import safe_calculate
 from friday_core.settings import settings
 from friday_core.gatekeeper.models import ActionIntent
@@ -250,6 +252,18 @@ class FridayVoiceEngine:
         self.voice_loop_active = False
         self.is_speaking = False
         self.cancel_event = asyncio.Event()
+        # speak() used to be re-entrant. A timer alarm, the command bar and the
+        # voice loop could all call it at once; each one cleared cancel_event
+        # (un-cancelling the others) and the first to finish set is_speaking
+        # back to False while audio was still playing. The microphone then
+        # un-muted mid-sentence, F.R.I.D.A.Y. heard herself, answered herself,
+        # and the loop ran away -- pinning the CPU and the audio device.
+        self._speak_lock = asyncio.Lock()
+        self._speak_depth = 0
+        # Monotonic timestamp of the moment speech stopped. The microphone stays
+        # muted for a short tail afterwards so room reverb and the speaker's own
+        # decay are not recorded as a new user utterance.
+        self.speech_ended_at = 0.0
         self.kokoro = KokoroTTSManager.get_instance()
         self.use_local_tts = settings.get("use_local_tts", USE_LOCAL_TTS)
         self.local_voice = settings.get("local_voice", LOCAL_TTS_VOICE)
@@ -515,12 +529,19 @@ class FridayVoiceEngine:
         return chunks
 
     async def speak(self, text: str, display_text: str = None, emit_transcript: bool = True):
-        self.cancel_event.clear()
-        self.is_speaking = True
-        try:
-            await self._speak_internal(text, display_text, emit_transcript)
-        finally:
-            self.is_speaking = False
+        """Speaks one utterance at a time. Concurrent callers queue behind the lock."""
+        async with self._speak_lock:
+            self.cancel_event.clear()
+            self._speak_depth += 1
+            self.is_speaking = True
+            try:
+                await self._speak_internal(text, display_text, emit_transcript)
+            finally:
+                self._speak_depth -= 1
+                if self._speak_depth <= 0:
+                    self._speak_depth = 0
+                    self.is_speaking = False
+                    self.speech_ended_at = time.monotonic()
 
     async def _speak_internal(self, text: str, display_text: str = None, emit_transcript: bool = True):
         full_display = display_text if display_text else text
@@ -564,6 +585,7 @@ class FridayVoiceEngine:
         except Exception:
             pass
         self.is_speaking = False
+        self.speech_ended_at = time.monotonic()
         self.signals.speech_level_changed.emit(0.0)
         next_state = "listening" if self.voice_loop_active else "idle"
         self.signals.state_changed.emit(next_state)
@@ -1243,6 +1265,17 @@ Core Persona Rules:
         sub_target = cmd_clean[len(matched_prefix):].strip()
         sub_target_clean = re.sub(r"^(?:recent|latest|last|downloaded|new)\s+", "", sub_target).strip()
 
+        # Ignore standalone application launches like "open word", "open word and...", etc.
+        # But allow contextual file queries like "open this word", "open recent word file", "open that word doc"
+        is_contextual_word_file = (
+            any(pref in matched_prefix for pref in ["open this ", "open that ", "open recent ", "open latest ", "open last "]) or
+            (any(k in sub_target for k in ["recent", "latest", "last", "this", "downloaded"]) and any(k in sub_target for k in ["file", "doc", "document"]))
+        )
+        if sub_target_clean in ["word", "ms word", "microsoft word", "word app", "word application", "winword"] or \
+           re.match(r"^(?:word|ms word|microsoft word)\s+(?:and|to|for|with)\b", sub_target_clean):
+            if not is_contextual_word_file:
+                return None
+
         # Category mappings
         category_exts = {
             "image": [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".ico", ".tiff", ".heic"],
@@ -1261,7 +1294,8 @@ Core Persona Rules:
         if any(w in sub_target_clean for w in ["image", "picture", "photo", "screenshot", "pic", "img"]):
             target_exts = category_exts["image"]
             category_name = "Image"
-        elif any(w in sub_target_clean for w in ["word", "word file", "word doc", "word document"]):
+        elif any(w in sub_target_clean for w in ["word file", "word doc", "word document", "docx"]) or \
+             (sub_target_clean in ["word", "ms word"] and is_contextual_word_file):
             target_exts = category_exts["word"]
             category_name = "Word Document"
         elif any(w in sub_target_clean for w in ["ppt", "powerpoint", "presentation", "slides"]):
@@ -1311,15 +1345,27 @@ Core Persona Rules:
                 Path(os.path.expanduser("~")) / "Pictures",
             ]
 
-        def find_file(ext_list=None, name_sub=None):
+        def _find_file_blocking(ext_list=None, name_sub=None):
+            # As in friday_core.system.launcher, the old `continue` did not stop
+            # os.walk from descending, so this scanned the whole Documents and
+            # OneDrive tree. dirnames is now pruned in place and the scan is
+            # bounded by wall clock and entry count.
             candidates = []
+            deadline = time.monotonic() + 4.0
+            scanned = 0
             for root_dir in search_roots:
-                if not root_dir.exists():
+                if not root_dir.is_dir():
                     continue
-                for dirpath, _, filenames in os.walk(str(root_dir)):
+                for dirpath, dirnames, filenames in os.walk(str(root_dir)):
+                    if time.monotonic() > deadline or scanned > 20000:
+                        dirnames[:] = []
+                        break
                     rel_depth = dirpath[len(str(root_dir)):].count(os.sep)
-                    if rel_depth > 2:
-                        continue
+                    if rel_depth >= 2:
+                        dirnames[:] = []
+                    else:
+                        dirnames[:] = [d for d in dirnames if not d.startswith(".")]
+                    scanned += len(filenames)
                     for fname in filenames:
                         if fname.startswith("."):
                             continue
@@ -1342,9 +1388,13 @@ Core Persona Rules:
                 return candidates[0][1]
             return None
 
+        async def find_file(ext_list=None, name_sub=None):
+            """Runs the disk scan on a worker thread so the window stays responsive."""
+            return await asyncio.to_thread(_find_file_blocking, ext_list, name_sub)
+
         # Case 1: Category specified (image, word, ppt, pdf, file, etc.)
         if category_name is not None:
-            found_file = find_file(ext_list=target_exts)
+            found_file = await find_file(ext_list=target_exts)
             if found_file:
                 intent = ActionIntent(action="open_file", target=str(found_file))
                 res = gatekeeper.execute_action(intent)
@@ -1360,7 +1410,8 @@ Core Persona Rules:
         known_apps = [
             "vs code", "vscode", "code", "edge", "chrome", "notepad", "calculator", "calc",
             "spotify", "camera", "settings", "terminal", "task manager", "cmd", "paint",
-            "recycle bin", "weather", "youtube"
+            "recycle bin", "weather", "youtube", "word", "winword", "ms word", "microsoft word",
+            "excel", "powerpoint", "ppt"
         ]
         website_domains = [
             "github", "reddit", "chatgpt", "openai", "youtube", "twitter", "x", "x.com",
@@ -1374,7 +1425,7 @@ Core Persona Rules:
 
         # Try to find file matching sub_target_clean
         if len(sub_target_clean) >= 3:
-            found_file = find_file(name_sub=sub_target_clean)
+            found_file = await find_file(name_sub=sub_target_clean)
             if found_file:
                 intent = ActionIntent(action="open_file", target=str(found_file))
                 res = gatekeeper.execute_action(intent)
@@ -1491,6 +1542,90 @@ Core Persona Rules:
         if file_launcher_res:
             return file_launcher_res
 
+        # 0.28 MICROSOFT WORD AUTOMATION & DRAFTING
+        # Priority handler for MS Word:
+        # 1. Pasting previous AI response or clipboard into Word
+        # 2. Drafting notes/letters/documents and inserting into Word
+        # 3. Opening Word with a clean, blank page when no file name is specified
+        is_word_paste = (
+            re.search(r"\b(?:open\s+(?:ms\s+|microsoft\s+)?word\s+and\s+paste|paste\s+(?:this|that|it)?\s*(?:in|into|there\s+in|to)?\s*(?:ms\s+|microsoft\s+)?word)\b", cmd) or
+            ("word" in cmd and any(p in cmd for p in ["paste this", "paste it", "paste that", "paste content"]))
+        )
+        if is_word_paste:
+            paste_content = ""
+            for msg in reversed(self.conversation_history):
+                if msg.get("role") == "assistant" and msg.get("content"):
+                    paste_content = msg.get("content").strip()
+                    break
+
+            if not paste_content:
+                try:
+                    import ctypes
+                    user32 = ctypes.windll.user32
+                    kernel32 = ctypes.windll.kernel32
+                    if user32.OpenClipboard(None):
+                        if user32.IsClipboardFormatAvailable(13):  # CF_UNICODETEXT
+                            h_clip = user32.GetClipboardData(13)
+                            if h_clip:
+                                p_clip = kernel32.GlobalLock(h_clip)
+                                paste_content = ctypes.wstring_at(p_clip)
+                                kernel32.GlobalUnlock(h_clip)
+                        user32.CloseClipboard()
+                except Exception as clip_err:
+                    logger.debug(f"Clipboard read error: {clip_err}")
+
+            if paste_content:
+                open_word_with_content(paste_content, title="Document")
+                play_chime(CHIME_CONFIRM)
+                self.signals.skill_executed.emit("Microsoft Word", "Pasted Content")
+                return "Opening Microsoft Word and pasting the content, Boss."
+            else:
+                open_blank_word()
+                play_chime(CHIME_CONFIRM)
+                self.signals.skill_executed.emit("Microsoft Word", "Blank Document")
+                return "Opened a blank document in Microsoft Word, Boss. (No previous text found to paste)."
+
+        # Check for Word drafting intent: "open word and help me write a thank you note", etc.
+        draft_match = re.search(
+            r"(?:open\s+(?:ms\s+|microsoft\s+)?word\s+(?:and\s+)?(?:help\s+me\s+)?(?:write|draft|create|compose)\s+(.+?)(?:\s+it\s+should|\s+and\s+paste|\s+and\s+put|$)|"
+            r"(?:help\s+me\s+)?(?:write|draft|create|compose)\s+(.+?)\s+(?:and\s+open\s+(?:ms\s+|microsoft\s+)?word|in\s+(?:ms\s+|microsoft\s+)?word|into\s+(?:ms\s+|microsoft\s+)?word))",
+            cmd
+        )
+        if draft_match:
+            draft_topic = (draft_match.group(1) or draft_match.group(2) or "").strip()
+            draft_topic = re.sub(r"\s+(?:and\s+paste.*|and\s+open.*|in\s+word.*|it\s+should.*)$", "", draft_topic).strip()
+            if draft_topic and len(draft_topic) >= 3:
+                self.signals.stream_started.emit("friday", f"Drafting {draft_topic} for Microsoft Word...")
+                self.signals.status_updated.emit(f"Composing {draft_topic}...")
+                play_chime(CHIME_CONFIRM)
+                self.signals.skill_executed.emit("Word Drafter", draft_topic[:25])
+
+                system_instruction = (
+                    f"Boss asked: '{command}'\n"
+                    f"Draft a complete, professional document on: '{draft_topic}'. "
+                    "Write polished, ready-to-use content suitable for inserting directly into a Microsoft Word document. "
+                    "Use clean paragraphs, clear structure, and appropriate greetings/closings. Do not include markdown code fences or conversational fluff."
+                )
+                draft_text = await self.query_llm(system_instruction, stream_to_ui=True, stream_to_speech=True)
+                if draft_text and draft_text.strip():
+                    open_word_with_content(draft_text.strip(), title=draft_topic)
+                else:
+                    open_blank_word()
+                return "__STREAMED__"
+
+        # Check for standalone Word opening (MUST open blank document unless a specific file was requested)
+        blank_word_triggers = [
+            "open word", "open ms word", "open microsoft word", "open word app", "open word application",
+            "launch word", "launch ms word", "launch microsoft word",
+            "start word", "start ms word", "start microsoft word",
+            "open winword"
+        ]
+        if cmd in blank_word_triggers:
+            open_blank_word()
+            play_chime(CHIME_CONFIRM)
+            self.signals.skill_executed.emit("Microsoft Word", "Blank Document")
+            return "Opening a blank document in Microsoft Word, Boss."
+
         # 0.3 RECENT FILES FINDER (Only when explicitly querying recent/modified history)
         recent_finder_triggers = [
             "recent files", "modified files", "recent downloads", "files modified",
@@ -1504,15 +1639,22 @@ Core Persona Rules:
                 return res
 
         # 0.4 CONTEXTUAL MEDIA & YOUTUBE
-        yt_play_match = re.search(r"(?:open\s+youtube\s+and\s+)?play\s+(.+?)(?:\s+on\s+youtube)?$", cmd)
-        if yt_play_match and any(k in cmd for k in ["youtube", "song", "music", "track", "video"]):
+        yt_play_match = re.search(r"^(?:open\s+(?:youtube\s+)?and\s+)?play\s+(.+?)(?:\s+on\s+youtube)?$", cmd)
+        is_yt_intent = bool(
+            yt_play_match and (
+                "youtube" in cmd
+                or "open and play" in cmd
+                or any(k in cmd for k in ["song", "music", "track", "video", "vidio", "vid"])
+            )
+        )
+        if is_yt_intent:
             target = yt_play_match.group(1).replace("on youtube", "").replace("that", "").strip()
             if target:
-                target_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(target)}"
-                gatekeeper.execute_action(ActionIntent(action="open_url", target=target_url))
+                video_url, resolved_title = await resolve_youtube_video_async(target)
+                gatekeeper.execute_action(ActionIntent(action="open_url", target=video_url))
                 play_chime(CHIME_CONFIRM)
                 self.signals.skill_executed.emit("YouTube Play", target[:30])
-                return f"Queuing up '{target}' on YouTube, Boss."
+                return f"Playing '{target}' on YouTube, Boss."
 
         # 0.5 CONTEXTUAL WEBSITES
         website_domains = {
@@ -1582,11 +1724,18 @@ Core Persona Rules:
         if "youtube" in cmd:
             if any(cmd.startswith(p) for p in ["play ", "search "]):
                 q = re.sub(r"^(play|search for|search)\s+", "", cmd).replace("on youtube", "").strip()
-                target_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(q)}"
+                if cmd.startswith("play "):
+                    target_url, _ = await resolve_youtube_video_async(q)
+                    display_msg = f"Playing '{q}' on YouTube, Boss."
+                    skill_tag = "YouTube Play"
+                else:
+                    target_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(q)}"
+                    display_msg = f"Queuing up {q} on YouTube, Boss."
+                    skill_tag = "YouTube Search"
                 gatekeeper.execute_action(ActionIntent(action="open_url", target=target_url))
                 play_chime(CHIME_CONFIRM)
-                self.signals.skill_executed.emit("YouTube Search", q)
-                return f"Queuing up {q} on YouTube, Boss."
+                self.signals.skill_executed.emit(skill_tag, q[:30])
+                return display_msg
             target_url = "https://youtube.com"
             gatekeeper.execute_action(ActionIntent(action="open_url", target=target_url))
             play_chime(CHIME_CONFIRM)
@@ -2051,6 +2200,9 @@ def extract_wake_and_command(raw_text: str):
     return matched_wake, cleaned
 
 
+MIC_COOLDOWN_AFTER_SPEECH = 0.45  # seconds the mic stays muted after F.R.I.D.A.Y. stops talking
+
+
 class FridayVoiceLoop:
     """Continuous async background voice listener loop with dynamic VAD and dual-mode dispatch."""
     def __init__(self, signals: FridaySignals, brain: FridayBrain, tts: FridayVoiceEngine):
@@ -2063,6 +2215,14 @@ class FridayVoiceLoop:
         self.notified_online = False
         self.force_listen = False
         self.offline_whisper = OfflineWhisperSTT.get_instance()
+        # _record_phrase runs on a worker thread and blocks inside stream.read().
+        # Cancelling run() used to unwind the `with sd.InputStream(...)` block and
+        # close the device while that thread was still reading from it -- a
+        # use-after-close inside PortAudio that could take down the whole process
+        # and leave the audio device wedged. This event lets the closing side
+        # wait for the reader to step out first.
+        self._reader_idle = threading.Event()
+        self._reader_idle.set()
 
     def trigger_active_listen(self):
         """Forces immediate active listening mode without requiring wake word."""
@@ -2087,8 +2247,13 @@ class FridayVoiceLoop:
         self.signals.state_changed.emit("standby")
 
         loop = asyncio.get_running_loop()
+        # Bound the reconnect attempts. Previously a permanently missing or busy
+        # microphone meant reopening the device forever, once every 1.5s, for as
+        # long as the app stayed open.
+        consecutive_failures = 0
 
         while self.running:
+            dev_idx = None
             try:
                 # Open stream in SYNCHRONOUS BLOCKING mode (NO callback) to eliminate PaErrorCode -9977
                 dev_idx = settings.get("audio_input_device", None)
@@ -2107,7 +2272,9 @@ class FridayVoiceLoop:
                 if dev_idx is not None:
                     stream_kwargs["device"] = dev_idx
 
-                with sd.InputStream(**stream_kwargs) as stream:
+                stream_cm = sd.InputStream(**stream_kwargs)
+                try:
+                    stream = stream_cm.__enter__()
                     flush_stream(stream)
 
                     # Quick 200ms acoustic baseline calibration
@@ -2122,6 +2289,7 @@ class FridayVoiceLoop:
                         # Cap baseline to 120 so fan noise does not raise speech threshold impossibly high
                         self.ambient_rms = min(max(float(np.sqrt(np.mean(all_c.astype(np.float32) ** 2))), 10.0), 120.0)
 
+                    consecutive_failures = 0  # device opened cleanly
                     if not self.notified_online:
                         self.notified_online = True
                         play_chime(CHIME_CONFIRM)
@@ -2230,6 +2398,16 @@ class FridayVoiceLoop:
                             flush_stream(stream)
                             self.force_listen = True
                             self.signals.state_changed.emit("listening")
+                finally:
+                    # Stop the recorder, then wait for the worker thread to leave
+                    # stream.read() before the device is closed.
+                    self.running = False
+                    if not self._reader_idle.wait(timeout=3.0):
+                        logger.warning("Audio reader did not stop in time; closing stream anyway.")
+                    try:
+                        stream_cm.__exit__(None, None, None)
+                    except Exception as close_ex:
+                        logger.debug("Error closing input stream: %s", close_ex)
             except asyncio.CancelledError:
                 self.running = False
                 self.tts.voice_loop_active = False
@@ -2239,19 +2417,32 @@ class FridayVoiceLoop:
                 return
             except Exception as e:
                 logger.exception("[Voice Loop Exception]: %s", e)
+                consecutive_failures += 1
                 if dev_idx is not None:
                     logger.warning("[Voice Loop]: Audio device %s failed. Resetting to system default device.", dev_idx)
                     settings.set("audio_input_device", None)
                     self.signals.error_occurred.emit("Acoustic sensor fallback: switching to system default microphone.")
                 else:
                     self.signals.error_occurred.emit(f"Voice loop error: {e}")
+
+                if consecutive_failures >= 5:
+                    self.running = False
+                    self.tts.voice_loop_active = False
+                    self.signals.state_changed.emit("idle")
+                    self.signals.error_occurred.emit(
+                        "Microphone unavailable after several attempts. Voice listening stopped -- "
+                        "check the input device in Settings, then press Ctrl+M to retry."
+                    )
+                    return
                 if self.running:
-                    await asyncio.sleep(1.5)
+                    await asyncio.sleep(min(1.5 * consecutive_failures, 10.0))
 
     def _record_phrase(self, stream, timeout=None, silence_limit=1.4):
+        self._reader_idle.clear()
         try:
             return self._record_phrase_impl(stream, timeout, silence_limit)
         finally:
+            self._reader_idle.set()
             self.signals.speech_level_changed.emit(0.0)
 
     def _record_phrase_impl(self, stream, timeout=None, silence_limit=1.4):
@@ -2271,12 +2462,22 @@ class FridayVoiceLoop:
             if not self.running:
                 return None
 
-            # Suppress recording Friday's own voice during TTS playback
-            if getattr(self.tts, "is_speaking", False):
+            # Suppress recording Friday's own voice during TTS playback, plus a
+            # short tail afterwards (MIC_COOLDOWN_AFTER_SPEECH) so the decay of
+            # her own last word is not picked up as a fresh command.
+            speaking_now = getattr(self.tts, "is_speaking", False)
+            in_cooldown = (
+                time.monotonic() - getattr(self.tts, "speech_ended_at", 0.0)
+                < MIC_COOLDOWN_AFTER_SPEECH
+            )
+            if speaking_now or in_cooldown:
                 flush_stream(stream)
                 time.sleep(0.04)
                 start_time = time.time()
                 pre_roll.clear()
+                recorded_chunks.clear()
+                speaking = False
+                silence_start = None
                 continue
 
             # Dynamically adopt timeout if user clicked mic button while in standby

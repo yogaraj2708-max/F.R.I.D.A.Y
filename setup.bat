@@ -54,24 +54,34 @@ echo Compatible Python detected: %ACTIVE_PY_VER% (%BASE_PYTHON%)
 echo.
 echo [2/3] Setting up Python environment (.venv)...
 
-:: Check existing .venv compatibility
-if exist ".venv\Scripts\python.exe" (
-    ".venv\Scripts\python.exe" -c "import sys; sys.exit(0 if (3, 10) <= sys.version_info[:2] <= (3, 12) else 1)" >nul 2>&1
-    if %errorlevel% equ 0 (
-        set "PYTHON_EXE=.venv\Scripts\python.exe"
-        echo Using verified virtual environment: .venv\Scripts\python.exe
-        goto :install_deps
-    ) else (
-        echo [Notice]: Existing .venv was created with an incompatible Python version.
-        echo Removing incompatible .venv...
-        rmdir /s /q .venv >nul 2>&1
-    )
-)
+:: Check existing .venv compatibility.
+:: NOTE: %errorlevel% must not be read inside a parenthesised block -- cmd.exe
+:: expands it once when the block is parsed, i.e. BEFORE the commands inside
+:: have run, so it always held a stale value. That made this check reuse a
+:: broken .venv or delete a perfectly good one. The block is flattened below so
+:: each errorlevel test happens after the command it belongs to.
+if not exist ".venv\Scripts\python.exe" goto :check_unix_venv
 
-if exist ".venv\bin\python.exe" (
+".venv\Scripts\python.exe" -c "import sys; sys.exit(0 if (3, 10) <= sys.version_info[:2] <= (3, 12) else 1)" >nul 2>&1
+if errorlevel 1 goto :venv_incompatible
+
+set "PYTHON_EXE=.venv\Scripts\python.exe"
+echo Using verified virtual environment: .venv\Scripts\python.exe
+goto :install_deps
+
+:venv_incompatible
+echo [Notice]: Existing .venv was created with an incompatible Python version.
+echo Removing incompatible .venv...
+rmdir /s /q .venv >nul 2>&1
+goto :create_venv
+
+:check_unix_venv
+if exist ".venv\bin\python" (
     echo [Notice]: Removing incompatible Unix-style .venv...
     rmdir /s /q .venv >nul 2>&1
 )
+
+:create_venv
 
 echo Creating fresh virtual environment (.venv) using %ACTIVE_PY_VER%...
 %BASE_PYTHON% -m venv .venv >nul 2>&1

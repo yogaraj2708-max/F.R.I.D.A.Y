@@ -8,6 +8,7 @@ import os
 import re
 import sys
 import time
+import shlex
 import ctypes
 import subprocess
 import logging
@@ -18,6 +19,28 @@ from friday_core.system.apps import KNOWN_WINDOWS_APPS, get_registry_app_paths
 
 logger = logging.getLogger("FRIDAY.Launcher")
 
+# Bounds for the desktop/documents scan. Without these the scan can run for
+# minutes on a large or cloud-synced profile and lock up the user interface.
+MAX_SCAN_DEPTH = 2
+MAX_SCAN_SECONDS = 4.0
+MAX_SCAN_ENTRIES = 20000
+
+
+def _is_reparse_point(path: str) -> bool:
+    """True for junctions, symlinks and OneDrive cloud-only placeholders.
+
+    Walking into these is what makes the scan hang: reading a placeholder asks
+    OneDrive to download the real file.
+    """
+    FILE_ATTRIBUTE_REPARSE_POINT = 0x400
+    try:
+        if os.path.islink(path):
+            return True
+        attrs = getattr(os.stat(path, follow_symlinks=False), "st_file_attributes", 0)
+        return bool(attrs & FILE_ATTRIBUTE_REPARSE_POINT)
+    except OSError:
+        return True
+
 def safe_launch(target: str, args: str = "") -> bool:
     """
     Launches target cleanly using Windows ShellExecute or CREATE_NO_WINDOW subprocess.
@@ -27,10 +50,13 @@ def safe_launch(target: str, args: str = "") -> bool:
         logger.warning(f"[Launcher]: Cannot launch '{target}' on non-Windows host.")
         return False
 
+    clean_target = str(target or "").strip()
+    if clean_target.startswith("start "):
+        clean_target = clean_target[6:].strip().strip('"')
+    if not clean_target:
+        return False
+
     try:
-        clean_target = target.strip()
-        if clean_target.startswith("start "):
-            clean_target = clean_target[6:].strip().strip('"')
 
         # Check if URL or protocol
         if (clean_target.startswith("http://") or clean_target.startswith("https://") or
@@ -53,21 +79,30 @@ def safe_launch(target: str, args: str = "") -> bool:
     except Exception as e:
         logger.debug(f"[Launcher]: Primary launch error on '{target}': {e}")
 
-    # Subprocess fallback with CREATE_NO_WINDOW
+    # Subprocess fallback with CREATE_NO_WINDOW.
+    # NOTE: shell=True is deliberately NOT used here. Building a `start "" "..."`
+    # command string lets any quote character in `clean_target` break out of the
+    # quoting and run arbitrary commands. An argument list is passed instead so
+    # the value is never parsed by cmd.exe.
     try:
         startupinfo = subprocess.STARTUPINFO()
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         startupinfo.wShowWindow = 0
-        cmd = f'start "" "{clean_target}" {args}'.strip()
+        argv = [clean_target]
+        if args:
+            argv.extend(shlex.split(args, posix=False))
         subprocess.Popen(
-            cmd,
-            shell=True,
+            argv,
+            shell=False,
             creationflags=subprocess.CREATE_NO_WINDOW,
             startupinfo=startupinfo
         )
         return True
     except Exception as e:
-        logger.error(f"[Launcher]: Failed to launch '{target}': {e}")
+        # Report the real outcome. Previously this path returned True even when the
+        # launch failed, so F.R.I.D.A.Y. announced "Opening X, Boss." for targets
+        # that never started and never fell through to the language model.
+        logger.info(f"[Launcher]: Could not launch '{target}': {e}")
         return False
 
 def bring_or_launch_vscode() -> bool:
@@ -120,14 +155,10 @@ def bring_or_launch_vscode() -> bool:
                 user32.SetForegroundWindow(hwnd)
         return True
 
-    # Terminate any hung headless Code.exe background processes
-    try:
-        chk = subprocess.run(["tasklist", "/FI", "IMAGENAME eq Code.exe"], capture_output=True, text=True)
-        if "Code.exe" in chk.stdout:
-            subprocess.run(["taskkill", "/F", "/IM", "Code.exe"], capture_output=True, timeout=2)
-            time.sleep(0.3)
-    except Exception:
-        pass
+    # Previously this force-killed every Code.exe process whenever no VS Code
+    # window title matched, which destroyed unsaved work in windows that were on
+    # another virtual desktop, on a second monitor, or simply titled differently.
+    # Launching a new window is safe and non-destructive, so no process is killed.
 
     # 1. Desktop / Start Menu shortcut (dynamically resolved)
     lnk_candidates = [
@@ -215,15 +246,38 @@ def find_and_open_desktop_or_system_item(query: str) -> Tuple[bool, str]:
         (os.path.expandvars(r"%PROGRAMDATA%\Microsoft\Windows\Start Menu\Programs"), 20),
     ]
 
+    # The previous version used `continue` on a too-deep directory, which only
+    # skipped scoring that one folder -- os.walk still descended into every
+    # subfolder below it. On a OneDrive-backed Documents folder that meant
+    # walking the entire tree and hydrating cloud-only placeholder files, which
+    # pinned the disk and froze the whole app (and sometimes the machine) for
+    # minutes. dirs_list is now pruned in place so the depth limit is real,
+    # reparse points (OneDrive placeholders, junctions) are skipped, and the
+    # scan gives up after a fixed time and entry budget.
     candidates = []
+    deadline = time.monotonic() + MAX_SCAN_SECONDS
+    scanned = 0
+
     for d, priority in search_dirs:
-        if not os.path.exists(d):
+        if not os.path.isdir(d):
             continue
         for root, dirs_list, files in os.walk(d):
+            if time.monotonic() > deadline or scanned > MAX_SCAN_ENTRIES:
+                logger.debug("[Launcher]: Desktop scan budget reached; using best match so far.")
+                dirs_list[:] = []
+                break
+
             rel_depth = root[len(d):].count(os.sep)
-            if rel_depth > 2:
-                continue
+            if rel_depth >= MAX_SCAN_DEPTH:
+                dirs_list[:] = []   # prune: do not descend any further
+            else:
+                dirs_list[:] = [
+                    sub_d for sub_d in dirs_list
+                    if not sub_d.startswith(".") and not _is_reparse_point(os.path.join(root, sub_d))
+                ]
+
             for item in files + dirs_list:
+                scanned += 1
                 base = os.path.splitext(item)[0]
                 clean_base = re.sub(r"[^a-zA-Z0-9]", "", base.lower())
                 if not clean_base:
@@ -261,6 +315,13 @@ def launch_application(target: str) -> Tuple[bool, str]:
     ):
         bring_or_launch_vscode()
         return True, "Visual Studio Code"
+
+    # 1.1 Microsoft Word (Always launch with a clean blank document)
+    if t in ["word", "ms word", "microsoft word", "winword", "word app"]:
+        from friday_core.system.office import open_blank_word
+        ok, _ = open_blank_word()
+        if ok:
+            return True, "Microsoft Word"
 
     # 2. Microsoft Edge
     if (

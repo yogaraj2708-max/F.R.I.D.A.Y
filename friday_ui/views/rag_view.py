@@ -99,7 +99,16 @@ class RAGView(QWidget):
             PrimaryPushButton {
                 background-color: #0078D4;
                 border: 1px solid #005A9E;
+                color: #FFFFFF;
                 font-weight: bold;
+                border-radius: 6px;
+                padding: 6px 18px 6px 36px;
+            }
+            PrimaryPushButton:hover {
+                background-color: #106EBE;
+            }
+            PrimaryPushButton:pressed {
+                background-color: #005A9E;
             }
         """)
         self.ingest_btn.clicked.connect(self._on_ingest_clicked)

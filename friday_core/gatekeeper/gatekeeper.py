@@ -99,12 +99,28 @@ class ActionGatekeeper:
         if ".." in target_path:
             return False, "Path contains invalid directory traversal sequences"
 
-        norm_target = os.path.normpath(os.path.abspath(target_path)).lower()
+        # A plain startswith() comparison treated "C:\\Users\\me\\DesktopBackup"
+        # as being inside "C:\\Users\\me\\Desktop", so files outside the fence were
+        # deletable. Compare whole path components instead, and resolve symlinks
+        # so a link inside an allowed folder cannot point outside it.
+        try:
+            real_target = os.path.realpath(os.path.abspath(target_path))
+        except OSError:
+            return False, "Target path could not be resolved"
+
         for allowed in ALLOWED_PATH_ROOTS:
-            if allowed:
-                norm_allowed = os.path.normpath(os.path.abspath(allowed)).lower()
-                if norm_target.startswith(norm_allowed):
+            if not allowed:
+                continue
+            try:
+                real_allowed = os.path.realpath(os.path.abspath(allowed))
+            except OSError:
+                continue
+            try:
+                if os.path.commonpath([real_target, real_allowed]) == real_allowed:
                     return True, "Path is within designated workspace"
+            except ValueError:
+                # Different drives -- commonpath raises rather than returning "".
+                continue
 
         return False, f"Path '{target_path}' is outside designated safe directories"
 
@@ -315,6 +331,9 @@ class ActionGatekeeper:
                     ctypes.windll.user32.LockWorkStation()
                     success = True
                     message = "Workstation locked."
+                else:
+                    success = False
+                    message = "Locking the workstation requires a Windows host."
 
             elif action in ["get_telemetry", "status"]:
                 bat, chg = get_battery_info()

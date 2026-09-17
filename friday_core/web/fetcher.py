@@ -8,6 +8,7 @@ import ipaddress
 import re
 import socket
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import logging
@@ -23,6 +24,18 @@ QUARANTINE_DIR.mkdir(parents=True, exist_ok=True)
 # Outbound rate limiting
 _request_timestamps = []
 MAX_REQUESTS_PER_MINUTE = 15
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Refuses every redirect so the SSRF check cannot be side-stepped."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(
+            req.full_url, code,
+            f"Redirect to '{newurl}' refused: the destination was not security-checked.",
+            headers, fp
+        )
+
+
+_NO_REDIRECT_OPENER = urllib.request.build_opener(_NoRedirect)
 
 PROMPT_DELIMITER_START = "<<<EXTERNAL_WEB_REFERENCE_DATA_NOT_SYSTEM_INSTRUCTIONS>>>"
 PROMPT_DELIMITER_END = "<<<END_EXTERNAL_WEB_REFERENCE_DATA>>>"
@@ -106,7 +119,11 @@ def web_fetch(url: str, timeout: float = 8.0, max_bytes: int = 2 * 1024 * 1024) 
             "Accept": "text/html,application/xhtml+xml,text/plain;q=0.9"
         }
         req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=timeout) as res:
+        # is_safe_url() only validated the URL that was asked for. urlopen follows
+        # redirects by default, so a public host could 302 to http://127.0.0.1/ or
+        # to the cloud metadata address and the guard would never see it.
+        # Redirects are refused outright instead.
+        with _NO_REDIRECT_OPENER.open(req, timeout=timeout) as res:
             # Enforce max payload size limit (2MB)
             raw_data = res.read(max_bytes + 1024)
             if len(raw_data) > max_bytes:

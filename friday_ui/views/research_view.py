@@ -75,9 +75,13 @@ class ResearchView(QWidget):
                 color: #000000;
                 font-weight: bold;
                 border-radius: 8px;
+                padding: 6px 18px 6px 36px;
             }
             PrimaryPushButton:hover {
                 background-color: #22D3EE;
+            }
+            PrimaryPushButton:pressed {
+                background-color: #0891B2;
             }
         """)
         self.start_btn.clicked.connect(self._start_research)

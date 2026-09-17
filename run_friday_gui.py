@@ -23,6 +23,14 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 
+# Set Windows AppUserModelID immediately so the process groups under F.R.I.D.A.Y. on the taskbar
+if sys.platform == "win32":
+    try:
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("StarkIndustries.FRIDAY.Assistant.2.0")
+    except Exception:
+        pass
+
 def check_single_instance() -> bool:
     """Ensures only one instance of F.R.I.D.A.Y. 2.0 can run at a time."""
     if sys.platform != "win32":

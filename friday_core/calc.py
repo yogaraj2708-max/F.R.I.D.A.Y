@@ -102,9 +102,21 @@ def safe_calculate(cmd: str) -> Optional[str]:
             break
 
     clean_expr = cmd.strip().lower()
-    clean_expr = clean_expr.replace("times", "*").replace("multiplied by", "*").replace("x", "*")
-    clean_expr = clean_expr.replace("plus", "+").replace("minus", "-")
-    clean_expr = clean_expr.replace("divided by", "/").replace("over", "/")
+    # Word forms first, longest first so "multiplied by" is not half-eaten by "by".
+    for word, symbol in (
+        ("multiplied by", "*"),
+        ("divided by", "/"),
+        ("times", "*"),
+        ("plus", "+"),
+        ("minus", "-"),
+        ("over", "/"),
+    ):
+        clean_expr = re.sub(rf"\b{re.escape(word)}\b", symbol, clean_expr)
+
+    # Only a standalone "x" sitting between two numbers means multiplication.
+    # A blanket .replace("x", "*") turned "max", "expression" and "sixty" into
+    # nonsense and made unrelated sentences look like maths.
+    clean_expr = re.sub(r"(?<=[\d\s)])\s*x\s*(?=[\d(])", "*", clean_expr)
     clean_expr = clean_expr.replace("^", "**")
 
     # Quick heuristic check for math characters

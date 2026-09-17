@@ -11,6 +11,10 @@ from friday_core.web.fetcher import (
     PROMPT_DELIMITER_START,
     PROMPT_DELIMITER_END
 )
+from friday_core.web.youtube import (
+    resolve_youtube_video,
+    resolve_youtube_video_async
+)
 
 __all__ = [
     "web_fetch",
@@ -18,5 +22,7 @@ __all__ = [
     "clean_html_to_text",
     "QUARANTINE_DIR",
     "PROMPT_DELIMITER_START",
-    "PROMPT_DELIMITER_END"
+    "PROMPT_DELIMITER_END",
+    "resolve_youtube_video",
+    "resolve_youtube_video_async"
 ]

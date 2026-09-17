@@ -4,7 +4,7 @@ F.R.I.D.A.Y. 2.0 - Configuration & System Settings
 
 import os
 from pathlib import Path
-from friday_core.settings import settings
+from friday_core.settings import settings, get_default_owner_name
 
 # User & Owner Identity Settings (dynamically queried)
 def get_user_name() -> str:

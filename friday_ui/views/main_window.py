@@ -185,19 +185,19 @@ class FridayMainWindow(FluentWindow):
         self.mic_shortcut = QShortcut(QKeySequence("Ctrl+M"), self)
         self.mic_shortcut.activated.connect(self.toggle_voice_loop)
 
-        # In-app shortcut Ctrl+Space for Floating Command Bar
-        self.ctrl_space_shortcut = QShortcut(QKeySequence("Ctrl+Space"), self)
-        self.ctrl_space_shortcut.activated.connect(self._on_ctrl_space_pressed)
-
-    def _on_ctrl_space_pressed(self):
-        if getattr(self, "command_bar", None):
-            self.command_bar.toggle_visibility()
+        # Ctrl+Space is deliberately NOT bound here. FloatingCommandBar already
+        # registers an OS-wide hotkey and its own local shortcut; binding it a
+        # third time on the main window meant one keypress fired two toggles and
+        # the bar appeared to do nothing while the app had focus.
 
 
     def _apply_global_style(self):
         """Apply Centralized Monochrome / Tactical Desktop Styling with transparent backing."""
         theme_mode = settings.get("theme_mode", "dark")
-        self.setStyleSheet(self.styleSheet() + generate_global_qss(theme_mode) + """
+        # This used to append to the existing sheet. Every theme switch bolted on
+        # another full copy, so the sheet kept growing and Qt re-parsed all of it
+        # on each repaint -- the app got visibly slower the more you toggled.
+        self.setStyleSheet(generate_global_qss(theme_mode) + """
             #FridayMainWindow, #content_container, #chat_view, #rag_view, #research_view, #settings_view, #workspace_container {
                 background-color: transparent;
             }
@@ -450,7 +450,7 @@ class FridayMainWindow(FluentWindow):
                     await self.tts.speak(skill_res)
             else:
                 # 2. Check local vector knowledge base
-                kb_results = self.vector_store.query(command, top_k=1)
+                kb_results = await self.vector_store.query_async(command, top_k=1)
                 kb_context = ""
                 if kb_results and kb_results[0]["score"] > 0.12:
                     kb_context = f"\n[Relevant Local Knowledge: {kb_results[0]['content'][:300]}]"

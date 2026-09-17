@@ -47,11 +47,12 @@ import time
 import ctypes
 import subprocess
 import webbrowser
+import urllib.parse
 import urllib.request
 import json
-import winreg
 from datetime import datetime
 from collections import deque
+from typing import Optional
 
 import numpy as np
 import sounddevice as sd
@@ -88,9 +89,27 @@ PREFERRED_MODELS = ["friday-model", "llama3.1", "jarvis-model", "qwen2.5-coder"]
 # ==========================================
 # PROCEDURAL AUDIO EARCONS
 # ==========================================
-pygame.mixer.init(frequency=24000)
+# Initialising the mixer at import time meant that a machine with no audio
+# output device (or one already held by another app) raised pygame.error before
+# main() was ever reached, so the program died with a traceback instead of a
+# message. Chimes are optional; the assistant still works without them.
+_MIXER_READY = False
+try:
+    pygame.mixer.init(frequency=24000)
+    _MIXER_READY = True
+except Exception as _mix_err:
+    print(f"[Audio Notice]: Sound effects disabled ({_mix_err})", flush=True)
 
-def make_chime(frequencies: list, step_duration: float = 0.05, volume: float = 0.20) -> pygame.mixer.Sound:
+
+class _SilentChime:
+    """No-op stand-in used when the mixer is unavailable."""
+    def play(self):
+        return None
+
+
+def make_chime(frequencies: list, step_duration: float = 0.05, volume: float = 0.20):
+    if not _MIXER_READY:
+        return _SilentChime()
     sample_rate = 24000
     audio_blocks = []
     for freq in frequencies:
@@ -102,7 +121,10 @@ def make_chime(frequencies: list, step_duration: float = 0.05, volume: float = 0
     full_audio = np.concatenate(audio_blocks)
     full_audio = (full_audio * 32767).astype(np.int16)
     stereo = np.column_stack((full_audio, full_audio))
-    return pygame.sndarray.make_sound(stereo)
+    try:
+        return pygame.sndarray.make_sound(stereo)
+    except Exception:
+        return _SilentChime()
 
 CHIME_WAKE = make_chime([523.25, 659.25, 783.99], step_duration=0.045, volume=0.18)
 CHIME_CONFIRM = make_chime([880.0], step_duration=0.06, volume=0.16)
@@ -330,9 +352,16 @@ class FridayBrain:
         if "youtube" in cmd:
             if any(cmd.startswith(p) for p in ["play ", "search "]):
                 q = re.sub(r"^(play|search for|search)\s+", "", cmd).replace("on youtube", "").strip()
-                webbrowser.open(f"https://www.youtube.com/results?search_query={urllib.parse.quote(q)}")
+                if cmd.startswith("play "):
+                    from friday_core.web import resolve_youtube_video
+                    target_url, _ = resolve_youtube_video(q)
+                    display_msg = f"Playing '{q}' on YouTube, Boss."
+                else:
+                    target_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(q)}"
+                    display_msg = f"Queuing up {q} on YouTube, Boss."
+                webbrowser.open(target_url)
                 CHIME_CONFIRM.play()
-                return f"Queuing up {q} on YouTube, Boss."
+                return display_msg
             webbrowser.open("https://youtube.com")
             CHIME_CONFIRM.play()
             return "Opening YouTube on your screen, Boss."
@@ -344,7 +373,7 @@ class FridayBrain:
         # Check for games or desktop apps first if command starts with "play "
         if cmd.startswith("play "):
             play_target = cmd.replace("play ", "").strip()
-            if not any(k in play_target for k in ["song", "music", "track"]):
+            if not any(k in play_target for k in ["song", "music", "track", "video"]):
                 success, app_name = launch_application(play_target)
                 if success:
                     CHIME_CONFIRM.play()
@@ -358,12 +387,14 @@ class FridayBrain:
                 return f"Opening {app_name}, Boss."
 
         # 3. GENERAL MEDIA PLAYBACK ("play ac/dc", "play lo-fi")
-        if cmd.startswith("play "):
-            q = cmd.replace("play ", "").replace("on youtube", "").replace("music", "").strip()
+        if cmd.startswith("play ") or "play " in cmd:
+            q = re.sub(r"^(?:open\s+(?:youtube\s+)?and\s+)?play\s+", "", cmd).replace("on youtube", "").replace("music", "").replace("song", "").strip()
             if q:
-                webbrowser.open(f"https://www.youtube.com/results?search_query={urllib.parse.quote(q)}")
+                from friday_core.web import resolve_youtube_video
+                target_url, _ = resolve_youtube_video(q)
+                webbrowser.open(target_url)
                 CHIME_CONFIRM.play()
-                return f"Queuing up {q} on YouTube, Boss."
+                return f"Playing '{q}' on YouTube, Boss."
 
         # 4. GITHUB
         if "github" in cmd:
@@ -441,7 +472,7 @@ class FridayBrain:
 
         # 11. SCREENSHOT & LOCK PC
         if "screenshot" in cmd or "snip" in cmd:
-            os.system("start ms-screenclip:")
+            safe_launch("ms-screenclip:")
             CHIME_CONFIRM.play()
             return "Snipping tool activated, Boss."
         if "lock pc" in cmd or "lock my computer" in cmd:

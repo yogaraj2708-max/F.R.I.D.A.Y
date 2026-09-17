@@ -6,7 +6,10 @@ Premium Reactive Desktop Chat Thread — Glassmorphism, Smooth Animations, Full-
 import os
 import asyncio
 import math
+import logging
 from datetime import datetime
+
+logger = logging.getLogger("FRIDAY.ChatView")
 from PySide6.QtCore import (
     Qt, Signal, QTimer, QPropertyAnimation, QEasingCurve,
     QParallelAnimationGroup, QSize, Property, QRectF, QPointF

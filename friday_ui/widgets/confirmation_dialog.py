@@ -99,7 +99,13 @@ class SecurityConfirmationDialog(QDialog):
             PrimaryPushButton {
                 background-color: #D83B01;
                 border: 1px solid #EA4300;
+                color: #FFFFFF;
                 font-weight: bold;
+                border-radius: 6px;
+                padding: 6px 18px 6px 36px;
+            }
+            PrimaryPushButton:hover {
+                background-color: #EA4300;
             }
         """)
         self.confirm_btn.clicked.connect(self._on_confirm)

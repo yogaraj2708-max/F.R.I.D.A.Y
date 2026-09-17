@@ -5,6 +5,8 @@ translucent expanding results panel, model selector, mic toggle, and draggable p
 """
 
 import sys
+import os
+import time
 import ctypes
 from ctypes import wintypes
 import asyncio
@@ -191,6 +193,7 @@ class FloatingCommandBar(QWidget):
         self.is_expanded = False
         self._hotkey_registered = False
         self._event_filter = None
+        self._last_toggle_time = 0.0
 
         self._init_window_flags()
         self._init_ui()
@@ -201,7 +204,7 @@ class FloatingCommandBar(QWidget):
         self.setWindowFlags(
             Qt.FramelessWindowHint |
             Qt.WindowStaysOnTopHint |
-            Qt.Tool
+            Qt.Window
         )
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WA_ShowWithoutActivating, False)
@@ -273,17 +276,21 @@ class FloatingCommandBar(QWidget):
         self.model_combo = ComboBox(self.bar_card)
         self.model_combo.setFixedWidth(145)
         self._refreshing_models = False
-        avail_models = settings.get_available_models()
-        self.model_combo.addItems(avail_models)
-        saved_model = settings.get("model", avail_models[0] if avail_models else "llama3.2:3b")
-        idx_cb = self.model_combo.findText(saved_model)
-        if idx_cb >= 0:
-            self.model_combo.setCurrentIndex(idx_cb)
-        else:
-            self.model_combo.addItem(saved_model)
-            self.model_combo.setCurrentText(saved_model)
+        saved_model = settings.get("model", "llama3.2:3b")
+        initial_models = [saved_model]
+        fallback_models = [
+            "llama3.2:3b", "llama3.1:8b", "qwen2.5:3b",
+            "qwen2.5-coder:latest", "mistral:7b", "deepseek-r1:8b"
+        ]
+        for fm in fallback_models:
+            if fm not in initial_models:
+                initial_models.append(fm)
+        self.model_combo.addItems(initial_models)
+        self.model_combo.setCurrentText(saved_model)
         self.model_combo.currentTextChanged.connect(self._on_model_changed)
         settings.add_listener(self._on_settings_model_sync)
+        # Schedule asynchronous discovery of local Ollama models without blocking GUI thread
+        QTimer.singleShot(150, self.refresh_models)
         self.model_combo.setStyleSheet("""
             ComboBox {
                 background-color: rgba(255, 255, 255, 0.06);
@@ -441,30 +448,38 @@ class FloatingCommandBar(QWidget):
 
         self.move(x, y)
 
+    def _on_hotkey_triggered(self):
+        """Debounces physical hotkey presses (250ms) to prevent race conditions."""
+        now = time.monotonic()
+        if hasattr(self, '_last_hotkey_time') and (now - self._last_hotkey_time < 0.25):
+            return
+        self._last_hotkey_time = now
+        self.toggle_visibility()
+
     def _register_global_hotkey(self):
         """Registers global Ctrl+Space hotkey with background listener thread and local shortcut."""
         # 1. Local in-app shortcut for immediate response when bar has focus
         try:
             self.local_shortcut = QShortcut(QKeySequence("Ctrl+Space"), self)
-            self.local_shortcut.activated.connect(self.toggle_visibility)
+            self.local_shortcut.activated.connect(self._on_hotkey_triggered)
         except Exception as e:
             logger.debug(f"Local shortcut init note: {e}")
 
         # 2. Global background hotkey listener for OS-wide activation
         try:
             self._hotkey_listener = GlobalHotKeyListener(self)
-            self._hotkey_listener.hotkey_triggered.connect(self.toggle_visibility)
+            self._hotkey_listener.hotkey_triggered.connect(self._on_hotkey_triggered)
             self._hotkey_listener.start()
             self._hotkey_registered = True
         except Exception as e:
             logger.warning(f"Failed to initialize GlobalHotKeyListener: {e}")
 
-        # 3. Also keep Qt native event filter as secondary fallback
-        try:
-            self._event_filter = GlobalHotKeyFilter(self.toggle_visibility)
-            QApplication.instance().installNativeEventFilter(self._event_filter)
-        except Exception as e:
-            logger.debug(f"Native event filter registration note: {e}")
+        # Note: GlobalHotKeyFilter is deliberately NOT installed on QApplication.
+        # GlobalHotKeyListener already receives WM_HOTKEY via Win32 GetMessageW
+        # in a dedicated worker thread with 0% CPU. Installing a native event filter
+        # on QApplication intercepts thousands of messages per second in Qt's
+        # internal dispatch loop and causes access violations / event loop deadlocks.
+        self._event_filter = None
 
     def unregister_hotkey(self):
         """Unregisters global hotkey and stops listener thread on shutdown."""
@@ -474,6 +489,15 @@ class FloatingCommandBar(QWidget):
                 self._hotkey_listener = None
             except Exception as e:
                 logger.debug(f"Failed to stop hotkey listener: {e}")
+        if self._event_filter is not None:
+            try:
+                app = QApplication.instance()
+                if app is not None:
+                    app.removeNativeEventFilter(self._event_filter)
+            except Exception as e:
+                logger.debug(f"Failed to remove native event filter: {e}")
+            finally:
+                self._event_filter = None
         try:
             ctypes.windll.user32.UnregisterHotKey(None, HOTKEY_ID)
             self._hotkey_registered = False
@@ -481,7 +505,7 @@ class FloatingCommandBar(QWidget):
             logger.debug(f"Failed to unregister global hotkey: {e}")
 
     def toggle_visibility(self):
-        """Toggles display and brings command bar to foreground."""
+        """Toggles display and brings command bar to foreground with robust input focus."""
         try:
             if self.isVisible():
                 self.hide()
@@ -490,11 +514,45 @@ class FloatingCommandBar(QWidget):
                 self.show()
                 self.raise_()
                 self.activateWindow()
+
+                # Force input focus transfer so the user can type immediately without freezing
                 try:
                     hwnd = int(self.winId())
-                    ctypes.windll.user32.SetForegroundWindow(ctypes.c_void_p(hwnd))
-                except Exception:
-                    pass
+                    user32 = ctypes.windll.user32
+
+                    # Explicitly set AppUserModelID on this window handle so taskbar displays custom identity
+                    try:
+                        from win32com.propsys import propsys, pscon
+                        import pythoncom
+                        store = propsys.SHGetPropertyStoreForWindow(hwnd, propsys.IID_IPropertyStore)
+                        pv = propsys.PROPVARIANTType("StarkIndustries.FRIDAY.Assistant.2.0", pythoncom.VT_LPWSTR)
+                        store.SetValue(pscon.PKEY_AppUserModel_ID, pv)
+                        store.Commit()
+                        del store
+                    except Exception:
+                        pass
+
+                    cur_fg = user32.GetForegroundWindow()
+                    if cur_fg and cur_fg != hwnd:
+                        cur_thread = ctypes.windll.kernel32.GetCurrentThreadId()
+                        fg_thread = user32.GetWindowThreadProcessId(cur_fg, None)
+                        if cur_thread != fg_thread:
+                            user32.AttachThreadInput(cur_thread, fg_thread, True)
+                            user32.SetForegroundWindow(hwnd)
+                            user32.BringWindowToTop(hwnd)
+                            user32.SetFocus(hwnd)
+                            user32.AttachThreadInput(cur_thread, fg_thread, False)
+                        else:
+                            user32.SetForegroundWindow(hwnd)
+                            user32.BringWindowToTop(hwnd)
+                            user32.SetFocus(hwnd)
+                    else:
+                        user32.SetForegroundWindow(hwnd)
+                        user32.BringWindowToTop(hwnd)
+                        user32.SetFocus(hwnd)
+                except Exception as ex:
+                    logger.debug(f"Foreground window activation note: {ex}")
+
                 self.prompt_input.setFocus()
                 self.prompt_input.selectAll()
         except Exception as e:
@@ -594,22 +652,36 @@ class FloatingCommandBar(QWidget):
             QTimer.singleShot(0, self.refresh_models)
 
     def refresh_models(self):
+        """Asynchronously queries Ollama for installed models without blocking UI thread."""
+        if getattr(self, "_refreshing_models", False):
+            return
         self._refreshing_models = True
-        try:
-            curr = settings.get("model") or self.model_combo.currentText()
-            avail = settings.get_available_models()
-            self.model_combo.blockSignals(True)
-            self.model_combo.clear()
-            self.model_combo.addItems(avail)
-            idx = self.model_combo.findText(curr)
-            if idx >= 0:
-                self.model_combo.setCurrentIndex(idx)
-            elif curr:
-                self.model_combo.addItem(curr)
-                self.model_combo.setCurrentText(curr)
-            self.model_combo.blockSignals(False)
-        finally:
-            self._refreshing_models = False
+        curr = settings.get("model") or self.model_combo.currentText()
+
+        def _fetch():
+            try:
+                avail = settings.get_available_models()
+                QTimer.singleShot(0, lambda: self._apply_refreshed_models(avail, curr))
+            except Exception as e:
+                logger.debug(f"Async model discovery note: {e}")
+            finally:
+                self._refreshing_models = False
+
+        threading.Thread(target=_fetch, name="FridayCommandBarModelRefresh", daemon=True).start()
+
+    def _apply_refreshed_models(self, avail: List[str], curr: str):
+        if not avail:
+            return
+        self.model_combo.blockSignals(True)
+        self.model_combo.clear()
+        self.model_combo.addItems(avail)
+        idx = self.model_combo.findText(curr)
+        if idx >= 0:
+            self.model_combo.setCurrentIndex(idx)
+        elif curr:
+            self.model_combo.addItem(curr)
+            self.model_combo.setCurrentText(curr)
+        self.model_combo.blockSignals(False)
 
     def _on_model_changed(self, model: str):
         if getattr(self, "_refreshing_models", False) or not model:

@@ -15,6 +15,10 @@ from friday_core.system.telemetry import (
     get_memory_info,
     adjust_volume
 )
+from friday_core.system.office import (
+    open_blank_word,
+    open_word_with_content
+)
 
 __all__ = [
     "KNOWN_WINDOWS_APPS",
@@ -25,5 +29,7 @@ __all__ = [
     "bring_or_launch_vscode",
     "get_battery_info",
     "get_memory_info",
-    "adjust_volume"
+    "adjust_volume",
+    "open_blank_word",
+    "open_word_with_content"
 ]
