@@ -253,6 +253,9 @@ class FridayVoiceEngine:
         self.kokoro = KokoroTTSManager.get_instance()
         self.use_local_tts = settings.get("use_local_tts", USE_LOCAL_TTS)
         self.local_voice = settings.get("local_voice", LOCAL_TTS_VOICE)
+        self._current_audio_buf = None
+        self._current_sound = None
+        self._sapi_speaker = None
 
     def clean_text_for_speech(self, text: str) -> str:
         # 1. Strip complete fenced code blocks
@@ -400,13 +403,20 @@ class FridayVoiceEngine:
         active_cancel = cancel_event if cancel_event is not None else self.cancel_event
         if not audio_bytes or active_cancel.is_set() or self.cancel_event.is_set():
             return
+        if not pygame.mixer.get_init():
+            try:
+                pygame.mixer.init(frequency=24000, size=-16, channels=2, buffer=512)
+            except Exception as ex:
+                logger.warning("Pygame mixer re-initialization warning: %s", ex)
+                return
         try:
-            sound = pygame.mixer.Sound(io.BytesIO(audio_bytes))
-            channel = sound.play()
+            self._current_audio_buf = io.BytesIO(audio_bytes)
+            self._current_sound = pygame.mixer.Sound(self._current_audio_buf)
+            channel = self._current_sound.play()
             if not channel:
                 channel = pygame.mixer.find_channel(True)
                 if channel:
-                    channel.play(sound)
+                    channel.play(self._current_sound)
 
             if channel:
                 while channel.get_busy():
@@ -418,6 +428,9 @@ class FridayVoiceEngine:
                     await asyncio.sleep(0.04)
         except Exception as ex:
             logger.warning("play_audio_stream error: %s", ex)
+        finally:
+            self._current_sound = None
+            self._current_audio_buf = None
 
     async def speak_phrase_sapi(self, phrase: str, cancel_event: Optional[asyncio.Event] = None):
         """Instant in-process Windows SAPI COM fallback (zero latency, zero network)."""
@@ -426,6 +439,8 @@ class FridayVoiceEngine:
         if not clean_text or active_cancel.is_set() or self.cancel_event.is_set():
             return
         try:
+            import pythoncom
+            pythoncom.CoInitialize()
             import win32com.client
             speaker = win32com.client.Dispatch("SAPI.SpVoice")
             speaker.Rate = 2
@@ -434,6 +449,7 @@ class FridayVoiceEngine:
                 if "zira" in desc or "eva" in desc or "female" in desc:
                     speaker.Voice = v
                     break
+            self._sapi_speaker = speaker
             speaker.Speak(clean_text, 1)  # SVSFlagsAsync = 1
             while speaker.Status.RunningState == 2:
                 if active_cancel.is_set() or self.cancel_event.is_set():
@@ -443,6 +459,13 @@ class FridayVoiceEngine:
                 await asyncio.sleep(0.05)
         except Exception as ex:
             logger.debug("SAPI fallback error: %s", ex)
+        finally:
+            self._sapi_speaker = None
+            try:
+                import pythoncom
+                pythoncom.CoUninitialize()
+            except Exception:
+                pass
 
     async def speak_phrase(self, phrase: str, cancel_event: Optional[asyncio.Event] = None):
         """Synthesizes and immediately plays a single phrase with SAPI fallback."""
@@ -531,13 +554,13 @@ class FridayVoiceEngine:
     def stop_speaking(self):
         self.cancel_event.set()
         try:
-            pygame.mixer.stop()
+            if pygame.mixer.get_init():
+                pygame.mixer.stop()
         except Exception as ex:
             logger.warning("stop_speaking error: %s", ex)
         try:
-            import win32com.client
-            speaker = win32com.client.Dispatch("SAPI.SpVoice")
-            speaker.Speak("", 2)  # SVSFPurgeBeforeSpeak = 2
+            if hasattr(self, '_sapi_speaker') and self._sapi_speaker:
+                self._sapi_speaker.Speak("", 2)  # SVSFPurgeBeforeSpeak = 2
         except Exception:
             pass
         self.is_speaking = False

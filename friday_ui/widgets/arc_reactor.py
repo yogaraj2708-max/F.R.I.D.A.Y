@@ -310,3 +310,4 @@ class ArcReactorWidget(QWidget):
             painter.setPen(Qt.NoPen)
             painter.setBrush(QBrush(col))
             painter.drawEllipse(QPointF(p.x, p.y), 2.5, 2.5)
+        painter.end()

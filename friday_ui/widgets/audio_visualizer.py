@@ -178,3 +178,4 @@ class AudioVisualizerWidget(QWidget):
         pen_sec = QPen(QColor(c_start.red(), c_start.green(), c_start.blue(), 50), 1.2)
         painter.setPen(pen_sec)
         painter.drawPath(path_sec)
+        painter.end()

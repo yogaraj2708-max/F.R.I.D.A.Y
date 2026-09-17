@@ -61,19 +61,22 @@ class GlowLine(QWidget):
 
     def paintEvent(self, event):
         p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        w = self.width()
-        grad = QLinearGradient(0, 0, w, 0)
-        shimmer = 0.5 + 0.5 * math.sin(self._phase)
-        c = self._color
-        grad.setColorAt(0.0, QColor(c.red(), c.green(), c.blue(), 20))
-        grad.setColorAt(max(0, shimmer - 0.15), QColor(c.red(), c.green(), c.blue(), 40))
-        grad.setColorAt(shimmer, QColor(c.red(), c.green(), c.blue(), 200))
-        grad.setColorAt(min(1, shimmer + 0.15), QColor(c.red(), c.green(), c.blue(), 40))
-        grad.setColorAt(1.0, QColor(c.red(), c.green(), c.blue(), 20))
-        p.setPen(Qt.NoPen)
-        p.setBrush(grad)
-        p.drawRoundedRect(QRectF(0, 0, w, 2), 1, 1)
+        try:
+            p.setRenderHint(QPainter.Antialiasing)
+            w = self.width()
+            grad = QLinearGradient(0, 0, w, 0)
+            shimmer = 0.5 + 0.5 * math.sin(self._phase)
+            c = self._color
+            grad.setColorAt(0.0, QColor(c.red(), c.green(), c.blue(), 20))
+            grad.setColorAt(max(0, shimmer - 0.15), QColor(c.red(), c.green(), c.blue(), 40))
+            grad.setColorAt(shimmer, QColor(c.red(), c.green(), c.blue(), 200))
+            grad.setColorAt(min(1, shimmer + 0.15), QColor(c.red(), c.green(), c.blue(), 40))
+            grad.setColorAt(1.0, QColor(c.red(), c.green(), c.blue(), 20))
+            p.setPen(Qt.NoPen)
+            p.setBrush(grad)
+            p.drawRoundedRect(QRectF(0, 0, w, 2), 1, 1)
+        finally:
+            p.end()
 
 
 class TypingIndicator(QWidget):
@@ -114,17 +117,20 @@ class TypingIndicator(QWidget):
         if not self._visible:
             return
         p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        for i in range(3):
-            raw_s = math.sin(self._phase - i * 0.65)
-            eased_s = math.copysign(abs(raw_s) ** 1.3, raw_s)
-            offset = eased_s * 3.5
-            alpha = int(110 + 145 * max(0.0, eased_s))
-            p.setPen(Qt.NoPen)
-            p.setBrush(QColor(0, 240, 255, alpha))
-            cx = 12 + i * 18
-            cy = 12 + offset
-            p.drawEllipse(QPointF(cx, cy), 3.5, 3.5)
+        try:
+            p.setRenderHint(QPainter.Antialiasing)
+            for i in range(3):
+                raw_s = math.sin(self._phase - i * 0.65)
+                eased_s = math.copysign(abs(raw_s) ** 1.3, raw_s)
+                offset = eased_s * 3.5
+                alpha = int(110 + 145 * max(0.0, eased_s))
+                p.setPen(Qt.NoPen)
+                p.setBrush(QColor(0, 240, 255, alpha))
+                cx = 12 + i * 18
+                cy = 12 + offset
+                p.drawEllipse(QPointF(cx, cy), 3.5, 3.5)
+        finally:
+            p.end()
 
 
 class ChatView(QWidget):
@@ -1031,12 +1037,14 @@ class ChatView(QWidget):
         target = vsb.maximum()
         current = vsb.value()
         if abs(target - current) > 20:
-            anim = QPropertyAnimation(vsb, b"value", self)
-            anim.setDuration(250)
-            anim.setStartValue(current)
-            anim.setEndValue(target)
-            anim.setEasingCurve(QEasingCurve.OutCubic)
-            anim.start(QPropertyAnimation.DeleteWhenStopped)
+            if hasattr(self, '_scroll_anim') and self._scroll_anim:
+                self._scroll_anim.stop()
+            self._scroll_anim = QPropertyAnimation(vsb, b"value", self)
+            self._scroll_anim.setDuration(250)
+            self._scroll_anim.setStartValue(current)
+            self._scroll_anim.setEndValue(target)
+            self._scroll_anim.setEasingCurve(QEasingCurve.OutCubic)
+            self._scroll_anim.start()
         else:
             vsb.setValue(target)
 

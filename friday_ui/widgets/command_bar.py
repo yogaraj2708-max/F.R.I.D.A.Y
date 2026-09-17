@@ -504,6 +504,12 @@ class FloatingCommandBar(QWidget):
     def show_response(self, text: str):
         """Displays output in the expanding response card with smooth easing animation."""
         self.response_text.setMarkdown(text)
+        if not self.isVisible():
+            self._setup_position()
+            self.show()
+            self.raise_()
+            self.activateWindow()
+
         if not self.response_card.isVisible():
             self.response_card.setVisible(True)
             self.is_expanded = True
@@ -511,12 +517,14 @@ class FloatingCommandBar(QWidget):
             if not isinstance(eff, QGraphicsOpacityEffect):
                 eff = QGraphicsOpacityEffect(self.response_card)
                 self.response_card.setGraphicsEffect(eff)
-            anim = QPropertyAnimation(eff, b"opacity", self)
-            anim.setDuration(240)
-            anim.setStartValue(0.0)
-            anim.setEndValue(1.0)
-            anim.setEasingCurve(QEasingCurve.OutCubic)
-            anim.start(QPropertyAnimation.DeleteWhenStopped)
+            if hasattr(self, '_resp_anim') and self._resp_anim:
+                self._resp_anim.stop()
+            self._resp_anim = QPropertyAnimation(eff, b"opacity", self)
+            self._resp_anim.setDuration(240)
+            self._resp_anim.setStartValue(0.0)
+            self._resp_anim.setEndValue(1.0)
+            self._resp_anim.setEasingCurve(QEasingCurve.OutCubic)
+            self._resp_anim.start()
         else:
             self.is_expanded = True
         self.adjustSize()
@@ -528,13 +536,20 @@ class FloatingCommandBar(QWidget):
             if not isinstance(eff, QGraphicsOpacityEffect):
                 eff = QGraphicsOpacityEffect(self.response_card)
                 self.response_card.setGraphicsEffect(eff)
-            anim = QPropertyAnimation(eff, b"opacity", self)
-            anim.setDuration(180)
-            anim.setStartValue(1.0)
-            anim.setEndValue(0.0)
-            anim.setEasingCurve(QEasingCurve.OutCubic)
-            anim.finished.connect(lambda: (self.response_card.setVisible(False), setattr(self, 'is_expanded', False), self.adjustSize()))
-            anim.start(QPropertyAnimation.DeleteWhenStopped)
+            if hasattr(self, '_resp_anim') and self._resp_anim:
+                self._resp_anim.stop()
+            self._resp_anim = QPropertyAnimation(eff, b"opacity", self)
+            self._resp_anim.setDuration(180)
+            self._resp_anim.setStartValue(1.0)
+            self._resp_anim.setEndValue(0.0)
+            self._resp_anim.setEasingCurve(QEasingCurve.OutCubic)
+            self._resp_anim.finished.connect(self._on_hide_resp_finished)
+            self._resp_anim.start()
+
+    def _on_hide_resp_finished(self):
+        self.response_card.setVisible(False)
+        self.is_expanded = False
+        self.adjustSize()
 
     def _on_prompt_text_changed(self, text: str):
         txt = text.strip()

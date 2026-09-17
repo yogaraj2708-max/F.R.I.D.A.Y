@@ -138,6 +138,7 @@ class FridayMainWindow(FluentWindow):
         self.brain.vector_store = self.vector_store
         self._tasks = set()
         self._current_command_task = None
+        self._force_close = False
 
         self._init_window()
         self._init_sub_interfaces()
@@ -589,28 +590,6 @@ class FridayMainWindow(FluentWindow):
         if hasattr(self, 'titleBar'):
             self.titleBar.raise_()
 
-    def closeEvent(self, event):
-        """Cleanly terminates all background loops, audio streams, and exits the application."""
-        try:
-            if hasattr(self, 'voice_loop') and self.voice_loop:
-                self.voice_loop.stop()
-            if hasattr(self, 'tts') and self.tts:
-                self.tts.stop_speaking()
-            if hasattr(self, 'hud_dock') and hasattr(self.hud_dock, 'visualizer') and hasattr(self.hud_dock.visualizer, 'timer'):
-                self.hud_dock.visualizer.timer.stop()
-            if hasattr(self, 'chat_view') and hasattr(self.chat_view, 'arc_reactor') and hasattr(self.chat_view.arc_reactor, 'timer'):
-                self.chat_view.arc_reactor.timer.stop()
-            if hasattr(self, 'command_bar') and self.command_bar:
-                self.command_bar.unregister_hotkey()
-                self.command_bar.close()
-        except Exception as e:
-            logger.debug(f"Shutdown cleanup error: {e}")
-
-        event.accept()
-        QApplication.quit()
-        import os
-        os._exit(0)
-
     def hideEvent(self, event):
         """Pauses custom-paint 60fps timers to save CPU & battery when window is not visible."""
         super().hideEvent(event)
@@ -692,13 +671,27 @@ class FridayMainWindow(FluentWindow):
             self._apply_global_style()
 
     def closeEvent(self, event):
-        """Cleanly tear down all subsystems, background timers, audio, and exit application."""
+        """
+        Handles main window close event.
+        Minimizes to system tray by default if tray is active, or cleanly terminates on forced exit.
+        """
+        if not getattr(self, '_force_close', False):
+            event.ignore()
+            self.hide()
+            return
+
         try:
             self.stop_current_task()
             if hasattr(self, 'voice_loop') and self.voice_loop.running:
                 self.voice_loop.stop()
+            if hasattr(self, 'tts') and self.tts:
+                self.tts.stop_speaking()
             if hasattr(self, 'telemetry_timer') and self.telemetry_timer.isActive():
                 self.telemetry_timer.stop()
+            if hasattr(self, 'hud_dock') and hasattr(self.hud_dock, 'visualizer') and hasattr(self.hud_dock.visualizer, 'timer'):
+                self.hud_dock.visualizer.timer.stop()
+            if hasattr(self, 'chat_view') and hasattr(self.chat_view, 'arc_reactor') and hasattr(self.chat_view.arc_reactor, 'timer'):
+                self.chat_view.arc_reactor.timer.stop()
             if hasattr(self, 'command_bar') and self.command_bar:
                 self.command_bar.unregister_hotkey()
                 self.command_bar.close()
@@ -706,4 +699,10 @@ class FridayMainWindow(FluentWindow):
             logger.debug(f"Error during closeEvent cleanup: {e}")
         finally:
             super().closeEvent(event)
-            QApplication.quit()
+
+    def terminate_application(self):
+        """Force clean exit and quit QApplication."""
+        self._force_close = True
+        self.close()
+        QApplication.quit()
+

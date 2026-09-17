@@ -86,7 +86,7 @@ def main():
     app.setAttribute(Qt.AA_SynthesizeMouseForUnhandledTouchEvents, True)
     app.setApplicationName("F.R.I.D.A.Y. 2.0")
     app.setOrganizationName("Stark Industries")
-    app.setQuitOnLastWindowClosed(True)   # Cleanly terminate process when user closes window
+    app.setQuitOnLastWindowClosed(False)  # Keep running in system tray & hotkey background listener
 
     stark_icon = get_app_icon()
     app.setWindowIcon(stark_icon)
@@ -145,25 +145,31 @@ def main():
     command_bar.stop_requested.connect(window.handle_stop_requested)
 
     async def handle_bar_command(command: str):
-        command_bar.set_state("thinking")
-        window.stop_current_task()
-        window.chat_view.add_message("user", command)
-        skill_res = await window.brain.execute_smart_skill(command)
-        if skill_res:
-            if skill_res != "__STREAMED__":
-                command_bar.show_response(skill_res)
-                command_bar.set_state("idle")
-                await window.tts.speak(skill_res)
+        try:
+            command_bar.set_state("thinking")
+            window.stop_current_task()
+            window.chat_view.add_message("user", command)
+            skill_res = await window.brain.execute_smart_skill(command)
+            if skill_res:
+                if skill_res != "__STREAMED__":
+                    command_bar.show_response(skill_res)
+                    await window.tts.speak(skill_res)
+                    command_bar.set_state("idle")
+                else:
+                    command_bar.set_state("idle")
             else:
+                kb_results = window.vector_store.query(command, top_k=1)
+                kb_context = ""
+                if kb_results and kb_results[0]["score"] > 0.12:
+                    kb_context = f"\n[Relevant Local Knowledge: {kb_results[0]['content'][:300]}]"
+                prompt_text = command + kb_context if kb_context else command
+                reply = await window.brain.query_llm(prompt_text, stream_to_ui=True, stream_to_speech=True)
+                command_bar.show_response(reply)
                 command_bar.set_state("idle")
-        else:
-            kb_results = window.vector_store.query(command, top_k=1)
-            kb_context = ""
-            if kb_results and kb_results[0]["score"] > 0.12:
-                kb_context = f"\n[Relevant Local Knowledge: {kb_results[0]['content'][:300]}]"
-            prompt_text = command + kb_context if kb_context else command
-            reply = await window.brain.query_llm(prompt_text, stream_to_ui=True, stream_to_speech=True)
-            command_bar.show_response(reply)
+        except Exception as ex:
+            import logging
+            logging.getLogger("FRIDAY.App").exception("Command bar task error: %s", ex)
+            command_bar.show_response(f"⚠️ Directive processing anomaly: {ex}")
             command_bar.set_state("idle")
 
     command_bar.command_submitted.connect(lambda cmd: loop.create_task(handle_bar_command(cmd)))
@@ -197,7 +203,7 @@ def main():
     tray_menu.addSeparator()
 
     exit_action = tray_menu.addAction("Terminate Systems")
-    exit_action.triggered.connect(app.quit)
+    exit_action.triggered.connect(window.terminate_application)
 
     tray_icon.setContextMenu(tray_menu)
     tray_icon.activated.connect(lambda reason: window.showMaximized() if reason == QSystemTrayIcon.Trigger else None)

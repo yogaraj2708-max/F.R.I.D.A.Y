@@ -204,12 +204,15 @@ def generate_global_qss(theme_mode: str = "dark") -> str:
 # ── 2. Reusable Animation Toolkit ──────────────────────────────────────
 
 def fade_in(widget: QWidget, duration: int = 200, start_opacity: float = 0.0, end_opacity: float = 1.0) -> QPropertyAnimation:
-    """Applies a smooth fade-in entrance to any widget and cleanly removes the effect upon completion."""
+    """Applies a smooth fade-in entrance to any widget and cleanly restores the effect upon completion."""
     effect = widget.graphicsEffect()
     if not isinstance(effect, QGraphicsOpacityEffect):
         effect = QGraphicsOpacityEffect(widget)
         widget.setGraphicsEffect(effect)
     
+    if hasattr(widget, '_fade_anim') and widget._fade_anim:
+        widget._fade_anim.stop()
+
     anim = QPropertyAnimation(effect, b"opacity", widget)
     anim.setDuration(duration)
     anim.setStartValue(start_opacity)
@@ -218,13 +221,14 @@ def fade_in(widget: QWidget, duration: int = 200, start_opacity: float = 0.0, en
 
     def _cleanup():
         try:
-            if widget.graphicsEffect() == effect:
-                widget.setGraphicsEffect(None)
+            if hasattr(widget, 'graphicsEffect') and widget.graphicsEffect() == effect:
+                effect.setOpacity(end_opacity)
         except Exception:
             pass
 
     anim.finished.connect(_cleanup)
-    anim.start(QPropertyAnimation.DeleteWhenStopped)
+    widget._fade_anim = anim
+    anim.start()
     return anim
 
 
@@ -237,17 +241,22 @@ class SlideFadeEntrance:
             effect = QGraphicsOpacityEffect(widget)
             widget.setGraphicsEffect(effect)
 
+        if hasattr(widget, '_slide_group') and widget._slide_group:
+            widget._slide_group.stop()
+
         group = QParallelAnimationGroup(widget)
         
-        fade = QPropertyAnimation(effect, b"opacity")
+        fade = QPropertyAnimation(effect, b"opacity", group)
         fade.setDuration(duration)
         fade.setStartValue(0.0)
         fade.setEndValue(1.0)
         fade.setEasingCurve(QEasingCurve.OutCubic)
         group.addAnimation(fade)
         
-        group.start(QParallelAnimationGroup.DeleteWhenStopped)
+        widget._slide_group = group
+        group.start()
         return group
+
 
 
 class ButtonMicroInteractionFilter(QObject):
@@ -329,18 +338,21 @@ class PulsingGlowWidget(QWidget):
     def paintEvent(self, event):
         import math
         p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        w, h = self.width(), self.height()
-        cx, cy = w / 2.0, h / 2.0
-        r = min(cx, cy) - 1
+        try:
+            p.setRenderHint(QPainter.Antialiasing)
+            w, h = self.width(), self.height()
+            cx, cy = w / 2.0, h / 2.0
+            r = min(cx, cy) - 1
 
-        # Outer breathing halo
-        alpha = int(40 + 50 * (0.5 + 0.5 * math.sin(self._phase)))
-        p.setPen(Qt.NoPen)
-        p.setBrush(QColor(self._color.red(), self._color.green(), self._color.blue(), alpha))
-        p.drawEllipse(QPoint(int(cx), int(cy)), int(r), int(r))
+            # Outer breathing halo
+            alpha = int(40 + 50 * (0.5 + 0.5 * math.sin(self._phase)))
+            p.setPen(Qt.NoPen)
+            p.setBrush(QColor(self._color.red(), self._color.green(), self._color.blue(), alpha))
+            p.drawEllipse(QPoint(int(cx), int(cy)), int(r), int(r))
 
-        # Solid core dot
-        core_r = max(2.0, r * 0.45)
-        p.setBrush(self._color)
-        p.drawEllipse(QPoint(int(cx), int(cy)), int(core_r), int(core_r))
+            # Solid core dot
+            core_r = max(2.0, r * 0.45)
+            p.setBrush(self._color)
+            p.drawEllipse(QPoint(int(cx), int(cy)), int(core_r), int(core_r))
+        finally:
+            p.end()
