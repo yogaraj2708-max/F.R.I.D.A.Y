@@ -9,13 +9,14 @@ import ctypes
 from ctypes import wintypes
 import asyncio
 import logging
+import threading
 from typing import Optional, List
 
 logger = logging.getLogger("FRIDAY.CommandBar")
 
 from PySide6.QtCore import (
     Qt, Signal, QPoint, QSize, QTimer, QPropertyAnimation, QEasingCurve,
-    QAbstractNativeEventFilter, QRect, QStringListModel
+    QAbstractNativeEventFilter, QRect, QStringListModel, QObject
 )
 from PySide6.QtGui import (
     QFont, QColor, QPainter, QBrush, QPen, QLinearGradient, QMouseEvent,
@@ -37,8 +38,10 @@ from friday_ui.widgets.glass_panel import ensure_system_gestures
 
 HOTKEY_ID = 9119
 MOD_CONTROL = 0x0002
+MOD_NOREPEAT = 0x4000
 VK_SPACE = 0x20
 WM_HOTKEY = 0x0312
+WM_QUIT = 0x0012
 
 class GlobalHotKeyFilter(QAbstractNativeEventFilter):
     """Intercepts Windows WM_HOTKEY messages directly in the Qt event loop."""
@@ -48,7 +51,7 @@ class GlobalHotKeyFilter(QAbstractNativeEventFilter):
 
     def nativeEventFilter(self, eventType, message):
         try:
-            if eventType == b"windows_generic_MSG" and message:
+            if eventType in (b"windows_generic_MSG", b"windows_dispatcher_MSG") and message:
                 msg_addr = int(message)
                 if msg_addr != 0:
                     msg = wintypes.MSG.from_address(msg_addr)
@@ -67,6 +70,86 @@ class GlobalHotKeyFilter(QAbstractNativeEventFilter):
                 self.callback()
         except Exception as e:
             logger.warning(f"Error executing hotkey callback: {e}")
+
+class GlobalHotKeyListener(QObject):
+    """
+    Dedicated background Win32 thread listening for OS-wide Ctrl+Space hotkey.
+    Uses GetMessageW for zero CPU overhead and emits a thread-safe Qt Signal
+    to activate the command bar on the main UI thread.
+    """
+    hotkey_triggered = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._thread = None
+        self._thread_id = None
+        self._is_running = False
+        self._hotkey_registered = False
+
+    def start(self):
+        if self._is_running:
+            return
+        self._is_running = True
+        self._thread = threading.Thread(target=self._run, name="FridayGlobalHotkeyListener", daemon=True)
+        self._thread.start()
+
+    def stop(self):
+        self._is_running = False
+        if self._thread_id:
+            try:
+                ctypes.windll.user32.PostThreadMessageW(self._thread_id, WM_QUIT, 0, 0)
+            except Exception as e:
+                logger.debug(f"Error posting WM_QUIT to hotkey thread: {e}")
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=0.5)
+
+    def _run(self):
+        self._thread_id = ctypes.windll.kernel32.GetCurrentThreadId()
+        try:
+            # First clear any stale hotkey on this thread
+            ctypes.windll.user32.UnregisterHotKey(None, HOTKEY_ID)
+
+            # Register Ctrl+Space with MOD_NOREPEAT
+            res = ctypes.windll.user32.RegisterHotKey(
+                None, HOTKEY_ID, MOD_CONTROL | MOD_NOREPEAT, VK_SPACE
+            )
+            if not res:
+                # Fallback without MOD_NOREPEAT if unsupported
+                res = ctypes.windll.user32.RegisterHotKey(
+                    None, HOTKEY_ID, MOD_CONTROL, VK_SPACE
+                )
+
+            if res:
+                self._hotkey_registered = True
+                logger.info("Global hotkey Ctrl+Space registered successfully.")
+            else:
+                err = ctypes.GetLastError()
+                logger.warning(f"RegisterHotKey Ctrl+Space failed with Win32 error code: {err}")
+
+            msg = wintypes.MSG()
+            while self._is_running:
+                # GetMessage blocks until a message is received (0% CPU)
+                r = ctypes.windll.user32.GetMessageW(ctypes.byref(msg), None, 0, 0)
+                if r > 0:
+                    if msg.message == WM_HOTKEY and msg.wParam == HOTKEY_ID:
+                        logger.debug("Global Ctrl+Space hotkey detected, triggering command bar toggle.")
+                        self.hotkey_triggered.emit()
+                    ctypes.windll.user32.TranslateMessage(ctypes.byref(msg))
+                    ctypes.windll.user32.DispatchMessageW(ctypes.byref(msg))
+                else:
+                    # WM_QUIT (r == 0) or error (r == -1)
+                    break
+        except Exception as e:
+            logger.warning(f"Exception in global hotkey listener thread: {e}")
+        finally:
+            if self._hotkey_registered:
+                try:
+                    ctypes.windll.user32.UnregisterHotKey(None, HOTKEY_ID)
+                except Exception:
+                    pass
+                self._hotkey_registered = False
+            logger.debug("Global hotkey listener thread terminated cleanly.")
+
 
 TACTICAL_COMMANDS = [
     "open vs code",
@@ -360,26 +443,43 @@ class FloatingCommandBar(QWidget):
         self.move(x, y)
 
     def _register_global_hotkey(self):
-        """Registers global Ctrl+Space hotkey with Windows API."""
+        """Registers global Ctrl+Space hotkey with background listener thread and local shortcut."""
+        # 1. Local in-app shortcut for immediate response when bar has focus
         try:
-            res = ctypes.windll.user32.RegisterHotKey(
-                None, HOTKEY_ID, MOD_CONTROL, VK_SPACE
-            )
-            if res:
-                self._hotkey_registered = True
-                self._event_filter = GlobalHotKeyFilter(self.toggle_visibility)
-                QApplication.instance().installNativeEventFilter(self._event_filter)
+            self.local_shortcut = QShortcut(QKeySequence("Ctrl+Space"), self)
+            self.local_shortcut.activated.connect(self.toggle_visibility)
         except Exception as e:
-            logger.warning(f"Failed to register global hotkey Ctrl+Space: {e}")
+            logger.debug(f"Local shortcut init note: {e}")
+
+        # 2. Global background hotkey listener for OS-wide activation
+        try:
+            self._hotkey_listener = GlobalHotKeyListener(self)
+            self._hotkey_listener.hotkey_triggered.connect(self.toggle_visibility)
+            self._hotkey_listener.start()
+            self._hotkey_registered = True
+        except Exception as e:
+            logger.warning(f"Failed to initialize GlobalHotKeyListener: {e}")
+
+        # 3. Also keep Qt native event filter as secondary fallback
+        try:
+            self._event_filter = GlobalHotKeyFilter(self.toggle_visibility)
+            QApplication.instance().installNativeEventFilter(self._event_filter)
+        except Exception as e:
+            logger.debug(f"Native event filter registration note: {e}")
 
     def unregister_hotkey(self):
-        """Unregisters global hotkey on shutdown."""
-        if self._hotkey_registered:
+        """Unregisters global hotkey and stops listener thread on shutdown."""
+        if hasattr(self, '_hotkey_listener') and self._hotkey_listener:
             try:
-                ctypes.windll.user32.UnregisterHotKey(None, HOTKEY_ID)
-                self._hotkey_registered = False
+                self._hotkey_listener.stop()
+                self._hotkey_listener = None
             except Exception as e:
-                logger.debug(f"Failed to unregister global hotkey: {e}")
+                logger.debug(f"Failed to stop hotkey listener: {e}")
+        try:
+            ctypes.windll.user32.UnregisterHotKey(None, HOTKEY_ID)
+            self._hotkey_registered = False
+        except Exception as e:
+            logger.debug(f"Failed to unregister global hotkey: {e}")
 
     def toggle_visibility(self):
         """Toggles display and brings command bar to foreground."""
@@ -391,6 +491,11 @@ class FloatingCommandBar(QWidget):
                 self.show()
                 self.raise_()
                 self.activateWindow()
+                try:
+                    hwnd = int(self.winId())
+                    ctypes.windll.user32.SetForegroundWindow(ctypes.c_void_p(hwnd))
+                except Exception:
+                    pass
                 self.prompt_input.setFocus()
                 self.prompt_input.selectAll()
         except Exception as e:
@@ -567,3 +672,8 @@ class FloatingCommandBar(QWidget):
             self.hide()
         else:
             super().keyPressEvent(event)
+
+    def closeEvent(self, event):
+        self.unregister_hotkey()
+        super().closeEvent(event)
+

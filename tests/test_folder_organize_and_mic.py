@@ -171,6 +171,13 @@ class TestFolderOrganizeAndMic(unittest.TestCase):
             self.assertTrue(handled)
             mock_timer.assert_called_once()
 
+        # Test GlobalHotKeyListener and local in-app shortcut
+        self.assertTrue(hasattr(bar, 'local_shortcut'))
+        self.assertEqual(bar.local_shortcut.key().toString(), "Ctrl+Space")
+        self.assertTrue(hasattr(bar, '_hotkey_listener'))
+        bar.unregister_hotkey()
+        self.assertIsNone(bar._hotkey_listener)
+
     def test_organize_directory_comprehensive_categorization(self):
         import tempfile
         import shutil

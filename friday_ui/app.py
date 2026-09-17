@@ -116,6 +116,14 @@ def main():
             import logging
             logging.getLogger("FRIDAY.App").warning("Onboarding dialog launch skipped: %s", ex)
 
+    # Clean any stale hotkey registration from previous crashes
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.user32.UnregisterHotKey(None, 9119)
+        except Exception:
+            pass
+
     command_bar = FloatingCommandBar()
     command_bar.setWindowIcon(stark_icon)
     command_bar.setWindowTitle("F.R.I.D.A.Y. 2.0 Command Bar")

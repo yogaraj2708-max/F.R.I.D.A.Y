@@ -187,9 +187,18 @@ class FridayMainWindow(FluentWindow):
         self.mic_shortcut = QShortcut(QKeySequence("Ctrl+M"), self)
         self.mic_shortcut.activated.connect(self.toggle_voice_loop)
 
+        # In-app shortcut Ctrl+Space for Floating Command Bar
+        self.ctrl_space_shortcut = QShortcut(QKeySequence("Ctrl+Space"), self)
+        self.ctrl_space_shortcut.activated.connect(self._on_ctrl_space_pressed)
+
+    def _on_ctrl_space_pressed(self):
+        if getattr(self, "command_bar", None):
+            self.command_bar.toggle_visibility()
+
     def showEvent(self, event):
         super().showEvent(event)
         ensure_system_gestures(int(self.winId()))
+
 
     def _apply_global_style(self):
         """Apply Centralized Monochrome / Tactical Desktop Styling with transparent backing."""
