@@ -34,7 +34,6 @@ from qfluentwidgets import (
 
 from friday_core.settings import settings
 from friday_ui.widgets.arc_reactor import ArcReactorWidget
-from friday_ui.widgets.glass_panel import ensure_system_gestures
 
 HOTKEY_ID = 9119
 MOD_CONTROL = 0x0002
@@ -674,12 +673,6 @@ class FloatingCommandBar(QWidget):
             new_pos = event.globalPosition().toPoint() - self.drag_position
             self.move(new_pos)
             settings.update({"last_x": new_pos.x(), "last_y": new_pos.y()}, auto_save=True)
-            event.accept()
-
-    def showEvent(self, event):
-        super().showEvent(event)
-        ensure_system_gestures(int(self.winId()))
-
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
             if hasattr(self, 'stop_btn') and self.stop_btn.isVisible():

@@ -83,7 +83,6 @@ def main():
     )
 
     app = QApplication(sys.argv)
-    app.setAttribute(Qt.AA_SynthesizeMouseForUnhandledTouchEvents, True)
     app.setApplicationName("F.R.I.D.A.Y. 2.0")
     app.setOrganizationName("Stark Industries")
     app.setQuitOnLastWindowClosed(False)  # Keep running in system tray & hotkey background listener

@@ -908,12 +908,31 @@ Core Persona Rules:
 
         system_files = {"desktop.ini", "thumbs.db"}
 
+        active_wallpaper = None
+        if sys.platform == "win32":
+            try:
+                import winreg
+                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Control Panel\Desktop") as key:
+                    val, _ = winreg.QueryValueEx(key, "WallPaper")
+                    if val and os.path.exists(val):
+                        active_wallpaper = Path(val).resolve()
+            except Exception:
+                pass
+
+        is_desktop = target.name.lower() == "desktop"
+
         for item in target.iterdir():
             if item.name.startswith("."):
                 continue
 
             if item.is_file():
                 if item.name.lower() in system_files:
+                    continue
+                # Protect user's active Windows desktop wallpaper
+                if active_wallpaper and item.resolve() == active_wallpaper:
+                    continue
+                # If target is Desktop, preserve user's shortcuts and script launchers on desktop surface
+                if is_desktop and item.suffix.lower() in {".lnk", ".url", ".bat", ".cmd"}:
                     continue
                 ext = item.suffix.lower()
                 assigned_cat = None

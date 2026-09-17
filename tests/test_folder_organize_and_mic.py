@@ -233,6 +233,59 @@ class TestFolderOrganizeAndMic(unittest.TestCase):
         finally:
             shutil.rmtree(str(temp_root), ignore_errors=True)
 
+    def test_organize_directory_desktop_protects_shortcuts_and_wallpaper(self):
+        import tempfile
+        import shutil
+
+        temp_root = Path(tempfile.mkdtemp(prefix="friday_desktop_test_"))
+        desktop_dir = temp_root / "Desktop"
+        desktop_dir.mkdir()
+        try:
+            # Create files on desktop
+            shortcut_lnk = desktop_dir / "Visual Studio Code.lnk"
+            shortcut_lnk.write_text("dummy lnk")
+
+            script_bat = desktop_dir / "Start_Friday.bat"
+            script_bat.write_text("echo starting")
+
+            script_cmd = desktop_dir / "launch.cmd"
+            script_cmd.write_text("echo cmd")
+
+            web_url = desktop_dir / "Google.url"
+            web_url.write_text("[InternetShortcut]\nURL=https://google.com")
+
+            wallpaper_file = desktop_dir / "my_wallpaper.jpg"
+            wallpaper_file.write_text("wallpaper image data")
+
+            normal_doc = desktop_dir / "notes.txt"
+            normal_doc.write_text("some notes")
+
+            # Mock wallpaper detection and directory resolution
+            with patch.object(self.brain, "_resolve_target_directory", return_value=desktop_dir), \
+                 patch("winreg.OpenKey") as mock_open_key, \
+                 patch("winreg.QueryValueEx", return_value=(str(wallpaper_file), 1)), \
+                 patch("friday_ui.core.engine.gatekeeper.execute_action", return_value=MagicMock(success=True)):
+                res = asyncio.run(self.brain.organize_directory("desktop"))
+
+            self.assertIn("Successfully organized", res)
+
+            # Normal doc moved to Documents
+            self.assertTrue((desktop_dir / "Documents" / "notes.txt").exists())
+
+            # Shortcuts, bat, cmd, and url preserved directly on Desktop
+            self.assertTrue(shortcut_lnk.exists())
+            self.assertTrue(script_bat.exists())
+            self.assertTrue(script_cmd.exists())
+            self.assertTrue(web_url.exists())
+
+            # Active wallpaper preserved directly on Desktop and NOT moved
+            self.assertTrue(wallpaper_file.exists())
+            self.assertFalse((desktop_dir / "Images" / "my_wallpaper.jpg").exists())
+
+        finally:
+            shutil.rmtree(str(temp_root), ignore_errors=True)
+
 
 if __name__ == "__main__":
     unittest.main()
+

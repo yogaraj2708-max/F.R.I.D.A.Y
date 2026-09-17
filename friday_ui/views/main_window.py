@@ -33,7 +33,7 @@ from duckduckgo_search import DDGS
 from friday_ui.rag.store import FridayVectorStore
 from friday_ui.widgets.confirmation_dialog import SecurityConfirmationDialog
 from friday_ui.widgets.operations_panel import OperationsPanel
-from friday_ui.widgets.glass_panel import GlassPanel, apply_system_backdrop, ensure_system_gestures
+from friday_ui.widgets.glass_panel import GlassPanel
 from friday_ui.styles.themes import generate_global_qss, MONO_DARK, fade_in
 from friday_core.gatekeeper.gatekeeper import gatekeeper
 from friday_core.settings import settings
@@ -175,9 +175,6 @@ class FridayMainWindow(FluentWindow):
         self.setMinimumSize(950, 650)
         self.setAttribute(Qt.WA_AcceptTouchEvents, False)
         self.setMicaEffectEnabled(True)
-        hwnd = int(self.winId())
-        apply_system_backdrop(hwnd, backdrop_type=3) # Windows 11 Acrylic blur
-        ensure_system_gestures(hwnd)
         try:
             from friday_ui.app import get_app_icon
             self.setWindowIcon(get_app_icon())
@@ -195,10 +192,6 @@ class FridayMainWindow(FluentWindow):
     def _on_ctrl_space_pressed(self):
         if getattr(self, "command_bar", None):
             self.command_bar.toggle_visibility()
-
-    def showEvent(self, event):
-        super().showEvent(event)
-        ensure_system_gestures(int(self.winId()))
 
 
     def _apply_global_style(self):
