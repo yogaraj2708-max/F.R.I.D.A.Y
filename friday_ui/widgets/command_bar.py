@@ -18,7 +18,7 @@ logger = logging.getLogger("FRIDAY.CommandBar")
 
 from PySide6.QtCore import (
     Qt, Signal, QPoint, QSize, QTimer, QPropertyAnimation, QEasingCurve,
-    QAbstractNativeEventFilter, QRect, QStringListModel, QObject
+    QAbstractNativeEventFilter, QRect, QObject
 )
 from PySide6.QtGui import (
     QFont, QColor, QPainter, QBrush, QPen, QLinearGradient, QMouseEvent,
@@ -26,8 +26,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTextBrowser,
-    QFrame, QApplication, QGraphicsOpacityEffect, QSizePolicy,
-    QCompleter
+    QFrame, QApplication, QGraphicsOpacityEffect, QSizePolicy
 )
 from qfluentwidgets import (
     LineEdit, ToolButton, PushButton, PrimaryPushButton, ComboBox,
@@ -152,30 +151,6 @@ class GlobalHotKeyListener(QObject):
             logger.debug("Global hotkey listener thread terminated cleanly.")
 
 
-TACTICAL_COMMANDS = [
-    "open vs code",
-    "open visual studio code",
-    "open edge",
-    "open chrome",
-    "open notepad",
-    "open spotify",
-    "open terminal",
-    "open file explorer",
-    "kill process",
-    "terminate process",
-    "system status telemetry",
-    "check battery",
-    "check memory ram",
-    "weather",
-    "screenshot",
-    "deep comprehensive research",
-    "search youtube",
-    "search memory knowledge base",
-    "calculate 250 * 18",
-    "recycle file",
-    "delete file"
-]
-
 class FloatingCommandBar(QWidget):
     """
     Floating Tactical Command Bar matching reference layout:
@@ -249,26 +224,6 @@ class FloatingCommandBar(QWidget):
         """)
         self.prompt_input.returnPressed.connect(self._on_submit)
 
-        # Fuzzy skill / directive auto-completer
-        self.completer_model = QStringListModel(TACTICAL_COMMANDS, self)
-        self.completer = QCompleter(self.completer_model, self)
-        self.completer.setCaseSensitivity(Qt.CaseInsensitive)
-        self.completer.setFilterMode(Qt.MatchContains)
-        popup = self.completer.popup()
-        popup.setStyleSheet("""
-            QListView {
-                background-color: #0E121C;
-                border: 1px solid rgba(0, 240, 255, 0.35);
-                border-radius: 8px;
-                color: #E2E8F0;
-                font-size: 12px;
-                padding: 4px;
-                selection-background-color: rgba(0, 240, 255, 0.20);
-                selection-color: #00F0FF;
-            }
-        """)
-        self.prompt_input.setCompleter(self.completer)
-        self.prompt_input.textChanged.connect(self._on_prompt_text_changed)
 
         bar_layout.addWidget(self.prompt_input, 1)
 
@@ -540,23 +495,26 @@ class FloatingCommandBar(QWidget):
                             user32.AttachThreadInput(cur_thread, fg_thread, True)
                             user32.SetForegroundWindow(hwnd)
                             user32.BringWindowToTop(hwnd)
-                            user32.SetFocus(hwnd)
                             user32.AttachThreadInput(cur_thread, fg_thread, False)
                         else:
                             user32.SetForegroundWindow(hwnd)
                             user32.BringWindowToTop(hwnd)
-                            user32.SetFocus(hwnd)
                     else:
                         user32.SetForegroundWindow(hwnd)
                         user32.BringWindowToTop(hwnd)
-                        user32.SetFocus(hwnd)
                 except Exception as ex:
                     logger.debug(f"Foreground window activation note: {ex}")
 
-                self.prompt_input.setFocus()
-                self.prompt_input.selectAll()
+                QTimer.singleShot(0, self.prompt_input.setFocus)
+                QTimer.singleShot(0, self.prompt_input.selectAll)
         except Exception as e:
             logger.warning(f"Error toggling command bar visibility: {e}")
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.hide()
+            return
+        super().keyPressEvent(event)
 
     def show_response(self, text: str):
         """Displays output in the expanding response card with smooth easing animation."""
@@ -608,25 +566,6 @@ class FloatingCommandBar(QWidget):
         self.is_expanded = False
         self.adjustSize()
 
-    def _on_prompt_text_changed(self, text: str):
-        txt = text.strip()
-        if len(txt) >= 2:
-            candidates = []
-            try:
-                from rapidfuzz import process, fuzz
-                matches = process.extract(txt, TACTICAL_COMMANDS, scorer=fuzz.partial_ratio, limit=6, score_cutoff=40)
-                if matches:
-                    candidates = [m[0] for m in matches]
-            except Exception:
-                import difflib
-                matches = difflib.get_close_matches(txt, TACTICAL_COMMANDS, n=5, cutoff=0.3)
-                if matches:
-                    candidates = matches
-
-            if candidates:
-                self.completer_model.setStringList(candidates)
-                if self.isVisible() and self.prompt_input.hasFocus():
-                    self.completer.complete()
 
     def set_state(self, state: str):
         """Updates arc reactor and status text."""
