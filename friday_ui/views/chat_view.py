@@ -21,7 +21,7 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QLabel,
     QFrame, QSizePolicy, QGraphicsDropShadowEffect, QSpacerItem,
-    QFileDialog
+    QFileDialog, QPushButton
 )
 from qfluentwidgets import (
     PrimaryPushButton, PushButton, LineEdit, ToolButton,
@@ -134,6 +134,97 @@ class TypingIndicator(QWidget):
                 p.drawEllipse(QPointF(cx, cy), 3.5, 3.5)
         finally:
             p.end()
+
+
+class HeroWelcomeWidget(QWidget):
+    """
+    Center Canvas Empty-State Hero Welcome:
+    - Central AI Core icon
+    - Time-aware Greeting ("Good morning, Jane." / "Good evening, Boss.")
+    - Subtitle ("How can F.R.I.D.A.Y. help you today?")
+    - 3 Clickable Suggestion Cards with arrows
+    """
+    prompt_selected = Signal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("emptyHero")
+        self._init_ui()
+
+    def _init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 24, 20, 10)
+        layout.setSpacing(12)
+        layout.setAlignment(Qt.AlignCenter)
+
+        # 1. Central Icon
+        icon_box = QLabel("⚙️", self)
+        icon_box.setAlignment(Qt.AlignCenter)
+        icon_box.setFixedSize(52, 52)
+        icon_box.setStyleSheet("""
+            background-color: rgba(37, 99, 235, 0.15);
+            border: 1px solid rgba(37, 99, 235, 0.35);
+            border-radius: 26px;
+            font-size: 22px;
+        """)
+        layout.addWidget(icon_box, 0, Qt.AlignCenter)
+
+        # 2. Greeting
+        user_name = settings.get("user_name", "Jane")
+        hr = datetime.now().hour
+        if hr < 12:
+            time_greet = "Good morning"
+        elif hr < 18:
+            time_greet = "Good afternoon"
+        else:
+            time_greet = "Good evening"
+
+        self.greeting_label = QLabel(f"{time_greet}, {user_name}.", self)
+        self.greeting_label.setObjectName("heroGreeting")
+        self.greeting_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.greeting_label, 0, Qt.AlignCenter)
+
+        # 3. Subtitle
+        self.sub_label = QLabel("How can F.R.I.D.A.Y. help you today?", self)
+        self.sub_label.setObjectName("heroSubtitle")
+        self.sub_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.sub_label, 0, Qt.AlignCenter)
+
+        layout.addSpacing(10)
+
+        # 4. Suggestion Cards
+        cards = [
+            ("⚡", "Summarize the key takeaways from our Q2 investor deck."),
+            ("🎯", "Identify risks in our go-to-market plan and suggest mitigations."),
+            ("📝", "Draft an executive update on product and engineering progress.")
+        ]
+        for icon, text in cards:
+            btn = QPushButton(self)
+            btn.setObjectName("promptCard")
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setFixedHeight(48)
+            btn.setMinimumWidth(460)
+            btn.setMaximumWidth(640)
+
+            c_layout = QHBoxLayout(btn)
+            c_layout.setContentsMargins(14, 6, 14, 6)
+            c_layout.setSpacing(10)
+
+            ic = QLabel(icon)
+            ic.setStyleSheet("font-size: 14px; background: transparent;")
+            tx = QLabel(text)
+            tx.setObjectName("promptCardText")
+            tx.setStyleSheet("background: transparent; font-size: 13px; font-weight: 500;")
+            ar = QLabel("↗")
+            ar.setObjectName("promptCardArrow")
+            ar.setStyleSheet("background: transparent; font-size: 14px;")
+
+            c_layout.addWidget(ic)
+            c_layout.addWidget(tx, 1)
+            c_layout.addWidget(ar)
+
+            btn.clicked.connect(lambda checked=False, p=text: self.prompt_selected.emit(p))
+            layout.addWidget(btn, 0, Qt.AlignCenter)
 
 
 class ChatView(QWidget):
@@ -349,6 +440,12 @@ class ChatView(QWidget):
         self.chat_layout = QVBoxLayout(self.chat_container)
         self.chat_layout.setContentsMargins(12, 12, 12, 12)
         self.chat_layout.setSpacing(10)
+
+        # Center Hero Welcome
+        self.hero_widget = HeroWelcomeWidget(self.chat_container)
+        self.hero_widget.prompt_selected.connect(self._on_prompt_card_selected)
+        self.chat_layout.addWidget(self.hero_widget)
+
         self.chat_layout.addStretch(1)
 
         self.scroll_area.setWidget(self.chat_container)
@@ -364,7 +461,7 @@ class ChatView(QWidget):
         chips_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         chips_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         chips_scroll.setWidgetResizable(True)
-        chips_scroll.setFixedHeight(36)
+        chips_scroll.setFixedHeight(34)
         chips_scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
 
         chips_widget = QWidget()
@@ -374,37 +471,31 @@ class ChatView(QWidget):
         chips_layout.setSpacing(6)
 
         chip_data = [
-            ("☁️  Weather",        "weather"),
-            ("💻  VS Code",        "open vs code"),
-            ("🌐  Edge",           "open edge"),
-            ("⚡  Diagnostics",    "system status telemetry"),
-            ("📷  Screenshot",     "screenshot"),
-            ("🧮  Calculator",     "what is 250 * 18"),
-            ("📁  File Explorer",  "open file explorer"),
-            ("🎵  Spotify",        "open spotify"),
+            ("⚡ Diagnostics", "system status telemetry"),
+            ("💻 VS Code", "open vs code"),
+            ("🌐 Edge", "open edge"),
+            ("📁 File Explorer", "open file explorer"),
+            ("📷 Screenshot", "screenshot"),
+            ("☁️ Weather", "weather"),
         ]
 
         for label, query in chip_data:
             btn = PushButton(label, self)
-            btn.setFixedHeight(28)
+            btn.setFixedHeight(26)
             btn.setCursor(Qt.PointingHandCursor)
             btn.setStyleSheet("""
                 PushButton {
-                    background-color: #121214;
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    color: #D4D4D8;
+                    background-color: rgba(148, 163, 184, 0.10);
+                    border: 1px solid rgba(148, 163, 184, 0.20);
+                    color: #94A3B8;
                     font-size: 11px;
                     font-weight: 500;
-                    padding: 3px 12px;
-                    border-radius: 8px;
+                    padding: 2px 10px;
+                    border-radius: 6px;
                 }
                 PushButton:hover {
-                    background-color: #1E1E22;
-                    border: 1px solid rgba(255, 255, 255, 0.22);
+                    background-color: rgba(148, 163, 184, 0.20);
                     color: #FFFFFF;
-                }
-                PushButton:pressed {
-                    background-color: #27272A;
                 }
             """)
             btn.clicked.connect(lambda checked=False, q=query: self._on_chip_clicked(q))
@@ -414,13 +505,13 @@ class ChatView(QWidget):
         chips_scroll.setWidget(chips_widget)
         layout.addWidget(chips_scroll)
 
-        # ── 4. Attachments Bar (Staged files / active Deep Search) ──
+        # ── 4. Attachments Bar ──
         self.attachments_container = QFrame(self)
         self.attachments_container.setObjectName("attachmentsBar")
         self.attachments_container.setStyleSheet("""
             QFrame#attachmentsBar {
-                background: #0E0E11;
-                border: 1px solid rgba(255, 255, 255, 0.08);
+                background: rgba(148, 163, 184, 0.10);
+                border: 1px solid rgba(148, 163, 184, 0.20);
                 border-radius: 8px;
             }
         """)
@@ -430,125 +521,143 @@ class ChatView(QWidget):
         self.attachments_container.hide()
         layout.addWidget(self.attachments_container)
 
-        # ── 5. Modern Floating Input Controls Bar ──────────
-        input_frame = QFrame(self)
-        input_frame.setObjectName("fridayInput")
-        input_frame.setStyleSheet("""
-            QFrame#fridayInput {
-                background-color: #0A0A0C;
-                border: 1px solid rgba(255, 255, 255, 0.12);
-                border-radius: 12px;
-            }
-            QFrame#fridayInput:focus-within {
-                border: 1px solid rgba(255, 255, 255, 0.35);
-            }
-        """)
+        # ── 5. Modern Floating Input Controls Dock ──────────
+        self.input_dock = QFrame(self)
+        self.input_dock.setObjectName("inputDock")
 
-        input_layout = QHBoxLayout(input_frame)
-        input_layout.setContentsMargins(8, 6, 8, 6)
-        input_layout.setSpacing(8)
+        dock_layout = QVBoxLayout(self.input_dock)
+        dock_layout.setContentsMargins(14, 10, 14, 10)
+        dock_layout.setSpacing(8)
 
-        # '+' Action Button — modern rounded tool button
-        self.attach_btn = ToolButton(FluentIcon.ADD, self)
-        self.attach_btn.setFixedSize(34, 34)
+        # Top row: LineEdit
+        self.prompt_input = LineEdit(self.input_dock)
+        self.prompt_input.setObjectName("dockInput")
+        self.prompt_input.setPlaceholderText("Ask anything...")
+        self.prompt_input.setClearButtonEnabled(True)
+        self.prompt_input.returnPressed.connect(self._submit_prompt)
+        dock_layout.addWidget(self.prompt_input)
+
+        # Bottom row: Action controls
+        actions_row = QHBoxLayout()
+        actions_row.setContentsMargins(0, 0, 0, 0)
+        actions_row.setSpacing(8)
+
+        # Left action buttons
+        self.attach_btn = ToolButton(FluentIcon.ADD, self.input_dock)
+        self.attach_btn.setFixedSize(28, 28)
         self.attach_btn.setCursor(Qt.PointingHandCursor)
-        self.attach_btn.setToolTip("Attach Code, File, or Deep Research")
+        self.attach_btn.setToolTip("Attach Options")
         self.attach_btn.setStyleSheet("""
             ToolButton {
-                background-color: #141416;
-                border: 1px solid rgba(255, 255, 255, 0.10);
-                border-radius: 8px;
-                color: #A1A1AA;
+                background: transparent;
+                border: 1px solid rgba(148, 163, 184, 0.25);
+                border-radius: 6px;
+                color: #94A3B8;
             }
             ToolButton:hover {
-                background-color: #1E1E22;
-                border: 1px solid rgba(255, 255, 255, 0.25);
+                background: rgba(148, 163, 184, 0.15);
                 color: #FFFFFF;
             }
         """)
         self.attach_btn.clicked.connect(self._show_attach_menu)
-        input_layout.addWidget(self.attach_btn)
+        actions_row.addWidget(self.attach_btn)
 
-        # Text prompt input
-        self.prompt_input = LineEdit(self)
-        self.prompt_input.setPlaceholderText("Give F.R.I.D.A.Y. a command, ask about code, or press Ctrl+Space...")
-        self.prompt_input.setClearButtonEnabled(True)
-        self.prompt_input.setStyleSheet("""
-            LineEdit {
-                background-color: transparent;
-                border: none;
-                color: #FFFFFF;
-                font-size: 13px;
-                padding: 6px 4px;
-            }
-        """)
-        self.prompt_input.returnPressed.connect(self._submit_prompt)
-        input_layout.addWidget(self.prompt_input, 1)
+        self.attach_file_btn = PushButton("📎 Attach", self.input_dock)
+        self.attach_file_btn.setObjectName("dockButton")
+        self.attach_file_btn.setFixedHeight(28)
+        self.attach_file_btn.setCursor(Qt.PointingHandCursor)
+        self.attach_file_btn.clicked.connect(self._pick_files_to_attach)
+        actions_row.addWidget(self.attach_file_btn)
 
-        # Mic Button
-        self.mic_btn = ToolButton(FluentIcon.MICROPHONE, self)
-        self.mic_btn.setFixedSize(34, 34)
+        self.mention_btn = PushButton("@", self.input_dock)
+        self.mention_btn.setObjectName("dockButton")
+        self.mention_btn.setFixedSize(28, 28)
+        self.mention_btn.setCursor(Qt.PointingHandCursor)
+        actions_row.addWidget(self.mention_btn)
+
+        # Live voice mic toggle
+        self.mic_btn = ToolButton(FluentIcon.MICROPHONE, self.input_dock)
+        self.mic_btn.setFixedSize(28, 28)
         self.mic_btn.setCursor(Qt.PointingHandCursor)
         self.mic_btn.clicked.connect(self.voice_toggle_requested.emit)
         self.set_mic_active(False)
-        input_layout.addWidget(self.mic_btn)
+        actions_row.addWidget(self.mic_btn)
 
-        # Send / Stop Button — Dynamically transforms into Stop during active generation/speech
-        self.send_btn = PrimaryPushButton("Send", self)
-        self.send_btn.setFixedSize(80, 34)
+        actions_row.addStretch(1)
+
+        # Model selector pill
+        saved_model = settings.get("model", "F.R.I.D.A.Y. 4.0")
+        if not saved_model or "llama" in saved_model:
+            saved_model = "F.R.I.D.A.Y. 4.0"
+        self.dock_model_btn = PushButton(f"{saved_model}  ⌄", self.input_dock)
+        self.dock_model_btn.setObjectName("dockButton")
+        self.dock_model_btn.setFixedHeight(28)
+        self.dock_model_btn.setCursor(Qt.PointingHandCursor)
+        self.dock_model_btn.clicked.connect(self._show_dock_model_menu)
+        actions_row.addWidget(self.dock_model_btn)
+
+        # Send / Stop Button
+        self.send_btn = PrimaryPushButton("Send", self.input_dock)
+        self.send_btn.setObjectName("dockSendButton")
+        self.send_btn.setFixedSize(64, 28)
         self.send_btn.setCursor(Qt.PointingHandCursor)
-        self.send_btn.setStyleSheet("""
-            PrimaryPushButton {
-                background-color: #06B6D4;
-                border: none;
-                font-weight: bold;
-                font-size: 12px;
-                border-radius: 8px;
-                color: #000000;
-                letter-spacing: 0.5px;
-            }
-            PrimaryPushButton:hover {
-                background-color: #22D3EE;
-            }
-            PrimaryPushButton:pressed {
-                background-color: #0891B2;
-            }
-        """)
         self.send_btn.clicked.connect(self._on_send_btn_clicked)
-        input_layout.addWidget(self.send_btn)
+        actions_row.addWidget(self.send_btn)
 
-        # Dedicated Stop Voice Button — Prominent crimson button for interrupting vocal playback immediately
-        self.stop_btn = PushButton("■ Stop Voice", self)
-        self.stop_btn.setFixedSize(102, 34)
+        # Dedicated Stop Voice Button
+        self.stop_btn = PushButton("■ Stop", self.input_dock)
+        self.stop_btn.setFixedSize(70, 28)
         self.stop_btn.setCursor(Qt.PointingHandCursor)
-        self.stop_btn.setToolTip("Immediately stop vocal playback and generation (Esc)")
         self.stop_btn.setStyleSheet("""
             PushButton {
                 background-color: #DC2626;
                 border: 1px solid #EF4444;
                 font-weight: bold;
-                font-size: 12px;
-                border-radius: 8px;
+                font-size: 11px;
+                border-radius: 6px;
                 color: #FFFFFF;
-                letter-spacing: 0.5px;
             }
             PushButton:hover {
                 background-color: #EF4444;
-                border: 1px solid #F87171;
-            }
-            PushButton:pressed {
-                background-color: #991B1B;
             }
         """)
         self.stop_btn.clicked.connect(self.stop_generation)
         self.stop_btn.hide()
-        input_layout.addWidget(self.stop_btn)
+        actions_row.addWidget(self.stop_btn)
+
+        dock_layout.addLayout(actions_row)
+        layout.addWidget(self.input_dock)
+
+        # Disclaimer label
+        self.disclaimer_label = QLabel("F.R.I.D.A.Y. can make mistakes. Verify important information.", self)
+        self.disclaimer_label.setObjectName("disclaimerText")
+        self.disclaimer_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.disclaimer_label)
 
         self.esc_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
         self.esc_shortcut.activated.connect(self._on_escape_pressed)
 
-        self.prompt_input.setToolTip("Press Ctrl + Space to summon F.R.I.D.A.Y. HUD from anywhere in Windows")
-        layout.addWidget(input_frame)
+    def _on_prompt_card_selected(self, text: str):
+        self.prompt_input.setText(text)
+        self._submit_prompt()
+
+    def _show_dock_model_menu(self):
+        menu = RoundMenu(parent=self)
+        avail = settings.get_available_models()
+        if not avail:
+            avail = ["F.R.I.D.A.Y. 4.0", "llama3.2:3b", "qwen2.5:3b", "mistral:7b"]
+        for m in avail:
+            act = Action(m, menu)
+            act.triggered.connect(lambda checked=False, model_name=m: self._select_dock_model(model_name))
+            menu.addAction(act)
+        pos = self.dock_model_btn.mapToGlobal(self.dock_model_btn.rect().topLeft())
+        pos.setY(pos.y() - menu.sizeHint().height() - 4)
+        menu.exec(pos)
+
+    def _select_dock_model(self, model_name: str):
+        self.dock_model_btn.setText(f"{model_name}  ⌄")
+        settings.set("model", model_name)
+        self.model_changed.emit(model_name)
 
     def set_mic_active(self, active: bool):
         """Updates mic button visual appearance based on active listening or muted state."""
@@ -971,20 +1080,25 @@ class ChatView(QWidget):
         self._set_generating_state(False)
         new_id = self.session_store.create_session("New Tactical Session")
         self._load_sessions_list()
+        if hasattr(self, 'hero_widget'):
+            self.hero_widget.show()
         InfoBar.success("New Session", "Created new tactical conversation session.", parent=self, position=InfoBarPosition.TOP_RIGHT, duration=2000)
 
     def _load_session_messages(self, session_id: str):
-        # Clear existing bubbles (all except stretch item at end)
-        while self.chat_layout.count() > 1:
-            item = self.chat_layout.takeAt(0)
+        # Clear existing bubbles (preserving hero_widget)
+        for i in reversed(range(self.chat_layout.count())):
+            item = self.chat_layout.itemAt(i)
             w = item.widget()
-            if w:
+            if w and w != getattr(self, 'hero_widget', None):
                 w.deleteLater()
 
         messages = self.session_store.get_messages(session_id)
         if not messages:
-            self.add_message("friday", "F.R.I.D.A.Y. 2.0 online. Neural subsystems operational. Ready for your directive, Boss.", persist=False)
+            if hasattr(self, 'hero_widget'):
+                self.hero_widget.show()
         else:
+            if hasattr(self, 'hero_widget'):
+                self.hero_widget.hide()
             for msg in messages:
                 bubble = ChatBubble(msg["role"], msg["content"], self.chat_container)
                 insert_idx = max(0, self.chat_layout.count() - 1)
@@ -1017,6 +1131,8 @@ class ChatView(QWidget):
             return
 
         self.typing_indicator.hide_indicator()
+        if hasattr(self, 'hero_widget'):
+            self.hero_widget.hide()
         bubble = ChatBubble(role, message, self.chat_container)
         insert_idx = max(0, self.chat_layout.count() - 1)
         self.chat_layout.insertWidget(insert_idx, bubble)
