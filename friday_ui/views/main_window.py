@@ -10,11 +10,11 @@ import math
 import logging
 
 logger = logging.getLogger("FRIDAY.MainWindow")
-from PySide6.QtCore import Qt, QSize, QTimer, QRectF, QPointF, Property, QPropertyAnimation, QEasingCurve, Signal
+from PySide6.QtCore import Qt, QSize, QTimer, QRectF, QPointF, Property, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QIcon, QFont, QColor, QPainter, QLinearGradient, QPen, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
-    QGraphicsDropShadowEffect, QSizePolicy, QStackedWidget, QPushButton
+    QGraphicsDropShadowEffect, QSizePolicy, QStackedWidget
 )
 from qfluentwidgets import (
     FluentWindow, NavigationItemPosition, FluentIcon,
@@ -28,8 +28,6 @@ from friday_ui.views.chat_view import ChatView
 from friday_ui.views.rag_view import RAGView
 from friday_ui.views.research_view import ResearchView
 from friday_ui.views.settings_view import SettingsView
-from friday_ui.widgets.sidebar_view import SidebarView
-from friday_ui.widgets.inspector_view import InspectorView
 
 from duckduckgo_search import DDGS
 from friday_ui.rag.store import FridayVectorStore
@@ -40,105 +38,6 @@ from friday_ui.styles.themes import generate_global_qss, MONO_DARK, fade_in
 from friday_core.gatekeeper.gatekeeper import gatekeeper
 from friday_core.settings import settings
 from friday_core.system import get_battery_info, get_memory_info
-
-
-class TopNavBar(QFrame):
-    """
-    Top Navigation Bar matching reference design:
-    - Left: Brand title 'F . R . I . D . A . Y .'
-    - Center-Left: Navigation tabs 'Chat', 'Models', 'Files', 'Settings'
-    - Right: Theme switch button ('☀️' / '🌙') and User Profile badge ('JD')
-    """
-    tab_changed = Signal(int)
-    theme_toggled = Signal(bool)  # True = Light, False = Dark
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setObjectName("topNavBar")
-        self.setFixedHeight(50)
-        self._active_tab = 0
-        self.tab_buttons = []
-        self._init_ui()
-
-    def _init_ui(self):
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(18, 0, 18, 0)
-        layout.setSpacing(12)
-
-        # Brand title
-        brand_label = QLabel("F . R . I . D . A . Y .", self)
-        brand_label.setObjectName("brandLabel")
-        layout.addWidget(brand_label)
-        layout.addSpacing(16)
-
-        # Tabs: Chat, Models, Files, Settings
-        tabs = ["Chat", "Models", "Files", "Settings"]
-        for idx, title in enumerate(tabs):
-            btn = QPushButton(title, self)
-            btn.setObjectName("navTabButton")
-            btn.setCursor(Qt.PointingHandCursor)
-            btn.setProperty("active", "true" if idx == 0 else "false")
-            btn.clicked.connect(lambda checked=False, i=idx: self._on_tab_clicked(i))
-            self.tab_buttons.append(btn)
-            layout.addWidget(btn)
-
-        layout.addStretch(1)
-
-        # Theme Switch Button
-        current_theme = settings.get("theme_mode", "dark")
-        is_light = (current_theme == "light")
-        self.theme_btn = QPushButton(self)
-        self.theme_btn.setObjectName("themeToggleBtn")
-        self.theme_btn.setFixedSize(54, 28)
-        self.theme_btn.setCursor(Qt.PointingHandCursor)
-        self._update_theme_btn_ui(is_light)
-        self.theme_btn.clicked.connect(self._toggle_theme)
-        layout.addWidget(self.theme_btn)
-
-        # Profile Chip
-        self.profile_chip = QLabel("JD", self)
-        self.profile_chip.setObjectName("profileChip")
-        self.profile_chip.setFixedSize(28, 28)
-        self.profile_chip.setAlignment(Qt.AlignCenter)
-        self.profile_chip.setToolTip("User Profile (Jane Doe)")
-        layout.addWidget(self.profile_chip)
-
-    def _update_theme_btn_ui(self, is_light: bool):
-        icon_str = "☀️" if is_light else "🌙"
-        bg_color = "#E2E8F0" if is_light else "#1E293B"
-        text_color = "#0F172A" if is_light else "#F8FAFC"
-        self.theme_btn.setText(icon_str)
-        self.theme_btn.setToolTip("Switch to Dark Mode" if is_light else "Switch to Light Mode")
-        self.theme_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {bg_color};
-                color: {text_color};
-                border: 1px solid rgba(148, 163, 184, 0.35);
-                border-radius: 14px;
-                font-size: 13px;
-                padding: 2px;
-            }}
-            QPushButton:hover {{
-                border-color: #2563EB;
-            }}
-        """)
-
-    def _toggle_theme(self):
-        current_theme = settings.get("theme_mode", "dark")
-        new_is_light = (current_theme != "light")
-        self._update_theme_btn_ui(new_is_light)
-        self.theme_toggled.emit(new_is_light)
-
-    def _on_tab_clicked(self, index: int):
-        self.set_active_tab(index)
-        self.tab_changed.emit(index)
-
-    def set_active_tab(self, index: int):
-        self._active_tab = index
-        for i, btn in enumerate(self.tab_buttons):
-            btn.setProperty("active", "true" if i == index else "false")
-            btn.style().unpolish(btn)
-            btn.style().polish(btn)
 
 
 class HUDDockWidget(GlassPanel):
@@ -335,46 +234,31 @@ class FridayMainWindow(FluentWindow):
         )
         if hasattr(self, 'stackedWidget'):
             self.stackedWidget.setAnimationEnabled(False)
-        if hasattr(self, 'navigationInterface'):
-            self.navigationInterface.hide()
 
     def _init_hud_dock(self):
         """
-        Creates the top navigation bar, 3-column workspace (Sidebar, Center Views, Inspector),
-        and bottom HUD status dock.
+        Creates the bottom HUD dock and 3-pane workspace with OperationsPanel.
         """
         self.hud_dock = HUDDockWidget(self)
-        self.top_nav = TopNavBar(self)
-        self.sidebar_view = SidebarView(self)
-        self.inspector_view = InspectorView(self)
+        self.operations_panel = OperationsPanel(self)
 
         self.widgetLayout.removeWidget(self.stackedWidget)
-        self.widgetLayout.setContentsMargins(0, 32, 0, 0)
+        self.widgetLayout.setContentsMargins(0, 48, 0, 0)
 
         self.content_container = QWidget(self)
         self.content_vbox = QVBoxLayout(self.content_container)
         self.content_vbox.setContentsMargins(0, 0, 0, 0)
         self.content_vbox.setSpacing(0)
 
-        # 1. Top Navigation Bar
-        self.content_vbox.addWidget(self.top_nav, 0)
-
-        # 2. 3-Column Center Workspace
+        # 3-Pane Center Workspace (Center Stacked Views + Right Operations Panel)
         self.workspace_container = QWidget(self)
         self.workspace_hbox = QHBoxLayout(self.workspace_container)
         self.workspace_hbox.setContentsMargins(0, 0, 0, 0)
         self.workspace_hbox.setSpacing(0)
-
-        # Left: Sidebar
-        self.workspace_hbox.addWidget(self.sidebar_view, 0)
-        # Center: Views Stack
         self.workspace_hbox.addWidget(self.stackedWidget, 1)
-        # Right: Inspector Panel
-        self.workspace_hbox.addWidget(self.inspector_view, 0)
+        self.workspace_hbox.addWidget(self.operations_panel, 0)
 
         self.content_vbox.addWidget(self.workspace_container, 1)
-
-        # 3. Bottom HUD status dock
         self.content_vbox.addWidget(self.hud_dock, 0)
 
         self.widgetLayout.addWidget(self.content_container)
@@ -390,24 +274,14 @@ class FridayMainWindow(FluentWindow):
         return self.hud_dock
 
     def _connect_signals(self):
-        # Top Nav signals
-        self.top_nav.tab_changed.connect(self._on_nav_tab_changed)
-        self.top_nav.theme_toggled.connect(self._on_theme_toggled)
-
-        # Sidebar signals
-        self.sidebar_view.new_chat_requested.connect(self._on_sidebar_new_chat)
-        self.sidebar_view.session_selected.connect(self._on_sidebar_session_selected)
-
-        # Inspector signals
-        self.inspector_view.view_all_files_requested.connect(self._on_inspector_view_all_files)
-        self.chat_view.model_changed.connect(self.inspector_view.update_model)
-
         # Engine -> UI signals
         self.signals.transcript_received.connect(self.chat_view.add_message)
         self.signals.stream_started.connect(self.chat_view.start_stream)
         self.signals.stream_token.connect(self.chat_view.append_token)
         self.signals.stream_finished.connect(self.chat_view.finish_stream)
         self.signals.status_updated.connect(self.chat_view.update_status)
+        self.signals.stream_started.connect(lambda role, status: self.operations_panel.add_audit("STREAM", f"Started: {status[:25]}", "#06B6D4"))
+        self.signals.stream_finished.connect(lambda text: self.operations_panel.add_audit("LLM", f"Completed: {len(text)} chars", "#10B981"))
         self.signals.speech_level_changed.connect(self.hud_dock.visualizer.update_audio_level)
         self.signals.speech_level_changed.connect(self.chat_view.update_energy)
         self.signals.state_changed.connect(self._on_engine_state_changed)
@@ -425,53 +299,11 @@ class FridayMainWindow(FluentWindow):
         self.chat_view.stop_requested.connect(self.handle_stop_requested)
         self.chat_view.model_changed.connect(self._on_model_quick_switched)
         self.chat_view.voice_changed.connect(self._on_voice_quick_switched)
+        self.operations_panel.quick_command_triggered.connect(self.handle_user_command)
         self.rag_view.document_ingested.connect(self.handle_doc_ingest)
         self.rag_view.query_requested.connect(self.handle_rag_query)
         self.research_view.research_requested.connect(self.handle_research)
         self.settings_view.settings_saved.connect(self.handle_settings_update)
-
-    def _on_nav_tab_changed(self, index: int):
-        if index == 0:
-            self.stackedWidget.setCurrentWidget(self.chat_view)
-            self.inspector_view.show()
-        elif index == 1:
-            self.stackedWidget.setCurrentWidget(self.research_view)
-            self.inspector_view.hide()
-        elif index == 2:
-            self.stackedWidget.setCurrentWidget(self.rag_view)
-            self.inspector_view.hide()
-        elif index == 3:
-            self.stackedWidget.setCurrentWidget(self.settings_view)
-            self.inspector_view.hide()
-
-    def _on_theme_toggled(self, is_light: bool):
-        new_mode = "light" if is_light else "dark"
-        settings.set("theme_mode", new_mode)
-        setTheme(Theme.LIGHT if is_light else Theme.DARK)
-        self._apply_global_style()
-        for w in [self.sidebar_view, self.inspector_view, self.chat_view, self.top_nav, self.hud_dock]:
-            if hasattr(w, 'style'):
-                w.style().unpolish(w)
-                w.style().polish(w)
-                w.update()
-
-    def _on_sidebar_new_chat(self):
-        self.chat_view._on_new_session()
-        self.top_nav.set_active_tab(0)
-        self.stackedWidget.setCurrentWidget(self.chat_view)
-        self.inspector_view.show()
-
-    def _on_sidebar_session_selected(self, session_id: str):
-        self.chat_view.current_session_id = session_id
-        self.chat_view._load_session_messages(session_id)
-        self.top_nav.set_active_tab(0)
-        self.stackedWidget.setCurrentWidget(self.chat_view)
-        self.inspector_view.show()
-
-    def _on_inspector_view_all_files(self):
-        self.top_nav.set_active_tab(2)
-        self.stackedWidget.setCurrentWidget(self.rag_view)
-        self.inspector_view.hide()
 
     def _on_model_quick_switched(self, model_name: str):
         self.brain.model = model_name
