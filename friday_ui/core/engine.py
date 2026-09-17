@@ -823,43 +823,107 @@ Core Persona Rules:
                     return cand
         return None
 
+    @staticmethod
+    def _is_project_directory(folder: Path) -> bool:
+        """Determines if a subfolder is a software or coding project."""
+        try:
+            markers = {
+                ".git", ".vscode", ".idea", "package.json", "requirements.txt",
+                "cmakelists.txt", "pom.xml", "build.gradle", "cargo.toml",
+                "makefile", ".sln", ".vcxproj"
+            }
+            for sub in folder.iterdir():
+                if sub.name.lower() in markers:
+                    return True
+                if sub.is_file() and sub.suffix.lower() in {".py", ".cpp", ".c", ".h", ".js", ".ts", ".html", ".java", ".cs"}:
+                    return True
+            name_lower = folder.name.lower()
+            if any(name_lower.endswith(suf) for suf in [".cpp", "_cpp", "-server", "_server", "-system", "_system"]):
+                return True
+            if name_lower.startswith("ai_") or "collab" in name_lower or "backup" in name_lower:
+                return True
+        except Exception:
+            pass
+        return False
+
     async def organize_directory(self, folder_keyword: str = "downloads") -> str:
         target = self._resolve_target_directory(folder_keyword)
         if not target or not target.exists():
             return f"Directory '{folder_keyword}' not found, Boss."
 
+        # Avoid redundant Documents/Documents nesting
+        doc_cat = "PDFs & Text" if target.name.lower() == "documents" else "Documents"
+
         extensions_map = {
-            "Images": [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".ico", ".tiff", ".heic"],
-            "Word": [".docx", ".doc"],
-            "PowerPoint": [".pptx", ".ppt", ".ppsx"],
-            "Excel": [".xlsx", ".xls", ".csv"],
-            "Documents": [".pdf", ".txt", ".rtf", ".md", ".epub"],
-            "Installers": [".exe", ".msi", ".msix", ".appx", ".iso", ".bat", ".cmd"],
-            "Archives": [".zip", ".rar", ".7z", ".tar", ".gz", ".bz2"],
-            "Code": [".py", ".js", ".html", ".css", ".json", ".cpp", ".java", ".ts", ".c", ".h", ".cs", ".php", ".sql"],
-            "Media": [".mp3", ".wav", ".mp4", ".mkv", ".mov", ".flac", ".avi", ".webm", ".m4a"]
+            "Images": [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".ico", ".tiff", ".heic", ".raw", ".psd"],
+            "Word": [".docx", ".doc", ".dotx", ".rtf", ".odt"],
+            "PowerPoint": [".pptx", ".ppt", ".ppsx", ".odp", ".key"],
+            "Excel": [".xlsx", ".xls", ".csv", ".tsv", ".ods", ".xlsm"],
+            doc_cat: [".pdf", ".txt", ".md", ".epub", ".mobi", ".tex", ".log"],
+            "Installers": [".exe", ".msi", ".msix", ".appx", ".iso", ".bat", ".cmd", ".ps1", ".vbs", ".reg"],
+            "Archives": [".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz"],
+            "Code": [".py", ".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".json", ".cpp", ".java", ".c", ".h", ".hpp", ".cs", ".php", ".sql", ".ipynb", ".yaml", ".yml", ".toml", ".xml", ".sh", ".rs", ".go"],
+            "Media": [".mp3", ".wav", ".mp4", ".mkv", ".mov", ".flac", ".avi", ".webm", ".m4a", ".aac", ".ogg", ".wma"],
+            "Shortcuts": [".lnk", ".url"]
         }
 
+        # Folders that must NEVER be moved or restructured
+        protected_folder_names = {
+            "jarvis voice", "friday voice", "friday", "jarvis",
+            "windowspowershell", "custom office templates", "rockstar games",
+            "rainmeter", "arduino", "github", "college", "alfin practicum", "alphin practicum"
+        }
+        category_folder_names = {
+            "projects", "code", "archives", "images", "word", "powerpoint", "excel",
+            "documents", "pdfs & text", "installers", "media", "shortcuts", "miscellaneous"
+        }
+
+        current_workspace = Path(os.getcwd()).resolve()
+
         files_to_move = []
+        folders_to_move = []
+
+        system_files = {"desktop.ini", "thumbs.db"}
+
         for item in target.iterdir():
-            if item.is_file() and not item.name.startswith("."):
+            if item.name.startswith("."):
+                continue
+
+            if item.is_file():
+                if item.name.lower() in system_files:
+                    continue
                 ext = item.suffix.lower()
+                assigned_cat = None
                 for cat, exts in extensions_map.items():
                     if ext in exts:
-                        files_to_move.append((item, cat))
+                        assigned_cat = cat
                         break
+                if not assigned_cat:
+                    assigned_cat = "Miscellaneous"
+                files_to_move.append((item, assigned_cat))
 
-        if not files_to_move:
+            elif item.is_dir() and target.name.lower() == "documents":
+                # Only organize project directories in Documents
+                item_res = item.resolve()
+                if item_res == current_workspace or item_res in current_workspace.parents or current_workspace in item_res.parents:
+                    continue
+                name_lower = item.name.lower()
+                if name_lower in protected_folder_names or name_lower in category_folder_names:
+                    continue
+                if self._is_project_directory(item):
+                    folders_to_move.append(item)
+
+        if not files_to_move and not folders_to_move:
             return f"Directory '{target.name}' is already clean and organized, Boss."
 
-        desc = f"Organize {len(files_to_move)} files in {target.name} into categories"
+        desc = f"Organize {len(files_to_move)} files and {len(folders_to_move)} folders in {target.name}"
         intent = ActionIntent(action="organize_files", target=str(target), params={"description": desc}, confirmed=True)
         res = gatekeeper.execute_action(intent)
         if not res.success:
             return f"File organization aborted: {res.message}"
 
         moved_counts = {}
-        total = 0
+        total_files = 0
         for src, cat in files_to_move:
             cat_dir = target / cat
             cat_dir.mkdir(exist_ok=True)
@@ -869,13 +933,35 @@ Core Persona Rules:
             try:
                 shutil.move(str(src), str(dst))
                 moved_counts[cat] = moved_counts.get(cat, 0) + 1
-                total += 1
+                total_files += 1
             except Exception as ex:
-                logger.warning(f"Failed to move {src.name}: {ex}")
+                logger.warning(f"Failed to move file {src.name}: {ex}")
+
+        total_folders = 0
+        if folders_to_move:
+            projects_dir = target / "Projects"
+            projects_dir.mkdir(exist_ok=True)
+            for f_src in folders_to_move:
+                dst = projects_dir / f_src.name
+                if dst.exists():
+                    dst = projects_dir / f"{f_src.name}_{int(time.time())}"
+                try:
+                    shutil.move(str(f_src), str(dst))
+                    total_folders += 1
+                except Exception as ex:
+                    logger.warning(f"Failed to move directory {f_src.name}: {ex}")
 
         play_chime(CHIME_CONFIRM)
-        summary = ", ".join(f"{cnt} {k}" for k, cnt in moved_counts.items())
-        return f"Successfully organized {total} files in {target.name} ({summary}), Boss."
+
+        summary_parts = []
+        if total_files > 0:
+            cat_details = ", ".join(f"{cnt} {k}" for k, cnt in moved_counts.items())
+            summary_parts.append(f"{total_files} file{'s' if total_files != 1 else ''} ({cat_details})")
+        if total_folders > 0:
+            summary_parts.append(f"{total_folders} project folder{'s' if total_folders != 1 else ''} into 'Projects'")
+
+        summary_text = " and ".join(summary_parts)
+        return f"Successfully organized {summary_text} in {target.name}, Boss."
 
     def find_recent_files(self, cmd: str) -> str:
         user_home = Path(os.path.expanduser("~"))

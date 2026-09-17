@@ -131,6 +131,101 @@ class TestFolderOrganizeAndMic(unittest.TestCase):
         self.assertIsNotNone(res2)
         self.assertTrue("Desktop" in res2 or "clean" in res2)
 
+    def test_command_bar_hotkey_filter_and_safe_toggle(self):
+        from friday_ui.widgets.command_bar import FloatingCommandBar, GlobalHotKeyFilter, HOTKEY_ID, WM_HOTKEY
+        import ctypes
+        from ctypes import wintypes
+
+        bar = FloatingCommandBar()
+        bar.hide()
+        self.assertFalse(bar.isVisible())
+
+        # Test toggle_visibility
+        bar.toggle_visibility()
+        self.assertTrue(bar.isVisible())
+        bar.toggle_visibility()
+        self.assertFalse(bar.isVisible())
+
+        # Test _setup_position resiliency when primaryScreen() is mocked as None
+        with patch("PySide6.QtWidgets.QApplication.primaryScreen", return_value=None):
+            bar._setup_position()
+            self.assertGreaterEqual(bar.x(), 0)
+            self.assertGreaterEqual(bar.y(), 0)
+
+        # Test GlobalHotKeyFilter with invalid / null message
+        filter_instance = GlobalHotKeyFilter(bar.toggle_visibility)
+        handled, ret = filter_instance.nativeEventFilter(b"other_event", None)
+        self.assertFalse(handled)
+
+        handled, ret = filter_instance.nativeEventFilter(b"windows_generic_MSG", 0)
+        self.assertFalse(handled)
+
+        # Test GlobalHotKeyFilter with simulated WM_HOTKEY message
+        fake_msg = wintypes.MSG()
+        fake_msg.message = WM_HOTKEY
+        fake_msg.wParam = HOTKEY_ID
+        msg_ptr = ctypes.addressof(fake_msg)
+
+        with patch("PySide6.QtCore.QTimer.singleShot") as mock_timer:
+            handled, ret = filter_instance.nativeEventFilter(b"windows_generic_MSG", msg_ptr)
+            self.assertTrue(handled)
+            mock_timer.assert_called_once()
+
+    def test_organize_directory_comprehensive_categorization(self):
+        import tempfile
+        import shutil
+
+        temp_root = Path(tempfile.mkdtemp(prefix="friday_test_root_"))
+        temp_dir = temp_root / "Documents"
+        temp_dir.mkdir()
+        try:
+            # Create files
+            pdf_file = temp_dir / "research_paper.pdf"
+            pdf_file.write_text("sample pdf content")
+
+            doc_file = temp_dir / "report.docx"
+            doc_file.write_text("sample docx content")
+
+            shortcut_file = temp_dir / "Recycle Bin.lnk"
+            shortcut_file.write_text("sample lnk content")
+
+            misc_file = temp_dir / "data.xyz"
+            misc_file.write_text("unknown extension data")
+
+            # Create mock project folder
+            proj_folder = temp_dir / "smart-library-system"
+            proj_folder.mkdir()
+            (proj_folder / ".git").mkdir()
+            (proj_folder / "main.py").write_text("print('hello')")
+
+            # Create protected folder
+            protected_folder = temp_dir / "jarvis voice"
+            protected_folder.mkdir()
+            (protected_folder / "workspace.txt").write_text("workspace")
+
+            # Patch _resolve_target_directory to return this temp_dir named "Documents"
+            with patch.object(self.brain, "_resolve_target_directory", return_value=temp_dir), \
+                 patch("friday_ui.core.engine.gatekeeper.execute_action", return_value=MagicMock(success=True)):
+                res = asyncio.run(self.brain.organize_directory("documents"))
+
+            self.assertIn("Successfully organized", res)
+
+            # Check moved files
+            self.assertTrue((temp_dir / "PDFs & Text" / "research_paper.pdf").exists())
+            self.assertTrue((temp_dir / "Word" / "report.docx").exists())
+            self.assertTrue((temp_dir / "Shortcuts" / "Recycle Bin.lnk").exists())
+            self.assertTrue((temp_dir / "Miscellaneous" / "data.xyz").exists())
+
+            # Check moved project folder
+            self.assertTrue((temp_dir / "Projects" / "smart-library-system").exists())
+
+            # Check protected folder was NOT moved
+            self.assertTrue((temp_dir / "jarvis voice").exists())
+            self.assertFalse((temp_dir / "Projects" / "jarvis voice").exists())
+
+        finally:
+            shutil.rmtree(str(temp_root), ignore_errors=True)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -47,14 +47,25 @@ class GlobalHotKeyFilter(QAbstractNativeEventFilter):
 
     def nativeEventFilter(self, eventType, message):
         try:
-            if eventType == b"windows_generic_MSG":
-                msg = wintypes.MSG.from_address(message.__int__())
-                if msg.message == WM_HOTKEY and msg.wParam == HOTKEY_ID:
-                    self.callback()
-                    return True, 0
+            if eventType == b"windows_generic_MSG" and message:
+                msg_addr = int(message)
+                if msg_addr != 0:
+                    msg = wintypes.MSG.from_address(msg_addr)
+                    if msg.message == WM_HOTKEY and msg.wParam == HOTKEY_ID:
+                        # Defer GUI activation to next Qt event loop iteration to avoid
+                        # re-entrant Win32 native event dispatch crash (Access Violation 0xC0000005)
+                        QTimer.singleShot(0, self._trigger_callback)
+                        return True, 0
         except Exception as e:
             logger.debug(f"WM_HOTKEY message interception exception: {e}")
         return False, 0
+
+    def _trigger_callback(self):
+        try:
+            if callable(self.callback):
+                self.callback()
+        except Exception as e:
+            logger.warning(f"Error executing hotkey callback: {e}")
 
 TACTICAL_COMMANDS = [
     "open vs code",
@@ -323,20 +334,25 @@ class FloatingCommandBar(QWidget):
 
     def _setup_position(self):
         """Places the bar on screen according to user settings or last saved coords."""
-        screen = QApplication.primaryScreen().availableGeometry()
+        try:
+            primary = QApplication.primaryScreen()
+            screen = primary.availableGeometry() if primary else QRect(0, 0, 1920, 1080)
+        except Exception:
+            screen = QRect(0, 0, 1920, 1080)
+
         pos_mode = settings.get("command_bar_position", "top")
         last_x = settings.get("last_x", -1)
         last_y = settings.get("last_y", -1)
 
         w = 740
         if pos_mode == "last" and last_x >= 0 and last_y >= 0:
-            x = min(screen.width() - w, max(0, last_x))
-            y = min(screen.height() - 100, max(0, last_y))
+            x = min(max(0, screen.width() - w), max(0, last_x))
+            y = min(max(0, screen.height() - 100), max(0, last_y))
         elif pos_mode == "bottom":
-            x = (screen.width() - w) // 2
-            y = screen.height() - 140
+            x = max(0, (screen.width() - w) // 2)
+            y = max(0, screen.height() - 140)
         else: # Default: Top
-            x = (screen.width() - w) // 2
+            x = max(0, (screen.width() - w) // 2)
             y = 70
 
         self.move(x, y)
@@ -365,14 +381,18 @@ class FloatingCommandBar(QWidget):
 
     def toggle_visibility(self):
         """Toggles display and brings command bar to foreground."""
-        if self.isVisible():
-            self.hide()
-        else:
-            self.show()
-            self.raise_()
-            self.activateWindow()
-            self.prompt_input.setFocus()
-            self.prompt_input.selectAll()
+        try:
+            if self.isVisible():
+                self.hide()
+            else:
+                self._setup_position()
+                self.show()
+                self.raise_()
+                self.activateWindow()
+                self.prompt_input.setFocus()
+                self.prompt_input.selectAll()
+        except Exception as e:
+            logger.warning(f"Error toggling command bar visibility: {e}")
 
     def show_response(self, text: str):
         """Displays output in the expanding response card with smooth easing animation."""
@@ -450,7 +470,7 @@ class FloatingCommandBar(QWidget):
 
     def _on_settings_model_sync(self, key: str, value):
         if key in ("model", "custom_models"):
-            self.refresh_models()
+            QTimer.singleShot(0, self.refresh_models)
 
     def refresh_models(self):
         self._refreshing_models = True
