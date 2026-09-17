@@ -33,7 +33,7 @@ from duckduckgo_search import DDGS
 from friday_ui.rag.store import FridayVectorStore
 from friday_ui.widgets.confirmation_dialog import SecurityConfirmationDialog
 from friday_ui.widgets.operations_panel import OperationsPanel
-from friday_ui.widgets.glass_panel import GlassPanel, apply_system_backdrop
+from friday_ui.widgets.glass_panel import GlassPanel, apply_system_backdrop, ensure_system_gestures
 from friday_ui.styles.themes import generate_global_qss, MONO_DARK, fade_in
 from friday_core.gatekeeper.gatekeeper import gatekeeper
 from friday_core.settings import settings
@@ -172,8 +172,11 @@ class FridayMainWindow(FluentWindow):
         self.setWindowTitle("F.R.I.D.A.Y. 2.0 - Tactical Personal Assistant")
         self.resize(1200, 800)
         self.setMinimumSize(950, 650)
+        self.setAttribute(Qt.WA_AcceptTouchEvents, False)
         self.setMicaEffectEnabled(True)
-        apply_system_backdrop(int(self.winId()), backdrop_type=3) # Windows 11 Acrylic blur
+        hwnd = int(self.winId())
+        apply_system_backdrop(hwnd, backdrop_type=3) # Windows 11 Acrylic blur
+        ensure_system_gestures(hwnd)
         try:
             from friday_ui.app import get_app_icon
             self.setWindowIcon(get_app_icon())
@@ -183,6 +186,10 @@ class FridayMainWindow(FluentWindow):
         # Global Hotkey Ctrl+M for Microphone Mute / Unmute
         self.mic_shortcut = QShortcut(QKeySequence("Ctrl+M"), self)
         self.mic_shortcut.activated.connect(self.toggle_voice_loop)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        ensure_system_gestures(int(self.winId()))
 
     def _apply_global_style(self):
         """Apply Centralized Monochrome / Tactical Desktop Styling with transparent backing."""
