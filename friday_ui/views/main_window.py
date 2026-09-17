@@ -666,36 +666,52 @@ class FridayMainWindow(FluentWindow):
     def closeEvent(self, event):
         """
         Handles main window close event.
-        Minimizes to system tray by default if tray is active, or cleanly terminates on forced exit.
+        Ensures all speech, audio playback, background tasks, and voice loops
+        are immediately and completely terminated.
         """
-        if not getattr(self, '_force_close', False):
-            event.ignore()
-            self.hide()
-            return
-
+        # 1. Immediately silence all speech, cancel LLM streaming, and halt voice listening
         try:
             self.stop_current_task()
-            if hasattr(self, 'voice_loop') and self.voice_loop.running:
-                self.voice_loop.stop()
             if hasattr(self, 'tts') and self.tts:
                 self.tts.stop_speaking()
+            if hasattr(self, 'brain') and hasattr(self.brain, 'abort_generation'):
+                self.brain.abort_generation()
+            if hasattr(self, 'voice_loop') and self.voice_loop.running:
+                self.voice_loop.stop()
+            if getattr(self, 'voice_task', None) and not self.voice_task.done():
+                self.voice_task.cancel()
+                self.voice_task = None
             if hasattr(self, 'telemetry_timer') and self.telemetry_timer.isActive():
                 self.telemetry_timer.stop()
             if hasattr(self, 'hud_dock') and hasattr(self.hud_dock, 'visualizer') and hasattr(self.hud_dock.visualizer, 'timer'):
                 self.hud_dock.visualizer.timer.stop()
             if hasattr(self, 'chat_view') and hasattr(self.chat_view, 'arc_reactor') and hasattr(self.chat_view.arc_reactor, 'timer'):
                 self.chat_view.arc_reactor.timer.stop()
+        except Exception as e:
+            logger.debug(f"Error during closeEvent audio cleanup: {e}")
+
+        # 2. Check if user explicitly configured close_to_tray (default is False: fully quit)
+        close_to_tray = settings.get("close_to_tray", False)
+        if close_to_tray and not getattr(self, '_force_close', False):
+            event.ignore()
+            self.hide()
+            return
+
+        # 3. Clean exit: unregister global hotkeys and quit application
+        try:
             if hasattr(self, 'command_bar') and self.command_bar:
                 self.command_bar.unregister_hotkey()
                 self.command_bar.close()
         except Exception as e:
-            logger.debug(f"Error during closeEvent cleanup: {e}")
+            logger.debug(f"Error closing command bar: {e}")
         finally:
             super().closeEvent(event)
+            QApplication.quit()
 
     def terminate_application(self):
         """Force clean exit and quit QApplication."""
         self._force_close = True
         self.close()
         QApplication.quit()
+
 
