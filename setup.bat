@@ -7,7 +7,7 @@ echo    F.R.I.D.A.Y. 2.0 - Environment and Dependency Setup
 echo =======================================================
 echo.
 
-echo [1/3] Detecting compatible Python installation (3.10, 3.11, or 3.12)...
+echo [1/4] Detecting compatible Python installation (3.10, 3.11, or 3.12)...
 
 set "BASE_PYTHON="
 
@@ -52,7 +52,7 @@ for /f "tokens=*" %%v in ('%BASE_PYTHON% --version 2^>^&1') do set "ACTIVE_PY_VE
 echo Compatible Python detected: %ACTIVE_PY_VER% (%BASE_PYTHON%)
 
 echo.
-echo [2/3] Setting up Python environment (.venv)...
+echo [2/4] Setting up Python environment (.venv)...
 
 :: Check existing .venv compatibility.
 :: NOTE: %errorlevel% must not be read inside a parenthesised block -- cmd.exe
@@ -97,7 +97,7 @@ set "PYTHON_EXE=%BASE_PYTHON%"
 
 :install_deps
 echo.
-echo [3/3] Installing all required dependencies...
+echo [3/4] Installing all required dependencies...
 echo Using Python interpreter: %PYTHON_EXE%
 echo.
 
@@ -111,6 +111,10 @@ if %errorlevel% equ 0 (
 "%PYTHON_EXE%" -m pip install --upgrade pip
 "%PYTHON_EXE%" -m pip install -r requirements.txt
 if errorlevel 1 goto :install_error
+
+echo.
+echo [4/4] Setting up Tactical Decision Engine (Ollama Decision Model)...
+"%PYTHON_EXE%" scripts\setup_decision_model.py
 
 echo.
 echo Creating Desktop Shortcut and registering application icon...
