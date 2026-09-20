@@ -81,7 +81,8 @@ INTENT_EXEMPLARS: Dict[SkillIntent, List[str]] = {
         "skip song", "next track", "previous track", "resume playback", "pause song",
         "play songs on spotify", "spotify play rock", "mute spotify", "unmute spotify",
         "drop the needle", "spin some tracks", "play some tunes", "put on some music",
-        "play lofi beats", "stream music", "listen to music"
+        "play lofi beats", "stream music", "listen to music",
+        "open youtube and play", "open youtibe and olay socle", "open and play", "olay music", "open youtibe and olay"
     ],
     SkillIntent.DESKTOP_AUDIO: [
         "volume up", "crank the volume", "turn up the sound", "turn up the volume", "volume down", "lower the volume",
@@ -184,9 +185,11 @@ def extract_parameters(intent: SkillIntent, text: str) -> Dict[str, Any]:
             app = "chrome"
         params["app_name"] = app
     elif intent == SkillIntent.MEDIA_CONTROL:
-        m = re.search(r"\b(?:play|stream|listen to)\s+(.+)$", clean)
+        norm_clean = re.sub(r"\byou\s*t[ui]be\b|\byuotube\b|\byotube\b", "youtube", clean)
+        norm_clean = re.sub(r"\b(?:olay|ply|plsy|paly)\b", "play", norm_clean)
+        m = re.search(r"\b(?:play|stream|listen to)\s+(.+)$", norm_clean)
         if m:
-            params["target"] = m.group(1).strip()
+            params["target"] = m.group(1).replace("on youtube", "").replace("on spotify", "").strip()
     elif intent == SkillIntent.DEEP_RESEARCH:
         query = re.sub(r"^(?:deep\s+research|deeply\s+research|investigate|research)\s+(?:on|about)?\s*", "", clean).strip()
         params["query"] = query

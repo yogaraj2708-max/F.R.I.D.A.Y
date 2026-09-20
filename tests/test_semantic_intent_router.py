@@ -176,6 +176,12 @@ class TestFridayBrainSemanticIntegration(unittest.TestCase):
         self.assertIsNotNone(res_wrd)
         self.assertTrue("word" in res_wrd.lower())
 
+    def test_youtube_typo_media_dispatch(self):
+        # "open youtibe and olay socle" typo must map to YouTube media play rather than chat hallucination
+        res = asyncio.run(self.brain.execute_smart_skill("open youtibe and olay socle"))
+        self.assertIsNotNone(res)
+        self.assertTrue("youtube" in res.lower() or "playing" in res.lower())
+
 
 if __name__ == "__main__":
     unittest.main()

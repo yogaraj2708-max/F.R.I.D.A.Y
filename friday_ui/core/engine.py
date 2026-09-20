@@ -1735,7 +1735,9 @@ Core Persona Rules:
         elif intent == SkillIntent.MEDIA_CONTROL:
             target = entities.get("target", "")
             if not target:
-                m = re.search(r"(?:play|put on|stream|listen to|crank)\s+(.+)", cmd_clean)
+                norm_cmd = re.sub(r"\byou\s*t[ui]be\b|\byuotube\b|\byotube\b", "youtube", cmd_clean)
+                norm_cmd = re.sub(r"\b(?:olay|ply|plsy|paly)\b", "play", norm_cmd)
+                m = re.search(r"(?:play|put on|stream|listen to|crank)\s+(.+)", norm_cmd)
                 if m:
                     target = m.group(1).replace("on youtube", "").replace("on spotify", "").strip()
             if not target or target in ["tunes", "music", "songs"]:
@@ -1817,7 +1819,8 @@ Core Persona Rules:
             return None
 
         cmd = command.lower().strip()
-        cmd = re.sub(r"\byou\s+tube\b", "youtube", cmd)
+        cmd = re.sub(r"\byou\s*t[ui]be\b|\byuotube\b|\byotube\b", "youtube", cmd)
+        cmd = re.sub(r"\b(?:olay|ply|plsy|paly)\b", "play", cmd)
 
         # 0.01 Check calculations first so math is always resolved immediately
         calc_result = self._try_calculate(cmd)
