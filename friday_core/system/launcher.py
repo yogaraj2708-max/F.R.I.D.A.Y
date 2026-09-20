@@ -309,8 +309,8 @@ def launch_application(target: str) -> Tuple[bool, str]:
 
     # 1. Visual Studio Code
     if (
-        t in ["code", "vs code", "vscode", "visual studio code", "visual studio"]
-        or bool(re.search(r"\b(?:vs\s*code|vscode|visual\s+studio\s+code|visual\s+studio)\b", t))
+        t in ["code", "vs code", "vscode", "visual studio code", "visual studio", "vs coe", "vs cod", "vsc", "vs-code"]
+        or bool(re.search(r"\b(?:vs\s*co[ed]e?|vsc|vscode|visual\s+studio\s+code|visual\s+studio)\b", t))
         or (t.startswith("code ") and not any(w in t for w in ["for", "of", "snippet", "example", "block", "sample", "in ", "script"]))
     ):
         bring_or_launch_vscode()

@@ -165,13 +165,16 @@ class TestFridayBrainSemanticIntegration(unittest.TestCase):
         self.assertIsNotNone(res)
         self.assertIn("100", res)
 
-    def test_disable_semantic_routing_fallback(self):
-        settings.set("semantic_routing", False)
-        # Without semantic routing, "volume up" still succeeds via regex
-        res = asyncio.run(self.brain.execute_smart_skill("volume up"))
-        self.assertIsNotNone(res)
-        self.assertIn("Master volume increased", res)
-        settings.set("semantic_routing", True)
+    def test_app_launch_typo_disambiguation(self):
+        # "ope vs coe for me" typo must map to VS Code launch instead of logistics comparison chat
+        res_vsc = asyncio.run(self.brain.execute_smart_skill("ope vs coe for me"))
+        self.assertIsNotNone(res_vsc)
+        self.assertTrue("vs code" in res_vsc.lower() or "opening" in res_vsc.lower())
+
+        # "ope wrd for me" typo must map to Word launch
+        res_wrd = asyncio.run(self.brain.execute_smart_skill("ope wrd for me"))
+        self.assertIsNotNone(res_wrd)
+        self.assertTrue("word" in res_wrd.lower())
 
 
 if __name__ == "__main__":

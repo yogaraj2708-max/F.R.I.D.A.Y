@@ -110,7 +110,8 @@ INTENT_EXEMPLARS: Dict[SkillIntent, List[str]] = {
     SkillIntent.APP_LAUNCH: [
         "open word", "launch ms word", "open blank word document", "open visual studio code",
         "launch vs code", "open edge browser", "open web browser", "launch spotify app",
-        "open chrome", "launch notepad", "start vscode"
+        "open chrome", "launch notepad", "start vscode",
+        "ope vs coe for me", "open vs coe", "opn vs code", "open vs code for me", "ope wrd for me", "open vsc"
     ],
     SkillIntent.TIMER_CLOCK: [
         "set a timer for 5 minutes", "timer 10 minutes", "start a timer for 1 minute",
@@ -173,8 +174,14 @@ def extract_parameters(intent: SkillIntent, text: str) -> Dict[str, Any]:
         if m:
             params["location"] = m.group(1).strip()
     elif intent == SkillIntent.APP_LAUNCH:
-        app = re.sub(r"^(?:open|launch|start|run|pull\s+up)\s+", "", clean).strip()
+        app = re.sub(r"^(?:open|ope|opn|launch|lnch|start|run|pull\s+up)\s+", "", clean).strip()
         app = re.sub(r"\s+(?:for\s+me|please|app)$", "", app).strip()
+        if app in ["vs coe", "vs cod", "vsc", "vscode", "vs code", "vs coe for me", "vs code for me"]:
+            app = "vs code"
+        elif app in ["wrd", "wod", "ms wrd", "word"]:
+            app = "word"
+        elif app in ["crhome", "chrom", "google chrom", "google crhome"]:
+            app = "chrome"
         params["app_name"] = app
     elif intent == SkillIntent.MEDIA_CONTROL:
         m = re.search(r"\b(?:play|stream|listen to)\s+(.+)$", clean)
@@ -350,6 +357,7 @@ class SemanticIntentRouter:
                     f"\"how cold is it today\" -> weather\n"
                     f"\"open wrd for me\" -> app_launch\n"
                     f"\"launch vs code\" -> app_launch\n"
+                    f"\"ope vs coe for me\" -> app_launch\n"
                     f"\"write a python script for binary search\" -> general_chat\n"
                     f"\"who was abraham lincoln\" -> general_chat\n\n"
                     f"User command: \"{text}\"\n"
