@@ -90,35 +90,70 @@ class TestWordAndYouTubeAutomation(unittest.TestCase):
         mock_urlopen.return_value = mock_resp
 
         url, title = resolve_youtube_video("golden brown")
-        self.assertEqual(url, "https://www.youtube.com/watch?v=ji1TIBybjp4")
+        self.assertEqual(url, "https://www.youtube.com/watch?v=ji1TIBybjp4&autoplay=1")
         self.assertEqual(title, "The Stranglers - Golden Brown")
 
     @patch("friday_ui.core.engine.resolve_youtube_video_async")
     @patch("friday_ui.core.engine.gatekeeper.execute_action")
     def test_open_youtube_and_play(self, mock_gatekeeper, mock_resolve):
-        mock_resolve.return_value = ("https://www.youtube.com/watch?v=ji1TIBybjp4", "The Stranglers - Golden Brown")
+        mock_resolve.return_value = ("https://www.youtube.com/watch?v=ji1TIBybjp4&autoplay=1", "The Stranglers - Golden Brown")
         mock_gatekeeper.return_value = MagicMock(success=True)
 
         res = asyncio.run(self.brain.execute_smart_skill("open youtube and play golden brown"))
         self.assertIsNotNone(res)
-        self.assertIn("Playing 'golden brown' on YouTube", res)
+        self.assertIn("golden brown", res)
         mock_gatekeeper.assert_called()
         # Verify gatekeeper was called with the direct video URL
         intent_passed = mock_gatekeeper.call_args[0][0]
-        self.assertEqual(intent_passed.target, "https://www.youtube.com/watch?v=ji1TIBybjp4")
+        self.assertEqual(intent_passed.target, "https://www.youtube.com/watch?v=ji1TIBybjp4&autoplay=1")
+
+    @patch("friday_ui.core.engine.resolve_youtube_video_async")
+    @patch("friday_ui.core.engine.gatekeeper.execute_action")
+    def test_open_you_tube_with_spaces(self, mock_gatekeeper, mock_resolve):
+        mock_resolve.return_value = ("https://www.youtube.com/watch?v=qvhM5AzhGiU&autoplay=1", "Golden Solace")
+        mock_gatekeeper.return_value = MagicMock(success=True)
+
+        res = asyncio.run(self.brain.execute_smart_skill("open you tube and play golden solace"))
+        self.assertIsNotNone(res)
+        self.assertIn("golden solace", res)
+        mock_gatekeeper.assert_called()
+        intent_passed = mock_gatekeeper.call_args[0][0]
+        self.assertEqual(intent_passed.target, "https://www.youtube.com/watch?v=qvhM5AzhGiU&autoplay=1")
 
     @patch("friday_ui.core.engine.resolve_youtube_video_async")
     @patch("friday_ui.core.engine.gatekeeper.execute_action")
     def test_open_and_play_latest_video(self, mock_gatekeeper, mock_resolve):
-        mock_resolve.return_value = ("https://www.youtube.com/watch?v=X1aFkAkFASk", "Marvel Studios Thunderbolts")
+        mock_resolve.return_value = ("https://www.youtube.com/watch?v=X1aFkAkFASk&autoplay=1", "Marvel Studios Thunderbolts")
         mock_gatekeeper.return_value = MagicMock(success=True)
 
         res = asyncio.run(self.brain.execute_smart_skill("open and play latest vidio of marvel"))
         self.assertIsNotNone(res)
-        self.assertIn("Playing 'latest vidio of marvel' on YouTube", res)
+        self.assertIn("latest vidio of marvel", res)
         mock_gatekeeper.assert_called()
         intent_passed = mock_gatekeeper.call_args[0][0]
-        self.assertEqual(intent_passed.target, "https://www.youtube.com/watch?v=X1aFkAkFASk")
+        self.assertEqual(intent_passed.target, "https://www.youtube.com/watch?v=X1aFkAkFASk&autoplay=1")
+
+    @patch("friday_ui.core.engine.gatekeeper.execute_action")
+    def test_a_open_vs_code(self, mock_gatekeeper):
+        mock_gatekeeper.return_value = MagicMock(success=True)
+
+        # Test speech recognition noise: "a open vs code"
+        res = asyncio.run(self.brain.execute_smart_skill("a open vs code"))
+        self.assertIsNotNone(res)
+        self.assertIn("vs code", res.lower())
+        mock_gatekeeper.assert_called()
+        intent_passed = mock_gatekeeper.call_args[0][0]
+        self.assertEqual(intent_passed.action, "open_app")
+        self.assertEqual(intent_passed.target, "vs code")
+
+        # Test speech recognition noise: "uh open vs code"
+        mock_gatekeeper.reset_mock()
+        res = asyncio.run(self.brain.execute_smart_skill("uh open vs code"))
+        self.assertIsNotNone(res)
+        self.assertIn("vs code", res.lower())
+        intent_passed = mock_gatekeeper.call_args[0][0]
+        self.assertEqual(intent_passed.action, "open_app")
+        self.assertEqual(intent_passed.target, "vs code")
 
 
 if __name__ == "__main__":

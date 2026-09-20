@@ -36,8 +36,8 @@ def resolve_youtube_video(query: str, timeout: float = 3.5) -> Tuple[str, str]:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             html = resp.read().decode("utf-8", errors="ignore")
 
-            # Look for video IDs in watch?v= format
-            matches = re.findall(r"watch\?v=([a-zA-Z0-9_-]{11})", html)
+            # Look for video IDs in watch?v= format or "videoId":"..."
+            matches = re.findall(r"(?:watch\?v=|/shorts/|\"videoId\":\"|/embed/)([a-zA-Z0-9_-]{11})", html)
             if matches:
                 # Deduplicate preserving order
                 unique_ids = []
@@ -47,7 +47,7 @@ def resolve_youtube_video(query: str, timeout: float = 3.5) -> Tuple[str, str]:
 
                 if unique_ids:
                     top_id = unique_ids[0]
-                    video_url = f"https://www.youtube.com/watch?v={top_id}"
+                    video_url = f"https://www.youtube.com/watch?v={top_id}&autoplay=1"
 
                     # Try to extract the video title
                     title_match = re.search(r'"title":\{"runs":\[\{"text":"([^"]+)"', html)

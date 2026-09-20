@@ -19,7 +19,8 @@ from PySide6.QtWidgets import (
 from qfluentwidgets import TransparentToolButton, FluentIcon
 from friday_core.settings import settings
 from friday_ui.styles.themes import (
-    MONO_DARK, fade_in, install_hover_reveal, install_button_micro_interaction
+    MONO_DARK, fade_in, install_hover_reveal, install_button_micro_interaction,
+    get_current_palette
 )
 
 
@@ -87,6 +88,7 @@ class ChatBubble(QFrame):
     slide_offset = Property(float, get_slide_offset, set_slide_offset)
 
     def _init_ui(self):
+        p = get_current_palette()
         self.setFrameShape(QFrame.NoFrame)
         self.setCursor(Qt.ArrowCursor)
 
@@ -105,7 +107,7 @@ class ChatBubble(QFrame):
 
         if self.role == "friday":
             self.badge.setText("● F.R.I.D.A.Y. 2.0")
-            self.badge.setStyleSheet("color: #FFFFFF; font-weight: bold; background: transparent; border: none;")
+            self.badge.setStyleSheet(f"color: {p['text_primary']}; font-weight: bold; background: transparent; border: none;")
         elif self.role == "user":
             name = str(settings.get("user_name", "Boss")).strip()
             title = str(settings.get("user_title", "Boss")).strip()
@@ -117,30 +119,30 @@ class ChatBubble(QFrame):
             else:
                 badge_str = name.upper() if name else "OPERATOR"
             self.badge.setText(badge_str)
-            self.badge.setStyleSheet("color: #FFFFFF; font-weight: bold; background: transparent; border: none;")
+            self.badge.setStyleSheet(f"color: {p['text_primary']}; font-weight: bold; background: transparent; border: none;")
         else:
             self.badge.setText("SYSTEM")
-            self.badge.setStyleSheet("color: #A1A1AA; font-weight: bold; background: transparent; border: none;")
+            self.badge.setStyleSheet(f"color: {p['text_secondary']}; font-weight: bold; background: transparent; border: none;")
 
         header_layout.addWidget(self.badge)
 
         # Separator bullet
         bullet = QLabel("•")
-        bullet.setStyleSheet("color: #52525B; font-size: 10px;")
+        bullet.setStyleSheet(f"color: {p['text_dim']}; font-size: 10px;")
         header_layout.addWidget(bullet)
 
         # Timestamp
         time_label = QLabel(self.timestamp)
-        time_label.setStyleSheet("color: #71717A; font-size: 10px; font-family: monospace; background: transparent; border: none;")
+        time_label.setStyleSheet(f"color: {p['text_muted']}; font-size: 10px; font-family: monospace; background: transparent; border: none;")
         header_layout.addWidget(time_label)
 
-        # Optional metadata pills for Friday responses (matching reference mockup)
+        # Optional metadata pills for Friday responses
         if self.role == "friday":
             self.latency_pill = QLabel("···" if self.is_streaming else "0.12s latency")
-            self.latency_pill.setStyleSheet("""
-                color: #A1A1AA;
-                background-color: #09090B;
-                border: 1px solid rgba(255, 255, 255, 0.10);
+            self.latency_pill.setStyleSheet(f"""
+                color: {p['text_secondary']};
+                background-color: {p['bg_surface']};
+                border: 1px solid {p['border_card']};
                 border-radius: 4px;
                 font-family: monospace;
                 font-size: 9px;
@@ -150,10 +152,10 @@ class ChatBubble(QFrame):
 
             self.ast_pill = QLabel("STREAMING" if self.is_streaming else "VERIFIED")
             if self.is_streaming:
-                self.ast_pill.setStyleSheet("""
-                    color: #06B6D4;
-                    background-color: rgba(6, 182, 212, 0.12);
-                    border: 1px solid rgba(6, 182, 212, 0.35);
+                self.ast_pill.setStyleSheet(f"""
+                    color: {p['accent']};
+                    background-color: {p['accent_bg']};
+                    border: 1px solid {p['accent_border']};
                     border-radius: 4px;
                     font-family: monospace;
                     font-size: 9px;
@@ -161,10 +163,10 @@ class ChatBubble(QFrame):
                     padding: 1px 6px;
                 """)
             else:
-                self.ast_pill.setStyleSheet("""
-                    color: #10B981;
-                    background-color: rgba(16, 185, 129, 0.12);
-                    border: 1px solid rgba(16, 185, 129, 0.30);
+                self.ast_pill.setStyleSheet(f"""
+                    color: {p['live_green']};
+                    background-color: {p['live_green_bg']};
+                    border: 1px solid {p['live_green_border']};
                     border-radius: 4px;
                     font-family: monospace;
                     font-size: 9px;
@@ -195,37 +197,37 @@ class ChatBubble(QFrame):
         self.text_browser.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.text_browser.document().setDefaultFont(QFont("Inter", 10))
 
-        # Default rich markdown stylesheet matching the reference HTML
-        self.text_browser.document().setDefaultStyleSheet("""
-            code {
-                background-color: #18181B;
-                color: #10B981;
+        # Theme-aware rich markdown stylesheet
+        self.text_browser.document().setDefaultStyleSheet(f"""
+            code {{
+                background-color: {p['code_bg']};
+                color: {p['code_text']};
                 font-family: 'Consolas', 'Cascadia Code', monospace;
                 padding: 2px 4px;
                 border-radius: 4px;
                 font-size: 12px;
-            }
-            pre {
-                background-color: #000000;
-                color: #E4E4E7;
+            }}
+            pre {{
+                background-color: {p['code_block_bg']};
+                color: {p['text_primary']};
                 font-family: 'Consolas', 'Cascadia Code', monospace;
-                border: 1px solid rgba(255, 255, 255, 0.12);
+                border: 1px solid {p['code_border']};
                 padding: 10px;
                 border-radius: 6px;
                 margin: 6px 0;
-            }
-            h1 { color: #FFFFFF; font-size: 15px; margin: 8px 0; }
-            h2 { color: #FFFFFF; font-size: 14px; margin: 6px 0; }
-            h3 { color: #E4E4E7; font-size: 13px; margin: 4px 0; }
-            a { color: #06B6D4; text-decoration: none; }
-            blockquote {
-                border-left: 2px solid #52525B;
+            }}
+            h1 {{ color: {p['text_primary']}; font-size: 15px; margin: 8px 0; }}
+            h2 {{ color: {p['text_primary']}; font-size: 14px; margin: 6px 0; }}
+            h3 {{ color: {p['text_secondary']}; font-size: 13px; margin: 4px 0; }}
+            a {{ color: {p['accent']}; text-decoration: none; }}
+            blockquote {{
+                border-left: 2px solid {p['text_dim']};
                 margin: 4px 0;
                 padding-left: 8px;
-                color: #A1A1AA;
-            }
-            ul, ol { margin: 4px 0; padding-left: 18px; }
-            li { margin-bottom: 2px; }
+                color: {p['text_secondary']};
+            }}
+            ul, ol {{ margin: 4px 0; padding-left: 18px; }}
+            li {{ margin-bottom: 2px; }}
         """)
 
         # Set raw markdown text or initial thinking placeholder
@@ -233,44 +235,38 @@ class ChatBubble(QFrame):
             self.text_browser.setMarkdown(self.raw_text)
         elif self.is_streaming:
             placeholder = self.status_text if self.status_text else "Neural core synthesizing response..."
-            self.text_browser.setHtml(f"<div style='color: #71717A; font-family: monospace; font-size: 12px; padding: 4px 0;'>⚡ {placeholder}</div>")
+            self.text_browser.setHtml(f"<div style='color: {p['text_muted']}; font-family: monospace; font-size: 12px; padding: 4px 0;'>⚡ {placeholder}</div>")
 
         # Connect document layout to dynamic height auto-expansion
         self.text_browser.document().documentLayout().documentSizeChanged.connect(self._adjust_height)
 
         # ── Role-specific Modern Card Geometry & Palette ──
         if self.role == "user":
-            bubble_bg = "#18181B"          # Zinc-900 user bubble
-            border_radius = "16px 4px 16px 16px"  # Sharp top-right corner
-            margin_style = "margin: 3px 0px 3px 60px;"  # Shifted right
-            text_color = "#F4F4F5"
+            bubble_bg = p['bubble_user']
+            margin_style = "margin: 3px 0px 3px 60px;"
         elif self.role == "friday":
-            bubble_bg = "#0C0C0E"          # Deep zinc-950 assistant bubble
-            border_radius = "4px 16px 16px 16px"  # Sharp top-left corner
-            margin_style = "margin: 3px 60px 3px 0px;"  # Shifted left
-            text_color = "#E4E4E7"
+            bubble_bg = p['bubble_assistant']
+            margin_style = "margin: 3px 60px 3px 0px;"
         else:
-            bubble_bg = "#09090B"
-            border_radius = "10px"
+            bubble_bg = p['bubble_system']
             margin_style = "margin: 3px 30px;"
-            text_color = "#A1A1AA"
 
         self.setStyleSheet(f"""
             ChatBubble {{
                 background-color: {bubble_bg};
-                border: 1px solid rgba(255, 255, 255, 0.10);
+                border: 1px solid {p['border_card']};
                 border-radius: 14px;
                 {margin_style}
             }}
             ChatBubble:hover {{
-                border: 1px solid rgba(255, 255, 255, 0.20);
+                border: 1px solid {p['border_hover']};
             }}
             QTextBrowser {{
                 background-color: transparent;
                 border: none;
-                color: {text_color};
-                selection-background-color: rgba(255, 255, 255, 0.22);
-                selection-color: #FFFFFF;
+                color: {p['text_primary']};
+                selection-background-color: {p['selection_bg']};
+                selection-color: {p['text_primary']};
                 padding: 0px 2px;
                 font-size: 13px;
                 line-height: 1.55;
@@ -317,7 +313,8 @@ class ChatBubble(QFrame):
         """Updates the thinking or search status description before tokens stream."""
         self.status_text = status_text
         if not self.raw_text and self.is_streaming:
-            self.text_browser.setHtml(f"<div style='color: #71717A; font-family: monospace; font-size: 12px; padding: 4px 0;'>⚡ {status_text}</div>")
+            p = get_current_palette()
+            self.text_browser.setHtml(f"<div style='color: {p['text_muted']}; font-family: monospace; font-size: 12px; padding: 4px 0;'>⚡ {status_text}</div>")
             self._adjust_height()
 
     def finish_stream(self, final_text: str = None):
@@ -333,10 +330,11 @@ class ChatBubble(QFrame):
             self.latency_pill.setText(f"{elapsed:.2f}s latency")
         if hasattr(self, 'ast_pill'):
             self.ast_pill.setText("VERIFIED")
-            self.ast_pill.setStyleSheet("""
-                color: #10B981;
-                background-color: rgba(16, 185, 129, 0.12);
-                border: 1px solid rgba(16, 185, 129, 0.30);
+            p = get_current_palette()
+            self.ast_pill.setStyleSheet(f"""
+                color: {p['live_green']};
+                background-color: {p['live_green_bg']};
+                border: 1px solid {p['live_green_border']};
                 border-radius: 4px;
                 font-family: monospace;
                 font-size: 9px;

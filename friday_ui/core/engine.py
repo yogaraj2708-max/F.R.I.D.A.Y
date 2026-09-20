@@ -809,6 +809,39 @@ Core Persona Rules:
             cancel_event.set()
             logger.exception("Vision streaming error: %s", ex)
 
+    async def analyze_image_file(self, image_path: str, prompt: str, image_name: str = "") -> None:
+        """Analyzes an attached image file using local Ollama vision model."""
+        if not os.path.exists(image_path):
+            self.signals.transcript_received.emit("friday", f"⚠️ Image file not found: `{image_path}`")
+            return
+
+        try:
+            with open(image_path, "rb") as f:
+                b64_img = base64.b64encode(f.read()).decode("utf-8")
+        except Exception as ex:
+            self.signals.transcript_received.emit("friday", f"⚠️ Error reading image `{image_name}`: {ex}")
+            return
+
+        vision_model = await self._get_available_vision_model()
+        if vision_model:
+            self.signals.status_updated.emit(f"Analyzing {image_name or 'image'} with {vision_model}...")
+            full_prompt = (
+                f"Boss provided an attached image '{image_name}'.\n"
+                f"Boss Directive: {prompt}\n"
+                "Carefully inspect the image, visual details, layout, text, diagram, or code, and answer Boss's directive thoroughly and clearly."
+            )
+            await self._stream_vision_chat(vision_model, full_prompt, b64_img)
+        else:
+            note = (
+                f"Attached image `{image_name or os.path.basename(image_path)}` received.\n\n"
+                "⚠️ **Vision Model Required**: To analyze image files locally with zero latency, "
+                "please run `ollama pull qwen2-vl:2b` or `ollama pull llava:7b` in your terminal. "
+                "Once pulled, vision analysis activates automatically."
+            )
+            self.signals.transcript_received.emit("friday", note)
+            if self.tts:
+                await self.tts.speak("Image received, Boss. To analyze images locally, please pull qwen2-vl in Ollama.")
+
     def _parse_timer_request(self, text: str) -> Optional[Tuple[int, str]]:
         m = re.search(r"(?:set\s+)?(?:a\s+)?timer\s+(?:for\s+)?(\d+)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?)", text, re.IGNORECASE)
         if not m:
@@ -1446,6 +1479,7 @@ Core Persona Rules:
             return None
 
         cmd = command.lower().strip()
+        cmd = re.sub(r"\byou\s+tube\b", "youtube", cmd)
 
         # 0. TIMERS & COUNTDOWNS
         timer_data = self._parse_timer_request(cmd)
@@ -1639,7 +1673,10 @@ Core Persona Rules:
                 return res
 
         # 0.4 CONTEXTUAL MEDIA & YOUTUBE
-        yt_play_match = re.search(r"^(?:open\s+(?:youtube\s+)?and\s+)?play\s+(.+?)(?:\s+on\s+youtube)?$", cmd)
+        yt_play_match = (
+            re.search(r"^(?:open\s+(?:youtube\s+)?and\s+|youtube\s+)?play\s+(.+?)(?:\s+on\s+youtube)?$", cmd) or
+            re.search(r"^open\s+youtube\s+(?:to\s+|and\s+)?(?:play\s+)?(.+)$", cmd)
+        )
         is_yt_intent = bool(
             yt_play_match and (
                 "youtube" in cmd
@@ -1649,6 +1686,7 @@ Core Persona Rules:
         )
         if is_yt_intent:
             target = yt_play_match.group(1).replace("on youtube", "").replace("that", "").strip()
+            target = re.sub(r"^(?:song|track|music|video)\s+", "", target).strip()
             if target:
                 video_url, resolved_title = await resolve_youtube_video_async(target)
                 gatekeeper.execute_action(ActionIntent(action="open_url", target=video_url))
@@ -1724,9 +1762,10 @@ Core Persona Rules:
         if "youtube" in cmd:
             if any(cmd.startswith(p) for p in ["play ", "search "]):
                 q = re.sub(r"^(play|search for|search)\s+", "", cmd).replace("on youtube", "").strip()
+                q = re.sub(r"^(?:song|track|music|video)\s+", "", q).strip()
                 if cmd.startswith("play "):
-                    target_url, _ = await resolve_youtube_video_async(q)
-                    display_msg = f"Playing '{q}' on YouTube, Boss."
+                    target_url, resolved_title = await resolve_youtube_video_async(q)
+                    display_msg = f"Playing '{resolved_title or q}' on YouTube, Boss."
                     skill_tag = "YouTube Play"
                 else:
                     target_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(q)}"
@@ -1764,15 +1803,22 @@ Core Persona Rules:
                         self.signals.skill_executed.emit("App Launch", play_target)
                         return f"Launching {play_target}, Boss."
 
-            is_launch_intent = any(cmd.startswith(p) for p in ["open ", "launch ", "start ", "pull up ", "bring up ", "run "])
+            # Strip vocal fillers, speech artifacts, and courtesy words:
+            # "a open vs code", "uh open vs code", "hey friday open vs code", "can you please open vs code"
+            clean_launch_cmd = re.sub(
+                r"^(?:hey\s+|hi\s+|hello\s+|friday\s+|jarvis\s+|ok\s+|okay\s+|a\s+|an\s+|the\s+|uh\s+|um\s+|please\s+|can\s+you\s+|could\s+you\s+|just\s+|would\s+you\s+)+",
+                "",
+                cmd
+            ).strip()
+
+            is_launch_intent = any(clean_launch_cmd.startswith(p) for p in ["open ", "launch ", "start ", "pull up ", "bring up ", "run "])
             app_candidates = ["vs code", "vscode", "visual studio", "edge", "chrome", "notepad", "calculator", "calc", "spotify", "camera", "settings"]
 
-            clean_cmd = re.sub(r"^(?:please|can you|could you)\s+", "", cmd).strip()
-            is_exact_app = clean_cmd in app_candidates
+            is_exact_app = clean_launch_cmd in app_candidates
 
             if is_launch_intent or is_exact_app:
-                target = re.sub(r"^(open|launch|start|pull up|bring up|run|play)\s+", "", clean_cmd).replace("please", "").strip()
-                target_app = target if is_launch_intent else clean_cmd
+                target = re.sub(r"^(open|launch|start|pull up|bring up|run|play)\s+", "", clean_launch_cmd).replace("please", "").strip()
+                target_app = target if is_launch_intent else clean_launch_cmd
                 intent = ActionIntent(action="open_app", target=target_app)
                 res = gatekeeper.execute_action(intent)
                 if res.success:

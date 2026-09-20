@@ -5,7 +5,7 @@ Verifies that all skills correctly dispatch through Gatekeeper and return format
 
 import unittest
 import asyncio
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import MagicMock, AsyncMock, patch
 from friday_ui.core.engine import FridayBrain, FridaySignals, FridayVoiceEngine
 from friday_core.settings import settings
 
@@ -196,7 +196,8 @@ class TestSmartSkills(unittest.TestCase):
         self.assertIsNotNone(res_file)
         self.assertTrue("Opening" in res_file or "No recent" in res_file)
 
-    def test_screen_vision_intent(self):
+    @patch.object(FridayBrain, "capture_screen_base64", return_value=("fake_base64", "/tmp/fake.jpg"))
+    def test_screen_vision_intent(self, mock_capture):
         # When vision model is not installed or detected, it captures snapshot and reports requirement
         res = asyncio.run(self.brain.execute_smart_skill("look at my screen and tell me what's open"))
         self.assertEqual(res, "__STREAMED__")

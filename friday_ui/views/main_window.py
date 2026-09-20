@@ -8,6 +8,7 @@ import os
 import sys
 import math
 import logging
+import re
 
 logger = logging.getLogger("FRIDAY.MainWindow")
 from PySide6.QtCore import Qt, QSize, QTimer, QRectF, QPointF, Property, QPropertyAnimation, QEasingCurve
@@ -438,10 +439,34 @@ class FridayMainWindow(FluentWindow):
     async def _process_command(self, command: str):
         self.signals.state_changed.emit("thinking")
         try:
+            # If an attached image is present, route to vision pipeline
+            if "[Attached Image:" in command:
+                img_match = re.search(r"\[Attached Image:\s*([^\]|]+)\s*\|\s*Path:\s*([^\]]+)\]", command)
+                if img_match:
+                    img_name = img_match.group(1).strip()
+                    img_path = img_match.group(2).strip()
+                    user_prompt = command
+                    directive_split = command.split("Boss Directive:\n")
+                    if len(directive_split) > 1:
+                        user_prompt = directive_split[1].strip()
+                    await self.brain.analyze_image_file(img_path, user_prompt, img_name)
+                    return
+
             # If an attached document is present, route directly to LLM for in-depth analysis
             if "[Attached Document:" in command or "Boss Directive:" in command:
                 await self.brain.query_llm(command, stream_to_ui=True, stream_to_speech=True)
                 return
+
+            # Check for Deep Web Research intent in direct chat
+            research_match = (
+                re.search(r"^(?:do\s+(?:a\s+)?)?deep\s+(?:web\s+)?research\s+(?:on|about|web\s+and\s+tell\s+about|web\s+about)?\s*(.+)$", command, re.IGNORECASE) or
+                re.search(r"^(?:search\s+the\s+web\s+deeply\s+for|deeply\s+research\s+web\s+and\s+tell\s+about|deeply\s+research)\s+(.+)$", command, re.IGNORECASE)
+            )
+            if research_match:
+                topic = research_match.group(1).strip()
+                if topic:
+                    await self._run_research(topic, "Deep Comprehensive")
+                    return
 
             # 1. Smart Skills & Desktop Launching
             skill_res = await self.brain.execute_smart_skill(command)
@@ -511,29 +536,103 @@ class FridayMainWindow(FluentWindow):
         loop = asyncio.get_running_loop()
         num_results = 8 if "Deep" in depth else 4
 
+        # Clean topic: remove prompt prefixes like "deep research web and tell about", etc.
+        clean_topic = re.sub(
+            r"^(?:(?:do\s+(?:a\s+)?)?deep\s+(?:web\s+)?research\s+(?:web\s+and\s+tell\s+about|web\s+about|on|about)?|research\s+(?:web\s+and\s+tell\s+about|on|about)?|tell\s+(?:me\s+)?about\s+(?:company\s+named\s+)?|deep\s+search\s+(?:on|about)?)\s*",
+            "",
+            topic,
+            flags=re.IGNORECASE
+        ).strip()
+        if not clean_topic:
+            clean_topic = topic
+
+        self.signals.state_changed.emit("thinking")
+        self.signals.stream_started.emit("friday", f"Conducting deep research on '{clean_topic}' across live web telemetry...")
+
         def fetch_ddg():
             from friday_ui.core.engine import fetch_web_results
-            return fetch_web_results(topic, max_results=num_results)
+            res = fetch_web_results(clean_topic, max_results=num_results)
+            if not res and clean_topic != topic:
+                res = fetch_web_results(topic, max_results=num_results)
+            return res
 
         sources = await loop.run_in_executor(None, fetch_ddg)
 
-        report_md = f"# Tactical Intelligence Report: {topic.title()}\n\n"
+        report_md = f"# Tactical Intelligence Report: {clean_topic.title()}\n\n"
         report_md += f"**Investigation Scope**: {depth} | **Timestamp**: Modernization Run 2026\n\n"
         report_md += "## Executive Synthesis\n\n"
 
-        for i, s in enumerate(sources, 1):
-            title = s.get("title", f"Source {i}")
-            body = s.get("body", "No description available.")
-            link = s.get("href", "#")
-            report_md += f"### {i}. [{title}]({link})\n"
-            report_md += f"{body}\n\n"
+        if sources:
+            for i, s in enumerate(sources, 1):
+                title = s.get("title", f"Source {i}")
+                body = s.get("body", "No description available.")
+                link = s.get("href", "#")
+                report_md += f"### {i}. [{title}]({link})\n"
+                report_md += f"{body}\n\n"
+        else:
+            report_md += "> No direct external sources were returned by web telemetry.\n\n"
 
         report_md += "## Strategic Conclusions\n\n"
         report_md += "- Multi-source correlation confirms active operational viability.\n"
         report_md += "- Telemetry synthesized for Boss.\n"
 
-        self.research_view.update_report(topic, report_md)
-        self.signals.transcript_received.emit("friday", f"Boss, I have completed deep research on '{topic}'. Intelligence dossier is available in the Research tab.")
+        # Update dedicated Research Tab
+        self.research_view.update_report(clean_topic, report_md)
+
+        # Synthesize in-chat Executive Summary
+        executive_summary = ""
+        if sources:
+            try:
+                synth_prompt = (
+                    f"Boss requested deep research on: '{clean_topic}'.\n"
+                    f"Here are the live multi-source web search findings:\n{report_md}\n\n"
+                    "Provide a well-structured, professional Executive Intelligence Summary in Markdown. "
+                    "Include:\n"
+                    "1. Executive Overview (who/what it is, core operations, key facts)\n"
+                    "2. Key Strategic Findings & Developments (bullet points with numbers/dates if available)\n"
+                    "3. Strategic Takeaway for Boss.\n"
+                    "Be direct, insightful, and authoritative. Do not include introductory conversational filler."
+                )
+                executive_summary = await self.brain.query_llm(synth_prompt, stream_to_ui=False, stream_to_speech=False)
+            except Exception as e:
+                import logging
+                logging.getLogger("FRIDAY.MainWindow").debug(f"LLM synthesis error for research: {e}")
+
+        # Construct comprehensive in-chat briefing message
+        chat_msg = f"### 🌐 Executive Intelligence Dossier: **{clean_topic.title()}**\n\n"
+        chat_msg += f"**Investigation Scope**: `{depth}` | **Verified Sources**: `{len(sources)}`\n\n"
+
+        if executive_summary and executive_summary.strip():
+            chat_msg += f"{executive_summary.strip()}\n\n"
+        elif sources:
+            chat_msg += "#### Key Intelligence Findings\n"
+            for i, s in enumerate(sources[:4], 1):
+                t = s.get("title", f"Source {i}")
+                b = s.get("body", "")
+                chat_msg += f"- **{t}**: {b}\n"
+            chat_msg += "\n"
+        else:
+            chat_msg += "> No live telemetry was retrieved for this topic. Dossier initialized in the Research tab.\n\n"
+
+        if sources:
+            chat_msg += "#### 🔗 Primary Intelligence Sources\n"
+            for i, s in enumerate(sources[:4], 1):
+                t = s.get("title", f"Source {i}")
+                h = s.get("href", "#")
+                chat_msg += f"{i}. [{t}]({h})\n"
+            chat_msg += "\n*Full unredacted dossier available in the Research tab.*"
+
+        self.chat_view.add_message("friday", chat_msg)
+
+        # Spoken briefing via TTS
+        spoken_brief = f"Boss, I have completed deep research on {clean_topic}."
+        if executive_summary:
+            spoken_brief += f" {self.tts.extract_spoken_summary(executive_summary)}"
+        elif sources:
+            first_body = sources[0].get("body", "")
+            if first_body:
+                spoken_brief += f" {first_body[:150]}."
+        await self.tts.speak(spoken_brief)
 
     def handle_doc_ingest(self, title: str, path: str):
         try:

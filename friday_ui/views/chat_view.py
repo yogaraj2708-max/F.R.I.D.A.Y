@@ -34,7 +34,7 @@ from friday_ui.core.session_store import SessionStore
 from friday_ui.widgets.chat_bubble import ChatBubble
 from friday_ui.widgets.arc_reactor import ArcReactorWidget
 from friday_ui.widgets.glass_panel import GlassPanel
-from friday_ui.styles.themes import STARK_CYAN, LIVE_GREEN, DANGER_RED, AMBER_WARN
+from friday_ui.styles.themes import STARK_CYAN, LIVE_GREEN, DANGER_RED, AMBER_WARN, get_current_palette
 
 
 class GlowLine(QWidget):
@@ -164,6 +164,7 @@ class ChatView(QWidget):
         self._load_sessions_list()
 
     def _init_ui(self):
+        p = get_current_palette()
         self.setObjectName("chat_view")
         self.setStyleSheet("""
             QWidget#chat_view {
@@ -178,8 +179,8 @@ class ChatView(QWidget):
         # ── 1. Glass Header Banner ─────────────────────────────
         header_card = GlassPanel(
             self,
-            bg_color="rgba(18, 18, 24, 0.65)",
-            border_color="rgba(255, 255, 255, 0.08)",
+            bg_color=p['header_bg'],
+            border_color=p['border_subtle'],
             radius=12,
             enable_shadow=False
         )
@@ -197,26 +198,26 @@ class ChatView(QWidget):
         quick_switcher_layout = QHBoxLayout()
         quick_switcher_layout.setSpacing(8)
 
-        combo_style = """
-            ComboBox {
-                background-color: rgba(22, 24, 34, 0.85);
-                border: 1px solid rgba(255, 255, 255, 0.14);
+        combo_style = f"""
+            ComboBox {{
+                background-color: {p['combo_bg']};
+                border: 1px solid {p['combo_border']};
                 border-radius: 6px;
-                color: #FFFFFF;
+                color: {p['text_primary']};
                 font-size: 11px;
                 font-weight: 500;
                 padding-left: 6px;
-            }
-            ComboBox:hover {
-                border: 1px solid rgba(0, 240, 255, 0.40);
-                background-color: rgba(30, 34, 48, 0.95);
-            }
+            }}
+            ComboBox:hover {{
+                border: 1px solid {p['combo_hover_border']};
+                background-color: {p['combo_hover_bg']};
+            }}
         """
 
         # Session Switcher
         session_label = QLabel("SESSION:")
         session_label.setFont(QFont("Segoe UI", 8, QFont.Bold))
-        session_label.setStyleSheet("color: #71717A; font-family: monospace;")
+        session_label.setStyleSheet(f"color: {p['text_muted']}; font-family: monospace;")
         quick_switcher_layout.addWidget(session_label)
 
         self.session_combo = ComboBox(header_card)
@@ -234,7 +235,7 @@ class ChatView(QWidget):
 
         model_label = QLabel("MODEL:")
         model_label.setFont(QFont("Segoe UI", 8, QFont.Bold))
-        model_label.setStyleSheet("color: #71717A; font-family: monospace;")
+        model_label.setStyleSheet(f"color: {p['text_muted']}; font-family: monospace;")
         quick_switcher_layout.addWidget(model_label)
 
         self.model_combo = ComboBox(header_card)
@@ -263,7 +264,7 @@ class ChatView(QWidget):
 
         voice_label = QLabel("VOICE:")
         voice_label.setFont(QFont("Segoe UI", 8, QFont.Bold))
-        voice_label.setStyleSheet("color: #71717A; font-family: monospace;")
+        voice_label.setStyleSheet(f"color: {p['text_muted']}; font-family: monospace;")
         quick_switcher_layout.addWidget(voice_label)
 
         self.voice_combo = ComboBox(header_card)
@@ -296,10 +297,10 @@ class ChatView(QWidget):
         self.status_pill.setAlignment(Qt.AlignCenter)
         self.status_pill.setMinimumWidth(100)
         self.status_pill.setFixedHeight(26)
-        self.status_pill.setStyleSheet("""
-            color: #00F0FF;
-            background-color: rgba(0, 240, 255, 0.10);
-            border: 1px solid rgba(0, 240, 255, 0.30);
+        self.status_pill.setStyleSheet(f"""
+            color: {p['accent']};
+            background-color: {p['accent_bg']};
+            border: 1px solid {p['accent_border']};
             border-radius: 13px;
             padding: 3px 12px;
             font-family: monospace;
@@ -317,31 +318,31 @@ class ChatView(QWidget):
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scroll_area.setStyleSheet("""
-            QScrollArea {
-                border: 1px solid rgba(255, 255, 255, 0.08);
+        self.scroll_area.setStyleSheet(f"""
+            QScrollArea {{
+                border: 1px solid {p['border_card']};
                 border-radius: 12px;
-                background-color: #000000;
-            }
-            QScrollBar:vertical {
+                background-color: {p['bg_canvas']};
+            }}
+            QScrollBar:vertical {{
                 width: 6px;
                 background: transparent;
                 margin: 4px 0;
-            }
-            QScrollBar::handle:vertical {
-                background: rgba(0, 240, 255, 0.35);
+            }}
+            QScrollBar::handle:vertical {{
+                background: {p['scrollbar_handle']};
                 border-radius: 3px;
                 min-height: 30px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background: rgba(0, 240, 255, 0.75);
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+            }}
+            QScrollBar::handle:vertical:hover {{
+                background: {p['scrollbar_hover']};
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
                 height: 0px;
-            }
-            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+            }}
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
                 background: transparent;
-            }
+            }}
         """)
 
         self.chat_container = QWidget()
@@ -388,24 +389,24 @@ class ChatView(QWidget):
             btn = PushButton(label, self)
             btn.setFixedHeight(28)
             btn.setCursor(Qt.PointingHandCursor)
-            btn.setStyleSheet("""
-                PushButton {
-                    background-color: #121214;
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    color: #D4D4D8;
+            btn.setStyleSheet(f"""
+                PushButton {{
+                    background-color: {p['chip_bg']};
+                    border: 1px solid {p['border_subtle']};
+                    color: {p['chip_text']};
                     font-size: 11px;
                     font-weight: 500;
                     padding: 3px 12px;
                     border-radius: 8px;
-                }
-                PushButton:hover {
-                    background-color: #1E1E22;
-                    border: 1px solid rgba(255, 255, 255, 0.22);
-                    color: #FFFFFF;
-                }
-                PushButton:pressed {
-                    background-color: #27272A;
-                }
+                }}
+                PushButton:hover {{
+                    background-color: {p['chip_hover']};
+                    border: 1px solid {p['border_hover']};
+                    color: {p['chip_text_hover']};
+                }}
+                PushButton:pressed {{
+                    background-color: {p['chip_pressed']};
+                }}
             """)
             btn.clicked.connect(lambda checked=False, q=query: self._on_chip_clicked(q))
             chips_layout.addWidget(btn)
@@ -417,12 +418,12 @@ class ChatView(QWidget):
         # ── 4. Attachments Bar (Staged files / active Deep Search) ──
         self.attachments_container = QFrame(self)
         self.attachments_container.setObjectName("attachmentsBar")
-        self.attachments_container.setStyleSheet("""
-            QFrame#attachmentsBar {
-                background: #0E0E11;
-                border: 1px solid rgba(255, 255, 255, 0.08);
+        self.attachments_container.setStyleSheet(f"""
+            QFrame#attachmentsBar {{
+                background: {p['bg_surface']};
+                border: 1px solid {p['border_subtle']};
                 border-radius: 8px;
-            }
+            }}
         """)
         self.attachments_layout = QHBoxLayout(self.attachments_container)
         self.attachments_layout.setContentsMargins(8, 4, 8, 4)
@@ -433,15 +434,15 @@ class ChatView(QWidget):
         # ── 5. Modern Floating Input Controls Bar ──────────
         input_frame = QFrame(self)
         input_frame.setObjectName("fridayInput")
-        input_frame.setStyleSheet("""
-            QFrame#fridayInput {
-                background-color: #0A0A0C;
-                border: 1px solid rgba(255, 255, 255, 0.12);
+        input_frame.setStyleSheet(f"""
+            QFrame#fridayInput {{
+                background-color: {p['input_bg']};
+                border: 1px solid {p['border_card']};
                 border-radius: 12px;
-            }
-            QFrame#fridayInput:focus-within {
-                border: 1px solid rgba(255, 255, 255, 0.35);
-            }
+            }}
+            QFrame#fridayInput:focus-within {{
+                border: 1px solid {p['border_focus']};
+            }}
         """)
 
         input_layout = QHBoxLayout(input_frame)
@@ -453,18 +454,18 @@ class ChatView(QWidget):
         self.attach_btn.setFixedSize(34, 34)
         self.attach_btn.setCursor(Qt.PointingHandCursor)
         self.attach_btn.setToolTip("Attach Code, File, or Deep Research")
-        self.attach_btn.setStyleSheet("""
-            ToolButton {
-                background-color: #141416;
-                border: 1px solid rgba(255, 255, 255, 0.10);
+        self.attach_btn.setStyleSheet(f"""
+            ToolButton {{
+                background-color: {p['bg_surface']};
+                border: 1px solid {p['border_card']};
                 border-radius: 8px;
-                color: #A1A1AA;
-            }
-            ToolButton:hover {
-                background-color: #1E1E22;
-                border: 1px solid rgba(255, 255, 255, 0.25);
-                color: #FFFFFF;
-            }
+                color: {p['text_secondary']};
+            }}
+            ToolButton:hover {{
+                background-color: {p['bg_card_hover']};
+                border: 1px solid {p['border_hover']};
+                color: {p['text_primary']};
+            }}
         """)
         self.attach_btn.clicked.connect(self._show_attach_menu)
         input_layout.addWidget(self.attach_btn)
@@ -473,14 +474,14 @@ class ChatView(QWidget):
         self.prompt_input = LineEdit(self)
         self.prompt_input.setPlaceholderText("Give F.R.I.D.A.Y. a command, ask about code, or press Ctrl+Space...")
         self.prompt_input.setClearButtonEnabled(True)
-        self.prompt_input.setStyleSheet("""
-            LineEdit {
+        self.prompt_input.setStyleSheet(f"""
+            LineEdit {{
                 background-color: transparent;
                 border: none;
-                color: #FFFFFF;
+                color: {p['text_primary']};
                 font-size: 13px;
                 padding: 6px 4px;
-            }
+            }}
         """)
         self.prompt_input.returnPressed.connect(self._submit_prompt)
         input_layout.addWidget(self.prompt_input, 1)
@@ -497,22 +498,22 @@ class ChatView(QWidget):
         self.send_btn = PrimaryPushButton("Send", self)
         self.send_btn.setFixedSize(80, 34)
         self.send_btn.setCursor(Qt.PointingHandCursor)
-        self.send_btn.setStyleSheet("""
-            PrimaryPushButton {
-                background-color: #06B6D4;
+        self.send_btn.setStyleSheet(f"""
+            PrimaryPushButton {{
+                background-color: {p['send_bg']};
                 border: none;
                 font-weight: bold;
                 font-size: 12px;
                 border-radius: 8px;
-                color: #000000;
+                color: {p['send_text']};
                 letter-spacing: 0.5px;
-            }
-            PrimaryPushButton:hover {
-                background-color: #22D3EE;
-            }
-            PrimaryPushButton:pressed {
-                background-color: #0891B2;
-            }
+            }}
+            PrimaryPushButton:hover {{
+                background-color: {p['send_hover']};
+            }}
+            PrimaryPushButton:pressed {{
+                background-color: {p['send_pressed']};
+            }}
         """)
         self.send_btn.clicked.connect(self._on_send_btn_clicked)
         input_layout.addWidget(self.send_btn)
@@ -552,36 +553,37 @@ class ChatView(QWidget):
 
     def set_mic_active(self, active: bool):
         """Updates mic button visual appearance based on active listening or muted state."""
+        p = get_current_palette()
         self._mic_active = active
         if active:
             self.mic_btn.setToolTip("Mute Microphone (Ctrl+M)")
-            self.mic_btn.setStyleSheet("""
-                ToolButton {
-                    background-color: rgba(0, 240, 255, 0.18);
-                    border: 1px solid #00F0FF;
+            self.mic_btn.setStyleSheet(f"""
+                ToolButton {{
+                    background-color: {p['accent_bg']};
+                    border: 1px solid {p['accent']};
                     border-radius: 8px;
-                    color: #00F0FF;
-                }
-                ToolButton:hover {
-                    background-color: rgba(0, 240, 255, 0.35);
-                    border: 1px solid #22D3EE;
-                    color: #FFFFFF;
-                }
+                    color: {p['accent']};
+                }}
+                ToolButton:hover {{
+                    background-color: {p['accent_border']};
+                    border: 1px solid {p['accent_hover']};
+                    color: {p['text_primary']};
+                }}
             """)
         else:
             self.mic_btn.setToolTip("Unmute Microphone (Ctrl+M)")
-            self.mic_btn.setStyleSheet("""
-                ToolButton {
-                    background-color: #141416;
-                    border: 1px solid rgba(239, 68, 68, 0.40);
+            self.mic_btn.setStyleSheet(f"""
+                ToolButton {{
+                    background-color: {p['bg_surface']};
+                    border: 1px solid {p['danger_red_border']};
                     border-radius: 8px;
-                    color: #EF4444;
-                }
-                ToolButton:hover {
-                    background-color: rgba(239, 68, 68, 0.15);
-                    border: 1px solid #EF4444;
-                    color: #F87171;
-                }
+                    color: {p['danger_red']};
+                }}
+                ToolButton:hover {{
+                    background-color: {p['danger_red_bg']};
+                    border: 1px solid {p['danger_red']};
+                    color: {p['danger_red']};
+                }}
             """)
 
     def _on_send_btn_clicked(self):
@@ -819,21 +821,26 @@ class ChatView(QWidget):
         # 2. If Files are attached for analysis
         if self.attached_files:
             if not text:
-                text = "Please analyze the attached document(s), explain architecture, findings, and actionable details."
+                text = "Please analyze the attached file(s), explain architecture, findings, and actionable details."
             self.prompt_input.clear()
 
             file_contexts = []
             file_names = []
+            image_extensions = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif"}
             for fpath in list(self.attached_files):
                 fname = os.path.basename(fpath)
                 file_names.append(fname)
-                try:
-                    with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
-                        content = f.read(50000)
-                    ext = os.path.splitext(fname)[1].lstrip(".") or "txt"
-                    file_contexts.append(f"[Attached Document: {fname}]\n```{ext}\n{content}\n```")
-                except Exception as e:
-                    file_contexts.append(f"[Attached Document: {fname} (Could not read: {e})]")
+                ext = os.path.splitext(fname)[1].lower()
+                if ext in image_extensions:
+                    file_contexts.append(f"[Attached Image: {fname} | Path: {fpath}]")
+                else:
+                    try:
+                        with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
+                            content = f.read(50000)
+                        ext_clean = ext.lstrip(".") or "txt"
+                        file_contexts.append(f"[Attached Document: {fname}]\n```{ext_clean}\n{content}\n```")
+                    except Exception as e:
+                        file_contexts.append(f"[Attached Document: {fname} (Could not read: {e})]")
 
             self.attached_files.clear()
             self._refresh_attachments_ui()
@@ -1053,6 +1060,7 @@ class ChatView(QWidget):
 
     def update_state(self, state: str):
         """Updates status pill and header indicators with smooth transitions."""
+        p = get_current_palette()
         st = state.upper()
         self._current_engine_state = st.lower()
         self.arc_reactor.set_state(state)
@@ -1070,30 +1078,30 @@ class ChatView(QWidget):
                 self._set_generating_state(False)
             self.status_pill.setText("● LISTENING")
             self.status_pill.setStyleSheet(f"""
-                color: #10B981;
-                background-color: rgba(16, 185, 129, 0.12);
-                border: 1px solid rgba(16, 185, 129, 0.35);
+                color: {p['live_green']};
+                background-color: {p['live_green_bg']};
+                border: 1px solid {p['live_green_border']};
                 {base_style}
             """)
             self.mic_btn.setToolTip("Voice Loop Active — Click to Mute")
-            self.mic_btn.setStyleSheet("""
-                ToolButton {
-                    background-color: rgba(16, 185, 129, 0.15);
-                    border: 1px solid #10B981;
+            self.mic_btn.setStyleSheet(f"""
+                ToolButton {{
+                    background-color: {p['live_green_bg']};
+                    border: 1px solid {p['live_green']};
                     border-radius: 8px;
-                    color: #10B981;
-                }
-                ToolButton:hover {
-                    background-color: rgba(16, 185, 129, 0.25);
-                }
+                    color: {p['live_green']};
+                }}
+                ToolButton:hover {{
+                    background-color: {p['live_green_border']};
+                }}
             """)
         elif st == "THINKING":
             self._set_generating_state(True)
             self.status_pill.setText("● THINKING")
             self.status_pill.setStyleSheet(f"""
-                color: #F59E0B;
-                background-color: rgba(245, 158, 11, 0.12);
-                border: 1px solid rgba(245, 158, 11, 0.35);
+                color: {p['amber_tag']};
+                background-color: {p['amber_tag_bg']};
+                border: 1px solid {p['amber_tag_border']};
                 {base_style}
             """)
             self.typing_indicator.show_indicator()
@@ -1101,9 +1109,9 @@ class ChatView(QWidget):
             self._set_generating_state(True)
             self.status_pill.setText("● TRANSMITTING")
             self.status_pill.setStyleSheet(f"""
-                color: #06B6D4;
-                background-color: rgba(6, 182, 212, 0.12);
-                border: 1px solid rgba(6, 182, 212, 0.35);
+                color: {p['accent']};
+                background-color: {p['accent_bg']};
+                border: 1px solid {p['accent_border']};
                 {base_style}
             """)
         elif st == "IDLE":
@@ -1111,23 +1119,23 @@ class ChatView(QWidget):
                 self._set_generating_state(False)
             self.status_pill.setText("● MIC MUTED")
             self.status_pill.setStyleSheet(f"""
-                color: #EF4444;
-                background-color: rgba(239, 68, 68, 0.12);
-                border: 1px solid rgba(239, 68, 68, 0.35);
+                color: {p['danger_red']};
+                background-color: {p['danger_red_bg']};
+                border: 1px solid {p['danger_red_border']};
                 {base_style}
             """)
             self.typing_indicator.hide_indicator()
             self.mic_btn.setToolTip("Microphone Muted — Click to Activate")
-            self.mic_btn.setStyleSheet("""
-                ToolButton {
-                    background-color: rgba(239, 68, 68, 0.08);
-                    border: 1px solid rgba(239, 68, 68, 0.35);
+            self.mic_btn.setStyleSheet(f"""
+                ToolButton {{
+                    background-color: {p['danger_red_bg']};
+                    border: 1px solid {p['danger_red_border']};
                     border-radius: 8px;
-                    color: #EF4444;
-                }
-                ToolButton:hover {
-                    background-color: rgba(239, 68, 68, 0.20);
-                }
+                    color: {p['danger_red']};
+                }}
+                ToolButton:hover {{
+                    background-color: {p['danger_red_bg']};
+                }}
             """)
         else:
             # Standby mode
@@ -1135,9 +1143,9 @@ class ChatView(QWidget):
                 self._set_generating_state(False)
             self.status_pill.setText("● STANDBY")
             self.status_pill.setStyleSheet(f"""
-                color: #A1A1AA;
-                background-color: #141416;
-                border: 1px solid rgba(255, 255, 255, 0.10);
+                color: {p['text_secondary']};
+                background-color: {p['bg_surface']};
+                border: 1px solid {p['border_card']};
                 {base_style}
             """)
             self.typing_indicator.hide_indicator()
