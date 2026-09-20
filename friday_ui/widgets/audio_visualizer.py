@@ -106,18 +106,25 @@ class AudioVisualizerWidget(QWidget):
         mid_y = height / 2.0
 
         # Select color palette based on state
+        from friday_ui.styles.themes import get_current_palette
+        p = get_current_palette()
+        c_accent = QColor(p.get('accent', '#D9745B'))
+        c_green = QColor(p.get('live_green', '#6B8E78'))
+        c_amber = QColor(p.get('amber_tag', '#D9745B'))
+        c_muted = QColor(p.get('text_muted', '#8E8681'))
+
         if self.state == "listening":
-            c_start = QColor(0, 242, 254)
-            c_end = QColor(79, 172, 254)
+            c_start = c_green
+            c_end = QColor(c_green.red(), min(255, c_green.green() + 20), c_green.blue())
         elif self.state == "speaking":
-            c_start = QColor(0, 224, 255)
-            c_end = QColor(58, 123, 213)
-        elif self.state == "processing":
-            c_start = QColor(246, 211, 101)
-            c_end = QColor(253, 160, 133)
+            c_start = c_accent
+            c_end = QColor(min(255, c_accent.red() + 20), c_accent.green(), c_accent.blue())
+        elif self.state == "processing" or self.state == "thinking":
+            c_start = c_amber
+            c_end = c_accent
         else:
-            c_start = QColor(56, 189, 248, 100)
-            c_end = QColor(14, 165, 233, 100)
+            c_start = QColor(c_muted.red(), c_muted.green(), c_muted.blue(), 90)
+            c_end = QColor(c_muted.red(), c_muted.green(), c_muted.blue(), 50)
 
         gradient = QLinearGradient(0, 0, width, 0)
         gradient.setColorAt(0.0, c_start)

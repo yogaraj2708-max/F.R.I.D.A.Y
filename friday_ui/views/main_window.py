@@ -171,11 +171,11 @@ class FridayMainWindow(FluentWindow):
 
     def _init_window(self):
         self.setObjectName("FridayMainWindow")
-        self.setWindowTitle("F.R.I.D.A.Y. 2.0 - Tactical Personal Assistant")
+        self.setWindowTitle("F.R.I.D.A.Y. - Editorial Personal Assistant")
         self.resize(1200, 800)
         self.setMinimumSize(950, 650)
         self.setAttribute(Qt.WA_AcceptTouchEvents, False)
-        self.setMicaEffectEnabled(True)
+        self.setMicaEffectEnabled(False)
         try:
             from friday_ui.app import get_app_icon
             self.setWindowIcon(get_app_icon())
@@ -193,12 +193,21 @@ class FridayMainWindow(FluentWindow):
 
 
     def _apply_global_style(self):
-        """Apply Centralized Monochrome / Tactical Desktop Styling with transparent backing."""
-        theme_mode = settings.get("theme_mode", "warm_dark")
+        """Apply Centralized Warm Editorial / Tactical Desktop Styling with rich canvas backing."""
+        theme_mode = settings.get("theme_mode", "warm_light")
         p = get_theme_palette(theme_mode)
+        is_light = "light" in str(theme_mode).lower()
+
+        try:
+            from qfluentwidgets import setThemeColor
+            setTheme(Theme.LIGHT if is_light else Theme.DARK)
+            setThemeColor(p['accent'])
+        except Exception:
+            pass
+
         self.setStyleSheet(generate_global_qss(theme_mode) + f"""
-            #FridayMainWindow, #content_container, #chat_view, #rag_view, #research_view, #settings_view, #workspace_container {{
-                background-color: transparent;
+            #FridayMainWindow, #content_container, #workspace_container, #chat_view, #rag_view, #research_view, #settings_view {{
+                background-color: {p['bg_canvas']};
             }}
             NavigationInterface {{
                 background-color: {p['nav_bg']};
@@ -211,12 +220,14 @@ class FridayMainWindow(FluentWindow):
                 border_color=p.get('border_subtle', 'rgba(255, 255, 255, 0.08)'),
                 radius=0
             )
+        if hasattr(self, 'chat_view') and hasattr(self.chat_view, 'apply_theme'):
+            self.chat_view.apply_theme(theme_mode)
 
     def _init_sub_interfaces(self):
         # 1. Chat View (Default)
         self.chat_view = ChatView(self)
         self.chat_view.setObjectName("chat_view")
-        self.addSubInterface(self.chat_view, FluentIcon.CHAT, "Tactical Chat")
+        self.addSubInterface(self.chat_view, FluentIcon.CHAT, "Chat")
 
         # 2. Knowledge Base (RAG)
         self.rag_view = RAGView(self)
@@ -246,6 +257,7 @@ class FridayMainWindow(FluentWindow):
         """
         self.hud_dock = HUDDockWidget(self)
         self.operations_panel = OperationsPanel(self)
+        self.operations_panel.hide()
 
         self.widgetLayout.removeWidget(self.stackedWidget)
         self.widgetLayout.setContentsMargins(0, 48, 0, 0)
@@ -304,6 +316,8 @@ class FridayMainWindow(FluentWindow):
         self.chat_view.stop_requested.connect(self.handle_stop_requested)
         self.chat_view.model_changed.connect(self._on_model_quick_switched)
         self.chat_view.voice_changed.connect(self._on_voice_quick_switched)
+        if hasattr(self.chat_view, 'inspector_toggle_requested'):
+            self.chat_view.inspector_toggle_requested.connect(self._toggle_operations_panel)
         self.operations_panel.quick_command_triggered.connect(self.handle_user_command)
         self.rag_view.document_ingested.connect(self.handle_doc_ingest)
         self.rag_view.query_requested.connect(self.handle_rag_query)
@@ -360,6 +374,10 @@ class FridayMainWindow(FluentWindow):
         self.hud_dock.hud_state_label.style().unpolish(self.hud_dock.hud_state_label)
         self.hud_dock.hud_state_label.style().polish(self.hud_dock.hud_state_label)
         self.hud_dock.visualizer.set_state(st)
+
+    def _toggle_operations_panel(self):
+        if hasattr(self, 'operations_panel'):
+            self.operations_panel.setVisible(not self.operations_panel.isVisible())
 
     def _on_confirmation_requested(self, intent):
         """Displays modal SecurityConfirmationDialog with 10s countdown for Tier 2 clearance."""

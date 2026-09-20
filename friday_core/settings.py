@@ -49,7 +49,7 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "last_y": -1,
     "audio_input_device": None,
     "mic_sensitivity": "high",
-    "theme_mode": "dark"
+    "theme_mode": "warm_light"
 }
 
 class SettingsManager:
@@ -78,6 +78,9 @@ class SettingsManager:
                 with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     if isinstance(data, dict):
+                        # Migrate legacy cyber/dark themes to warm editorial
+                        if data.get("theme_mode") in ["tactical", "neon", "mono", "dark"]:
+                            data["theme_mode"] = "warm_light"
                         self._settings.update(data)
                         logger.info(f"[Settings]: Loaded user preferences from {SETTINGS_FILE}")
             except Exception as e:

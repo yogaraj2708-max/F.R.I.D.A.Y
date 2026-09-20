@@ -194,9 +194,12 @@ WARM_EDITORIAL_LIGHT: Dict[str, str] = {
     "scrollbar_hover":  "#C2B9AF",
 
     # Chat Bubbles (Heavily rounded editorial cards)
-    "bubble_user":      "#2B2625",
-    "bubble_assistant":  "#F7F4EE",
-    "bubble_system":    "#EFECE5",
+    "bubble_user":           "#2B2625",
+    "bubble_user_text":      "#FDFBF7",
+    "bubble_assistant":      "#F7F4EE",
+    "bubble_assistant_text": "#2B2625",
+    "bubble_system":         "#EFECE5",
+    "bubble_system_text":    "#5C5552",
 
     # Code Blocks
     "code_bg":          "#EFECE5",
@@ -289,9 +292,12 @@ WARM_EDITORIAL_DARK: Dict[str, str] = {
     "scrollbar_hover":  "#4D4440",
 
     # Chat Bubbles (Heavily rounded editorial cards)
-    "bubble_user":      "#322B29",
-    "bubble_assistant":  "#1F1A19",
-    "bubble_system":    "#181514",
+    "bubble_user":           "#322B29",
+    "bubble_user_text":      "#FDFBF7",
+    "bubble_assistant":      "#26211F",
+    "bubble_assistant_text": "#FDFBF7",
+    "bubble_system":         "#181514",
+    "bubble_system_text":    "#C4BCB5",
 
     # Code Blocks
     "code_bg":          "#282321",
@@ -329,31 +335,27 @@ WARM_EDITORIAL_DARK: Dict[str, str] = {
 
 # Aliases for compatibility
 LIGHT_THEME = WARM_EDITORIAL_LIGHT
-STARK_DARK = MONO_DARK
+STARK_DARK = WARM_EDITORIAL_DARK
 
-def get_theme_palette(theme_mode: str = "dark") -> Dict[str, str]:
+def get_theme_palette(theme_mode: str = "warm_light") -> Dict[str, str]:
     mode = str(theme_mode).lower()
-    if "warm_light" in mode or "editorial_light" in mode or mode == "light":
+    if "light" in mode or "cream" in mode or mode == "white":
         return WARM_EDITORIAL_LIGHT
-    elif "warm_dark" in mode or "editorial_dark" in mode or "warm" in mode or "editorial" in mode:
+    elif "dark" in mode or "espresso" in mode or "obsidian" in mode or "warm_dark" in mode:
         return WARM_EDITORIAL_DARK
-    elif "tactical" in mode:
-        return TACTICAL_DARK
-    elif "neon" in mode:
-        return MONO_DARK
-    elif "void" in mode or "mono" in mode:
-        return MONO_DARK
-    # Default to Warm Editorial Dark for soothing, calming experience
-    return WARM_EDITORIAL_DARK
+    elif "tactical" in mode or "neon" in mode or "void" in mode or "mono" in mode:
+        return WARM_EDITORIAL_DARK
+    # Default to Warm Editorial Light (Cream 60-30-10) for warm, calm experience
+    return WARM_EDITORIAL_LIGHT
 
 
 def get_current_palette() -> Dict[str, str]:
     """Returns the active palette based on the persisted theme_mode setting."""
     try:
         from friday_core.settings import settings
-        mode = settings.get("theme_mode", "dark")
+        mode = settings.get("theme_mode", "warm_light")
     except Exception:
-        mode = "dark"
+        mode = "warm_light"
     return get_theme_palette(mode)
 
 
@@ -372,6 +374,11 @@ def generate_global_qss(theme_mode: str = "dark") -> str:
         QWidget {{
             font-family: 'Plus Jakarta Sans', 'Inter', 'Segoe UI', -apple-system, sans-serif;
             color: {p['text_primary']};
+        }}
+
+        /* ── Canvas & Window Backdrop (60% Dominant Background) ── */
+        #FridayMainWindow, #content_container, #workspace_container, #chat_view, #rag_view, #research_view, #settings_view {{
+            background-color: {p['bg_canvas']};
         }}
 
         /* ── Global Scrollbars ── */
@@ -412,17 +419,24 @@ def generate_global_qss(theme_mode: str = "dark") -> str:
             background: transparent;
         }}
 
-        /* ── Inputs & Buttons (16px+ Soft Heavily-Rounded Corners) ── */
+        /* ── Inputs (18px Heavily-Rounded Corners) ── */
         QLineEdit, QTextEdit, QPlainTextEdit {{
             background-color: {p['bg_input']};
             color: {p['text_primary']};
             border: 1px solid {p['border_card']};
-            border-radius: 16px;
+            border-radius: 18px;
             selection-background-color: {p['selection_bg']};
-            padding: 8px 12px;
+            selection-color: {p['text_primary']};
+            padding: 8px 14px;
+            font-size: 13px;
         }}
         QLineEdit:focus, QTextEdit:focus {{
             border: 1.5px solid {p['border_focus']};
+        }}
+
+        /* ── Dialogs & Container Cards (16px Heavily-Rounded Corners) ── */
+        QDialog, #fridayHeader, #attachmentsBar {{
+            border-radius: 16px;
         }}
 
         /* ── CardWidget (QFluentWidgets with 18px radius) ── */
@@ -435,15 +449,15 @@ def generate_global_qss(theme_mode: str = "dark") -> str:
             border: 1px solid {p['border_hover']};
         }}
 
-        /* ── Buttons & Action Controls (16px+ Heavily-Rounded Corners) ── */
+        /* ── Buttons & Action Controls (18px Heavily-Rounded Corners) ── */
         PrimaryPushButton {{
             background-color: {p['send_bg']};
             color: {p['send_text']};
-            border-radius: 16px;
+            border-radius: 18px;
             font-weight: bold;
             font-size: 12px;
             border: none;
-            padding: 6px 18px;
+            padding: 7px 20px;
             letter-spacing: 0.3px;
         }}
         PrimaryPushButton:hover {{
@@ -457,10 +471,10 @@ def generate_global_qss(theme_mode: str = "dark") -> str:
             background-color: {p['chip_bg']};
             color: {p['chip_text']};
             border: 1px solid {p['border_card']};
-            border-radius: 16px;
+            border-radius: 18px;
             font-weight: 500;
             font-size: 11px;
-            padding: 5px 14px;
+            padding: 6px 16px;
         }}
         PushButton:hover {{
             background-color: {p['chip_hover']};
@@ -469,6 +483,18 @@ def generate_global_qss(theme_mode: str = "dark") -> str:
         }}
         PushButton:pressed {{
             background-color: {p['chip_pressed']};
+        }}
+
+        ToolButton {{
+            background-color: {p['bg_surface']};
+            border: 1px solid {p['border_card']};
+            border-radius: 14px;
+            color: {p['text_secondary']};
+        }}
+        ToolButton:hover {{
+            background-color: {p['bg_card_hover']};
+            border: 1px solid {p['border_hover']};
+            color: {p['text_primary']};
         }}
 
         ComboBox {{

@@ -151,6 +151,7 @@ class ChatView(QWidget):
     model_changed = Signal(str)
     voice_changed = Signal(str)
     stop_requested = Signal()
+    inspector_toggle_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -179,72 +180,79 @@ class ChatView(QWidget):
         layout.setContentsMargins(24, 14, 24, 12)
         layout.setSpacing(10)
 
-        # ── 1. Glass Header Banner ─────────────────────────────
-        header_card = GlassPanel(
+        # ── 1. Editorial Header Banner ─────────────────────────────
+        self.header_card = GlassPanel(
             self,
             bg_color=p['header_bg'],
             border_color=p['border_subtle'],
-            radius=12,
+            radius=16,
             enable_shadow=False
         )
-        header_card.setObjectName("fridayHeader")
+        self.header_card.setObjectName("fridayHeader")
+        header_card = self.header_card
 
-        header_layout = QHBoxLayout(header_card)
-        header_layout.setContentsMargins(14, 8, 14, 8)
+        header_layout = QHBoxLayout(self.header_card)
+        header_layout.setContentsMargins(16, 8, 16, 8)
         header_layout.setSpacing(12)
 
-        # Holographic Arc Reactor Mark
-        self.arc_reactor = ArcReactorWidget(size=44, parent=header_card)
-        header_layout.addWidget(self.arc_reactor)
+        # Brand Identity (Warm Monogram + Editorial Title)
+        brand_layout = QHBoxLayout()
+        brand_layout.setSpacing(10)
 
-        # Quick Switchers (Session, Model & Voice dropdowns in status bar area)
+        self.brand_avatar = QLabel("F")
+        self.brand_avatar.setFixedSize(32, 32)
+        self.brand_avatar.setAlignment(Qt.AlignCenter)
+        self.brand_avatar.setStyleSheet(f"""
+            QLabel {{
+                background-color: {p['accent_bg']};
+                color: {p['accent']};
+                border: 1.5px solid {p['accent_border']};
+                border-radius: 16px;
+                font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+                font-size: 14px;
+                font-weight: bold;
+            }}
+        """)
+        brand_layout.addWidget(self.brand_avatar)
+
+        titles_box = QVBoxLayout()
+        titles_box.setSpacing(1)
+        self.title_label = QLabel("F.R.I.D.A.Y.")
+        self.title_label.setFont(QFont("Plus Jakarta Sans", 11, QFont.Bold))
+        self.title_label.setStyleSheet(f"color: {p['text_primary']}; letter-spacing: 0.5px; border: none; background: transparent;")
+        self.subtitle_label = QLabel("Editorial Intelligence")
+        self.subtitle_label.setFont(QFont("Plus Jakarta Sans", 8))
+        self.subtitle_label.setStyleSheet(f"color: {p['text_muted']}; border: none; background: transparent;")
+        titles_box.addWidget(self.title_label)
+        titles_box.addWidget(self.subtitle_label)
+        brand_layout.addLayout(titles_box)
+        header_layout.addLayout(brand_layout)
+
+        header_layout.addStretch(1)
+
+        # Keep arc_reactor hidden for backward compatibility with calls
+        self.arc_reactor = ArcReactorWidget(size=1, parent=header_card)
+        self.arc_reactor.hide()
+
+        # Quick Switchers (Session & Model pills)
         quick_switcher_layout = QHBoxLayout()
         quick_switcher_layout.setSpacing(8)
 
-        combo_style = f"""
-            ComboBox {{
-                background-color: {p['combo_bg']};
-                border: 1px solid {p['combo_border']};
-                border-radius: 6px;
-                color: {p['text_primary']};
-                font-size: 11px;
-                font-weight: 500;
-                padding-left: 6px;
-            }}
-            ComboBox:hover {{
-                border: 1px solid {p['combo_hover_border']};
-                background-color: {p['combo_hover_bg']};
-            }}
-        """
-
-        # Session Switcher
-        session_label = QLabel("SESSION:")
-        session_label.setFont(QFont("Segoe UI", 8, QFont.Bold))
-        session_label.setStyleSheet(f"color: {p['text_muted']}; font-family: monospace;")
-        quick_switcher_layout.addWidget(session_label)
-
         self.session_combo = ComboBox(header_card)
         self.session_combo.setFixedHeight(28)
-        self.session_combo.setFixedWidth(160)
-        self.session_combo.setStyleSheet(combo_style)
+        self.session_combo.setMinimumWidth(150)
         self.session_combo.currentIndexChanged.connect(self._on_session_combo_changed)
         quick_switcher_layout.addWidget(self.session_combo)
 
         self.new_session_btn = TransparentToolButton(FluentIcon.ADD, header_card)
         self.new_session_btn.setFixedSize(28, 28)
-        self.new_session_btn.setToolTip("Start New Tactical Session")
+        self.new_session_btn.setToolTip("Start New Session")
         self.new_session_btn.clicked.connect(self._on_new_session)
         quick_switcher_layout.addWidget(self.new_session_btn)
 
-        model_label = QLabel("MODEL:")
-        model_label.setFont(QFont("Segoe UI", 8, QFont.Bold))
-        model_label.setStyleSheet(f"color: {p['text_muted']}; font-family: monospace;")
-        quick_switcher_layout.addWidget(model_label)
-
         self.model_combo = ComboBox(header_card)
         self.model_combo.setFixedHeight(28)
-        self.model_combo.setFixedWidth(155)
-        self.model_combo.setStyleSheet(combo_style)
+        self.model_combo.setMinimumWidth(150)
         self._refreshing_models = False
         avail_models = settings.get_available_models()
         self.model_combo.addItems(avail_models)
@@ -265,15 +273,8 @@ class ChatView(QWidget):
         self.add_model_btn.clicked.connect(self._on_add_model_dialog)
         quick_switcher_layout.addWidget(self.add_model_btn)
 
-        voice_label = QLabel("VOICE:")
-        voice_label.setFont(QFont("Segoe UI", 8, QFont.Bold))
-        voice_label.setStyleSheet(f"color: {p['text_muted']}; font-family: monospace;")
-        quick_switcher_layout.addWidget(voice_label)
-
         self.voice_combo = ComboBox(header_card)
         self.voice_combo.setFixedHeight(28)
-        self.voice_combo.setFixedWidth(160)
-        self.voice_combo.setStyleSheet(combo_style)
         self.voice_combo.addItems([
             "bf_emma (Local FRIDAY)",
             "af_sarah (Local Sarah)",
@@ -289,31 +290,46 @@ class ChatView(QWidget):
                 self.voice_combo.setCurrentIndex(i)
                 break
         self.voice_combo.currentTextChanged.connect(self.voice_changed.emit)
-        quick_switcher_layout.addWidget(self.voice_combo)
+        self.voice_combo.hide()
 
         header_layout.addLayout(quick_switcher_layout)
-        header_layout.addStretch(1)
 
         # Status Pill
         self.status_pill = QLabel("● STANDBY")
         self.status_pill.setFont(QFont("Segoe UI", 8, QFont.Bold))
         self.status_pill.setAlignment(Qt.AlignCenter)
-        self.status_pill.setMinimumWidth(100)
+        self.status_pill.setMinimumWidth(90)
         self.status_pill.setFixedHeight(26)
         self.status_pill.setStyleSheet(f"""
-            color: {p['accent']};
-            background-color: {p['accent_bg']};
-            border: 1px solid {p['accent_border']};
+            color: {p['live_green']};
+            background-color: {p['live_green_bg']};
+            border: 1px solid {p['live_green_border']};
             border-radius: 13px;
-            padding: 3px 12px;
+            padding: 2px 10px;
             font-family: monospace;
         """)
         header_layout.addWidget(self.status_pill)
 
-        layout.addWidget(header_card)
+        # Inspector Toggle Button (Show/Hide Audit Feed)
+        self.inspector_btn = TransparentToolButton(FluentIcon.HISTORY, self.header_card)
+        self.inspector_btn.setFixedSize(28, 28)
+        self.inspector_btn.setToolTip("Toggle System Inspector & Telemetry Feed")
+        self.inspector_btn.clicked.connect(self.inspector_toggle_requested.emit)
+        header_layout.addWidget(self.inspector_btn)
 
-        # ── Shimmer separator ─────────────────────────────
-        self.glow_line = GlowLine(parent=self)
+        # Theme Mode Toggle Button (Warm Light ☀️ <-> Warm Dark 🌙)
+        self.theme_btn = TransparentToolButton(FluentIcon.PALETTE, self.header_card)
+        self.theme_btn.setFixedSize(28, 28)
+        self.theme_btn.setToolTip("Toggle Warm Light / Warm Dark (60-30-10 Editorial)")
+        self.theme_btn.clicked.connect(self._toggle_theme)
+        header_layout.addWidget(self.theme_btn)
+
+        layout.addWidget(self.header_card)
+
+        # Subtle zero-height spacer (replaces harsh glow line)
+        self.glow_line = QWidget(self)
+        self.glow_line.setFixedHeight(0)
+        self.glow_line.hide()
         layout.addWidget(self.glow_line)
 
         # ── 2. Chat Scroll Area ──────────────────────────
@@ -388,6 +404,7 @@ class ChatView(QWidget):
             ("🎵  Spotify",        "open spotify"),
         ]
 
+        self.chips_buttons = []
         for label, query in chip_data:
             btn = PushButton(label, self)
             btn.setFixedHeight(28)
@@ -412,6 +429,7 @@ class ChatView(QWidget):
                 }}
             """)
             btn.clicked.connect(lambda checked=False, q=query: self._on_chip_clicked(q))
+            self.chips_buttons.append(btn)
             chips_layout.addWidget(btn)
 
         chips_layout.addStretch(1)
@@ -435,9 +453,9 @@ class ChatView(QWidget):
         layout.addWidget(self.attachments_container)
 
         # ── 5. Modern Floating Input Controls Bar ──────────
-        input_frame = QFrame(self)
-        input_frame.setObjectName("fridayInput")
-        input_frame.setStyleSheet(f"""
+        self.input_frame = QFrame(self)
+        self.input_frame.setObjectName("fridayInput")
+        self.input_frame.setStyleSheet(f"""
             QFrame#fridayInput {{
                 background-color: {p['input_bg']};
                 border: 1px solid {p['border_card']};
@@ -448,7 +466,7 @@ class ChatView(QWidget):
             }}
         """)
 
-        input_layout = QHBoxLayout(input_frame)
+        input_layout = QHBoxLayout(self.input_frame)
         input_layout.setContentsMargins(8, 6, 8, 6)
         input_layout.setSpacing(8)
 
@@ -473,43 +491,59 @@ class ChatView(QWidget):
         self.attach_btn.clicked.connect(self._show_attach_menu)
         input_layout.addWidget(self.attach_btn)
 
-        # Text prompt input
-        self.prompt_input = LineEdit(self)
-        self.prompt_input.setPlaceholderText("Give F.R.I.D.A.Y. a command, ask about code, or press Ctrl+Space...")
+        # Text prompt input (Standard QLineEdit without cyan bottom line)
+        from PySide6.QtWidgets import QLineEdit as StandardQLineEdit
+        self.prompt_input = StandardQLineEdit(self)
+        self.prompt_input.setPlaceholderText("Message F.R.I.D.A.Y. (or press Ctrl+Space)...")
         self.prompt_input.setClearButtonEnabled(True)
         self.prompt_input.setStyleSheet(f"""
-            LineEdit {{
+            QLineEdit {{
                 background-color: transparent;
                 border: none;
                 color: {p['text_primary']};
-                font-size: 13px;
+                font-size: 13.5px;
                 padding: 6px 4px;
+                selection-background-color: {p['selection_bg']};
+                selection-color: {p['text_primary']};
             }}
         """)
         self.prompt_input.returnPressed.connect(self._submit_prompt)
         input_layout.addWidget(self.prompt_input, 1)
 
-        # Mic Button
+        # Mic Toggle Button — modern rounded tool button
         self.mic_btn = ToolButton(FluentIcon.MICROPHONE, self)
         self.mic_btn.setFixedSize(34, 34)
         self.mic_btn.setCursor(Qt.PointingHandCursor)
+        self.mic_btn.setToolTip("Toggle Acoustic Sensor / Voice Loop (Ctrl+M)")
+        self.mic_btn.setStyleSheet(f"""
+            ToolButton {{
+                background-color: {p['bg_surface']};
+                border: 1px solid {p['border_card']};
+                border-radius: 14px;
+                color: {p['text_secondary']};
+            }}
+            ToolButton:hover {{
+                background-color: {p['bg_card_hover']};
+                border: 1px solid {p['border_hover']};
+                color: {p['text_primary']};
+            }}
+        """)
         self.mic_btn.clicked.connect(self.voice_toggle_requested.emit)
-        self.set_mic_active(False)
         input_layout.addWidget(self.mic_btn)
 
-        # Send / Stop Button — Dynamically transforms into Stop during active generation/speech
+        # Send Button
         self.send_btn = PrimaryPushButton("Send", self)
-        self.send_btn.setFixedSize(80, 34)
+        self.send_btn.setFixedSize(68, 34)
         self.send_btn.setCursor(Qt.PointingHandCursor)
         self.send_btn.setStyleSheet(f"""
             PrimaryPushButton {{
                 background-color: {p['send_bg']};
-                border: none;
-                font-weight: bold;
-                font-size: 12px;
-                border-radius: 16px;
                 color: {p['send_text']};
-                letter-spacing: 0.5px;
+                border-radius: 17px;
+                font-weight: bold;
+                font-size: 12.5px;
+                border: none;
+                letter-spacing: 0.3px;
             }}
             PrimaryPushButton:hover {{
                 background-color: {p['send_hover']};
@@ -552,7 +586,183 @@ class ChatView(QWidget):
         self.esc_shortcut.activated.connect(self._on_escape_pressed)
 
         self.prompt_input.setToolTip("Press Ctrl + Space to summon F.R.I.D.A.Y. HUD from anywhere in Windows")
-        layout.addWidget(input_frame)
+        layout.addWidget(self.input_frame)
+
+    def _toggle_theme(self):
+        """Toggles between Warm Light (Cream 60-30-10) and Warm Dark (Obsidian) mode."""
+        current = settings.get("theme_mode", "warm_light")
+        is_light = "light" in str(current).lower()
+        new_mode = "warm_dark" if is_light else "warm_light"
+        settings.set("theme_mode", new_mode)
+        main_win = self.window()
+        if hasattr(main_win, '_apply_global_style'):
+            main_win._apply_global_style()
+        else:
+            self.apply_theme(new_mode)
+
+    def apply_theme(self, theme_mode: str = None):
+        """Applies theme colors dynamically across all header, chat, input, and child components."""
+        from friday_ui.styles.themes import get_theme_palette
+        p = get_theme_palette(theme_mode) if theme_mode else get_current_palette()
+
+        # 1. Update brand avatar & titles
+        if hasattr(self, 'brand_avatar'):
+            self.brand_avatar.setStyleSheet(f"""
+                QLabel {{
+                    background-color: {p['accent_bg']};
+                    color: {p['accent']};
+                    border: 1.5px solid {p['accent_border']};
+                    border-radius: 16px;
+                    font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+                    font-size: 14px;
+                    font-weight: bold;
+                }}
+            """)
+        if hasattr(self, 'title_label'):
+            self.title_label.setStyleSheet(f"color: {p['text_primary']}; letter-spacing: 0.5px; border: none; background: transparent;")
+        if hasattr(self, 'subtitle_label'):
+            self.subtitle_label.setStyleSheet(f"color: {p['text_muted']}; border: none; background: transparent;")
+        if hasattr(self, 'header_card'):
+            self.header_card.set_glass_style(
+                bg_color=p['header_bg'],
+                border_color=p['border_subtle'],
+                radius=16
+            )
+        if hasattr(self, 'status_pill'):
+            self.status_pill.setStyleSheet(f"""
+                color: {p['live_green']};
+                background-color: {p['live_green_bg']};
+                border: 1px solid {p['live_green_border']};
+                border-radius: 13px;
+                padding: 2px 10px;
+                font-family: monospace;
+            """)
+
+        # 2. Update Scroll Area & Viewport
+        if hasattr(self, 'scroll_area'):
+            self.scroll_area.setStyleSheet(f"""
+                QScrollArea {{
+                    border: 1px solid {p['border_card']};
+                    border-radius: 16px;
+                    background-color: {p['bg_canvas']};
+                }}
+                QScrollBar:vertical {{
+                    width: 6px;
+                    background: transparent;
+                    margin: 4px 0;
+                }}
+                QScrollBar::handle:vertical {{
+                    background: {p['scrollbar_handle']};
+                    border-radius: 3px;
+                    min-height: 30px;
+                }}
+                QScrollBar::handle:vertical:hover {{
+                    background: {p['scrollbar_hover']};
+                }}
+                QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                    height: 0px;
+                }}
+                QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
+                    background: transparent;
+                }}
+            """)
+            if self.scroll_area.viewport():
+                self.scroll_area.viewport().setStyleSheet(f"background-color: {p['bg_canvas']};")
+
+        # 3. Update Input Frame & Inputs
+        if hasattr(self, 'input_frame'):
+            self.input_frame.setStyleSheet(f"""
+                QFrame#fridayInput {{
+                    background-color: {p['input_bg']};
+                    border: 1px solid {p['border_card']};
+                    border-radius: 18px;
+                }}
+                QFrame#fridayInput:focus-within {{
+                    border: 1px solid {p['border_focus']};
+                }}
+            """)
+        if hasattr(self, 'prompt_input'):
+            self.prompt_input.setStyleSheet(f"""
+                QLineEdit {{
+                    background-color: transparent;
+                    border: none;
+                    color: {p['text_primary']};
+                    font-size: 13.5px;
+                    padding: 6px 4px;
+                    selection-background-color: {p['selection_bg']};
+                    selection-color: {p['text_primary']};
+                }}
+            """)
+        if hasattr(self, 'attach_btn'):
+            self.attach_btn.setStyleSheet(f"""
+                ToolButton {{
+                    background-color: {p['bg_surface']};
+                    border: 1px solid {p['border_card']};
+                    border-radius: 14px;
+                    color: {p['text_secondary']};
+                }}
+                ToolButton:hover {{
+                    background-color: {p['bg_card_hover']};
+                    border: 1px solid {p['border_hover']};
+                    color: {p['text_primary']};
+                }}
+            """)
+        if hasattr(self, 'send_btn'):
+            self.send_btn.setStyleSheet(f"""
+                PrimaryPushButton {{
+                    background-color: {p['send_bg']};
+                    color: {p['send_text']};
+                    border-radius: 17px;
+                    font-weight: bold;
+                    font-size: 12.5px;
+                    border: none;
+                    letter-spacing: 0.3px;
+                }}
+                PrimaryPushButton:hover {{
+                    background-color: {p['send_hover']};
+                }}
+                PrimaryPushButton:pressed {{
+                    background-color: {p['send_pressed']};
+                }}
+            """)
+        if hasattr(self, 'attachments_container'):
+            self.attachments_container.setStyleSheet(f"""
+                QFrame#attachmentsBar {{
+                    background: {p['bg_surface']};
+                    border: 1px solid {p['border_subtle']};
+                    border-radius: 16px;
+                }}
+            """)
+
+        # 4. Update Quick Action Chips
+        if hasattr(self, 'chips_buttons'):
+            for btn in self.chips_buttons:
+                btn.setStyleSheet(f"""
+                    PushButton {{
+                        background-color: {p['chip_bg']};
+                        border: 1px solid {p['border_subtle']};
+                        color: {p['chip_text']};
+                        font-size: 11px;
+                        font-weight: 500;
+                        padding: 3px 12px;
+                        border-radius: 16px;
+                    }}
+                    PushButton:hover {{
+                        background-color: {p['chip_hover']};
+                        border: 1px solid {p['border_hover']};
+                        color: {p['chip_text_hover']};
+                    }}
+                    PushButton:pressed {{
+                        background-color: {p['chip_pressed']};
+                    }}
+                """)
+
+        # 5. Update All Existing Chat Bubbles
+        if hasattr(self, 'chat_layout'):
+            for i in range(self.chat_layout.count()):
+                item = self.chat_layout.itemAt(i)
+                if item and item.widget() and isinstance(item.widget(), ChatBubble):
+                    item.widget().apply_theme(theme_mode)
 
     def set_mic_active(self, active: bool):
         """Updates mic button visual appearance based on active listening or muted state."""

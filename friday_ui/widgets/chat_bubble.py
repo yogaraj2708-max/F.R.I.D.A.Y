@@ -106,23 +106,23 @@ class ChatBubble(QFrame):
         self.badge.setFont(badge_font)
 
         if self.role == "friday":
-            self.badge.setText("● F.R.I.D.A.Y. 2.0")
-            self.badge.setStyleSheet(f"color: {p['text_primary']}; font-weight: bold; background: transparent; border: none;")
+            self.badge.setText("F.R.I.D.A.Y.")
+            self.badge.setStyleSheet(f"color: {p['accent']}; font-weight: bold; background: transparent; border: none; font-size: 10px; letter-spacing: 0.5px;")
         elif self.role == "user":
             name = str(settings.get("user_name", "Boss")).strip()
             title = str(settings.get("user_title", "Boss")).strip()
             if title and title.lower() not in ("none", ""):
-                if name.lower() != title.lower():
-                    badge_str = f"{title.upper()} ({name.upper()})"
-                else:
-                    badge_str = title.upper()
+                badge_str = f"{title.upper()} ({name.upper()})" if name and name.upper() != title.upper() else title.upper()
+            elif name:
+                badge_str = name.upper()
             else:
-                badge_str = name.upper() if name else "OPERATOR"
+                badge_str = "YOU"
             self.badge.setText(badge_str)
-            self.badge.setStyleSheet(f"color: {p['text_primary']}; font-weight: bold; background: transparent; border: none;")
+            user_text_col = p.get('bubble_user_text', p['text_primary'])
+            self.badge.setStyleSheet(f"color: {user_text_col}; font-weight: bold; background: transparent; border: none; font-size: 10px; letter-spacing: 0.5px;")
         else:
             self.badge.setText("SYSTEM")
-            self.badge.setStyleSheet(f"color: {p['text_secondary']}; font-weight: bold; background: transparent; border: none;")
+            self.badge.setStyleSheet(f"color: {p['text_muted']}; font-weight: bold; background: transparent; border: none; font-size: 10px; letter-spacing: 0.5px;")
 
         header_layout.addWidget(self.badge)
 
@@ -136,44 +136,11 @@ class ChatBubble(QFrame):
         time_label.setStyleSheet(f"color: {p['text_muted']}; font-size: 10px; font-family: monospace; background: transparent; border: none;")
         header_layout.addWidget(time_label)
 
-        # Optional metadata pills for Friday responses
-        if self.role == "friday":
-            self.latency_pill = QLabel("···" if self.is_streaming else "0.12s latency")
-            self.latency_pill.setStyleSheet(f"""
-                color: {p['text_secondary']};
-                background-color: {p['bg_surface']};
-                border: 1px solid {p['border_card']};
-                border-radius: 4px;
-                font-family: monospace;
-                font-size: 9px;
-                padding: 1px 6px;
-            """)
-            header_layout.addWidget(self.latency_pill)
-
-            self.ast_pill = QLabel("STREAMING" if self.is_streaming else "VERIFIED")
-            if self.is_streaming:
-                self.ast_pill.setStyleSheet(f"""
-                    color: {p['accent']};
-                    background-color: {p['accent_bg']};
-                    border: 1px solid {p['accent_border']};
-                    border-radius: 4px;
-                    font-family: monospace;
-                    font-size: 9px;
-                    font-weight: bold;
-                    padding: 1px 6px;
-                """)
-            else:
-                self.ast_pill.setStyleSheet(f"""
-                    color: {p['live_green']};
-                    background-color: {p['live_green_bg']};
-                    border: 1px solid {p['live_green_border']};
-                    border-radius: 4px;
-                    font-family: monospace;
-                    font-size: 9px;
-                    font-weight: bold;
-                    padding: 1px 6px;
-                """)
-            header_layout.addWidget(self.ast_pill)
+        # Retain references for backward compatibility but hide them from cluttering editorial layout
+        self.latency_pill = QLabel("···" if self.is_streaming else "0.12s latency")
+        self.latency_pill.hide()
+        self.ast_pill = QLabel("STREAMING" if self.is_streaming else "VERIFIED")
+        self.ast_pill.hide()
 
         header_layout.addStretch(1)
 
@@ -197,39 +164,6 @@ class ChatBubble(QFrame):
         self.text_browser.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.text_browser.document().setDefaultFont(QFont("Inter", 10))
 
-        # Theme-aware rich markdown stylesheet
-        self.text_browser.document().setDefaultStyleSheet(f"""
-            code {{
-                background-color: {p['code_bg']};
-                color: {p['code_text']};
-                font-family: 'Consolas', 'Cascadia Code', monospace;
-                padding: 2px 4px;
-                border-radius: 4px;
-                font-size: 12px;
-            }}
-            pre {{
-                background-color: {p['code_block_bg']};
-                color: {p['text_primary']};
-                font-family: 'Consolas', 'Cascadia Code', monospace;
-                border: 1px solid {p['code_border']};
-                padding: 10px;
-                border-radius: 6px;
-                margin: 6px 0;
-            }}
-            h1 {{ color: {p['text_primary']}; font-size: 15px; margin: 8px 0; }}
-            h2 {{ color: {p['text_primary']}; font-size: 14px; margin: 6px 0; }}
-            h3 {{ color: {p['text_secondary']}; font-size: 13px; margin: 4px 0; }}
-            a {{ color: {p['accent']}; text-decoration: none; }}
-            blockquote {{
-                border-left: 3px solid {p['accent']};
-                margin: 4px 0;
-                padding-left: 10px;
-                color: {p['text_secondary']};
-            }}
-            ul, ol {{ margin: 4px 0; padding-left: 18px; }}
-            li {{ margin-bottom: 2px; }}
-        """)
-
         # Set raw markdown text or initial thinking placeholder
         if self.raw_text:
             self.text_browser.setMarkdown(self.raw_text)
@@ -240,40 +174,8 @@ class ChatBubble(QFrame):
         # Connect document layout to dynamic height auto-expansion
         self.text_browser.document().documentLayout().documentSizeChanged.connect(self._adjust_height)
 
-        # ── Role-specific Modern Card Geometry & Palette ──
-        if self.role == "user":
-            bubble_bg = p['bubble_user']
-            margin_style = "margin: 3px 0px 3px 60px;"
-        elif self.role == "friday":
-            bubble_bg = p['bubble_assistant']
-            margin_style = "margin: 3px 60px 3px 0px;"
-        else:
-            bubble_bg = p['bubble_system']
-            margin_style = "margin: 3px 30px;"
-
-        self.setStyleSheet(f"""
-            ChatBubble {{
-                background-color: {bubble_bg};
-                border: 1px solid {p['border_card']};
-                border-radius: 18px;
-                {margin_style}
-            }}
-            ChatBubble:hover {{
-                border: 1px solid {p['border_hover']};
-            }}
-            QTextBrowser {{
-                background-color: transparent;
-                border: none;
-                color: {p['text_primary']};
-                selection-background-color: {p['selection_bg']};
-                selection-color: {p['text_primary']};
-                padding: 0px 2px;
-                font-size: 13px;
-                line-height: 1.55;
-            }}
-        """)
-
         self.main_layout.addWidget(self.text_browser)
+        self.apply_theme()
 
         # Install hover-reveal on copy button
         install_hover_reveal(self, [self.copy_btn])
@@ -349,3 +251,83 @@ class ChatBubble(QFrame):
         self.copy_btn.setIcon(FluentIcon.ACCEPT)
         self.copy_btn.setToolTip("Copied!")
         QTimer.singleShot(1500, lambda: (self.copy_btn.setIcon(FluentIcon.COPY), self.copy_btn.setToolTip("Copy response")))
+
+    def apply_theme(self, theme_mode: str = None):
+        """Applies theme colors to badge, card background, borders, and typography."""
+        from friday_ui.styles.themes import get_theme_palette
+        p = get_theme_palette(theme_mode) if theme_mode else get_current_palette()
+
+        if self.role == "friday":
+            self.badge.setStyleSheet(f"color: {p['accent']}; font-weight: bold; background: transparent; border: none; font-size: 10px; letter-spacing: 0.5px;")
+            bubble_bg = p['bubble_assistant']
+            text_color = p.get('bubble_assistant_text', p['text_primary'])
+            margin_style = "margin: 4px 80px 4px 16px;"
+        elif self.role == "user":
+            user_text_col = p.get('bubble_user_text', p['text_primary'])
+            self.badge.setStyleSheet(f"color: {user_text_col}; font-weight: bold; background: transparent; border: none; font-size: 10px; letter-spacing: 0.5px;")
+            bubble_bg = p['bubble_user']
+            text_color = p.get('bubble_user_text', p['text_inverted'])
+            margin_style = "margin: 4px 16px 4px 80px;"
+        else:
+            self.badge.setStyleSheet(f"color: {p['text_muted']}; font-weight: bold; background: transparent; border: none; font-size: 10px; letter-spacing: 0.5px;")
+            bubble_bg = p['bubble_system']
+            text_color = p.get('bubble_system_text', p['text_muted'])
+            margin_style = "margin: 4px 50px;"
+
+        self.setStyleSheet(f"""
+            ChatBubble {{
+                background-color: {bubble_bg};
+                border: 1px solid {p['border_card']};
+                border-radius: 18px;
+                padding: 4px 8px;
+                {margin_style}
+            }}
+            ChatBubble:hover {{
+                border: 1px solid {p['border_hover']};
+            }}
+            QTextBrowser {{
+                background-color: transparent;
+                border: none;
+                color: {text_color};
+                selection-background-color: {p['selection_bg']};
+                selection-color: {p['text_primary']};
+                padding: 0px 4px;
+                font-size: 13.5px;
+                line-height: 1.6;
+            }}
+        """)
+
+        self.text_browser.document().setDefaultStyleSheet(f"""
+            code {{
+                background-color: {p['code_bg']};
+                color: {p['code_text']};
+                font-family: 'Consolas', 'Cascadia Code', monospace;
+                padding: 2px 4px;
+                border-radius: 4px;
+                font-size: 12px;
+            }}
+            pre {{
+                background-color: {p['code_block_bg']};
+                color: {text_color};
+                font-family: 'Consolas', 'Cascadia Code', monospace;
+                border: 1px solid {p['code_border']};
+                padding: 10px;
+                border-radius: 6px;
+                margin: 6px 0;
+            }}
+            h1 {{ color: {text_color}; font-size: 15px; margin: 8px 0; }}
+            h2 {{ color: {text_color}; font-size: 14px; margin: 6px 0; }}
+            h3 {{ color: {p['text_secondary']}; font-size: 13px; margin: 4px 0; }}
+            a {{ color: {p['accent']}; text-decoration: none; }}
+            blockquote {{
+                border-left: 3px solid {p['accent']};
+                margin: 4px 0;
+                padding-left: 10px;
+                color: {p['text_secondary']};
+            }}
+            ul, ol {{ margin: 4px 0; padding-left: 18px; }}
+            li {{ margin-bottom: 2px; }}
+        """)
+        if self.raw_text:
+            self.text_browser.setMarkdown(self.raw_text)
+        self._adjust_height()

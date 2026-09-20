@@ -49,9 +49,9 @@ class ArcReactorWidget(QWidget):
         # Assistant state: "idle", "listening", "thinking", "speaking"
         self.state = "idle"
 
-        # Color LERP states (RGB floats)
-        self.current_color = [0.0, 240.0, 255.0]  # Start Cyan
-        self.target_color = [0.0, 240.0, 255.0]
+        # Color LERP states (RGB floats) - Warm Editorial Palette
+        self.current_color = [217.0, 116.0, 91.0]  # Soft Terracotta (#D9745B)
+        self.target_color = [217.0, 116.0, 91.0]
 
         # Burst particles
         self.particles: List[Particle] = []
@@ -90,13 +90,13 @@ class ArcReactorWidget(QWidget):
     def set_state(self, state: str):
         self.state = state.lower()
         if self.state == "listening":
-            self.target_color = [16.0, 185.0, 129.0]   # Emerald Green (#10B981)
+            self.target_color = [107.0, 142.0, 120.0]   # Muted Sage (#6B8E78)
         elif self.state == "thinking":
-            self.target_color = [245.0, 158.0, 11.0]   # Amber Gold (#F59E0B)
+            self.target_color = [217.0, 119.0, 6.0]     # Warm Amber (#D97706)
         elif self.state == "speaking":
-            self.target_color = [0.0, 240.0, 255.0]    # Stark Cyan (#00F0FF)
+            self.target_color = [217.0, 116.0, 91.0]    # Soft Terracotta (#D9745B)
         else:  # idle / standby
-            self.target_color = [225.0, 230.0, 240.0]  # Subtle Pure White / Zinc
+            self.target_color = [160.0, 150.0, 145.0]  # Warm Muted Slate
         self._apply_power_budget()
         self.update()
 

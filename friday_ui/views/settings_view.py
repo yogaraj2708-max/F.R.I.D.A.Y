@@ -276,13 +276,13 @@ class SettingsView(QWidget):
         theme_row = QHBoxLayout()
         theme_row.addWidget(QLabel("Visual Theme:"))
         self.theme_combo = ComboBox(self)
-        self.theme_combo.addItem("Warm Espresso Obsidian (60-30-10 Dark)", userData="warm_dark")
         self.theme_combo.addItem("Warm Editorial Cream (60-30-10 Light)", userData="warm_light")
+        self.theme_combo.addItem("Warm Espresso Obsidian (60-30-10 Dark)", userData="warm_dark")
         self.theme_combo.addItem("Midnight Void (Pure Dark OLED)", userData="dark")
         self.theme_combo.addItem("Stark Tactical Cyan (Military HUD)", userData="tactical")
         self.theme_combo.addItem("Deep Space Purple (Neon Tech)", userData="neon")
         self.theme_combo.setFixedWidth(320)
-        saved_theme = settings.get("theme_mode", "warm_dark")
+        saved_theme = settings.get("theme_mode", "warm_light")
         for i in range(self.theme_combo.count()):
             if self.theme_combo.itemData(i) == saved_theme:
                 self.theme_combo.setCurrentIndex(i)
@@ -509,7 +509,7 @@ class SettingsView(QWidget):
             "voice": self.voice_combo.currentText().split(" ")[0],
             "audio_input_device": self.mic_combo.currentData(),
             "mic_sensitivity": self.sens_combo.currentData() or "high",
-            "theme_mode": self.theme_combo.currentData() or "dark",
+            "theme_mode": self.theme_combo.currentData() or "warm_light",
             "chimes_enabled": self.chimes_switch.isChecked(),
             "auto_start_voice_loop": self.auto_voice_switch.isChecked(),
             "seamless_speech": self.seamless_switch.isChecked(),
