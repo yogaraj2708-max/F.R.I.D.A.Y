@@ -318,9 +318,11 @@ class ChatView(QWidget):
         header_layout.addWidget(self.inspector_btn)
 
         # Theme Mode Toggle Button (Warm Light ☀️ <-> Warm Dark 🌙)
-        self.theme_btn = TransparentToolButton(FluentIcon.PALETTE, self.header_card)
-        self.theme_btn.setFixedSize(28, 28)
-        self.theme_btn.setToolTip("Toggle Warm Light / Warm Dark (60-30-10 Editorial)")
+        self.theme_btn = PushButton("🌙 Dark", self.header_card)
+        self.theme_btn.setFixedHeight(28)
+        self.theme_btn.setMinimumWidth(76)
+        self.theme_btn.setCursor(Qt.PointingHandCursor)
+        self.theme_btn.setToolTip("Switch to Warm Dark Mode (60-30-10 Obsidian)")
         self.theme_btn.clicked.connect(self._toggle_theme)
         header_layout.addWidget(self.theme_btn)
 
@@ -600,10 +602,47 @@ class ChatView(QWidget):
         else:
             self.apply_theme(new_mode)
 
+        mode_label = "Warm Dark (Obsidian)" if new_mode == "warm_dark" else "Warm Light (Cream)"
+        try:
+            InfoBar.info(
+                "Theme Switched",
+                f"Visual mode set to {mode_label}",
+                parent=self,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=1500
+            )
+        except Exception:
+            pass
+
     def apply_theme(self, theme_mode: str = None):
         """Applies theme colors dynamically across all header, chat, input, and child components."""
         from friday_ui.styles.themes import get_theme_palette
         p = get_theme_palette(theme_mode) if theme_mode else get_current_palette()
+        is_light = "light" in str(theme_mode or settings.get("theme_mode", "warm_light")).lower()
+
+        # 0. Update Theme Toggle Button
+        if hasattr(self, 'theme_btn'):
+            self.theme_btn.setText("🌙 Dark" if is_light else "☀️ Light")
+            self.theme_btn.setToolTip("Switch to Warm Dark Mode (60-30-10 Obsidian)" if is_light else "Switch to Warm Light Mode (60-30-10 Cream)")
+            self.theme_btn.setStyleSheet(f"""
+                PushButton {{
+                    background-color: {p['chip_bg']};
+                    border: 1px solid {p['border_subtle']};
+                    color: {p['chip_text']};
+                    font-size: 11px;
+                    font-weight: 600;
+                    padding: 3px 12px;
+                    border-radius: 14px;
+                }}
+                PushButton:hover {{
+                    background-color: {p['chip_hover']};
+                    border: 1px solid {p['border_hover']};
+                    color: {p['chip_text_hover']};
+                }}
+                PushButton:pressed {{
+                    background-color: {p['chip_pressed']};
+                }}
+            """)
 
         # 1. Update brand avatar & titles
         if hasattr(self, 'brand_avatar'):
