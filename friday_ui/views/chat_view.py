@@ -39,10 +39,11 @@ from friday_ui.styles.themes import STARK_CYAN, LIVE_GREEN, DANGER_RED, AMBER_WA
 
 class GlowLine(QWidget):
     """Animated horizontal glow line separator."""
-    def __init__(self, color: QColor = QColor(0, 240, 255), parent=None):
+    def __init__(self, color: QColor = None, parent=None):
         super().__init__(parent)
         self.setFixedHeight(2)
-        self._color = color
+        p = get_current_palette()
+        self._color = color if color is not None else QColor(p.get('accent', '#D9745B'))
         self._phase = 0.0
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
@@ -122,13 +123,15 @@ class TypingIndicator(QWidget):
         p = QPainter(self)
         try:
             p.setRenderHint(QPainter.Antialiasing)
+            palette = get_current_palette()
+            accent_c = QColor(palette.get('accent', '#D9745B'))
             for i in range(3):
                 raw_s = math.sin(self._phase - i * 0.65)
                 eased_s = math.copysign(abs(raw_s) ** 1.3, raw_s)
                 offset = eased_s * 3.5
-                alpha = int(110 + 145 * max(0.0, eased_s))
+                alpha = int(90 + 165 * max(0.0, eased_s))
                 p.setPen(Qt.NoPen)
-                p.setBrush(QColor(0, 240, 255, alpha))
+                p.setBrush(QColor(accent_c.red(), accent_c.green(), accent_c.blue(), alpha))
                 cx = 12 + i * 18
                 cy = 12 + offset
                 p.drawEllipse(QPointF(cx, cy), 3.5, 3.5)
@@ -310,7 +313,7 @@ class ChatView(QWidget):
         layout.addWidget(header_card)
 
         # ── Shimmer separator ─────────────────────────────
-        self.glow_line = GlowLine(QColor(0, 240, 255), self)
+        self.glow_line = GlowLine(parent=self)
         layout.addWidget(self.glow_line)
 
         # ── 2. Chat Scroll Area ──────────────────────────
@@ -321,7 +324,7 @@ class ChatView(QWidget):
         self.scroll_area.setStyleSheet(f"""
             QScrollArea {{
                 border: 1px solid {p['border_card']};
-                border-radius: 12px;
+                border-radius: 16px;
                 background-color: {p['bg_canvas']};
             }}
             QScrollBar:vertical {{
@@ -397,7 +400,7 @@ class ChatView(QWidget):
                     font-size: 11px;
                     font-weight: 500;
                     padding: 3px 12px;
-                    border-radius: 8px;
+                    border-radius: 16px;
                 }}
                 PushButton:hover {{
                     background-color: {p['chip_hover']};
@@ -422,7 +425,7 @@ class ChatView(QWidget):
             QFrame#attachmentsBar {{
                 background: {p['bg_surface']};
                 border: 1px solid {p['border_subtle']};
-                border-radius: 8px;
+                border-radius: 16px;
             }}
         """)
         self.attachments_layout = QHBoxLayout(self.attachments_container)
@@ -438,7 +441,7 @@ class ChatView(QWidget):
             QFrame#fridayInput {{
                 background-color: {p['input_bg']};
                 border: 1px solid {p['border_card']};
-                border-radius: 12px;
+                border-radius: 18px;
             }}
             QFrame#fridayInput:focus-within {{
                 border: 1px solid {p['border_focus']};
@@ -458,7 +461,7 @@ class ChatView(QWidget):
             ToolButton {{
                 background-color: {p['bg_surface']};
                 border: 1px solid {p['border_card']};
-                border-radius: 8px;
+                border-radius: 14px;
                 color: {p['text_secondary']};
             }}
             ToolButton:hover {{
@@ -504,7 +507,7 @@ class ChatView(QWidget):
                 border: none;
                 font-weight: bold;
                 font-size: 12px;
-                border-radius: 8px;
+                border-radius: 16px;
                 color: {p['send_text']};
                 letter-spacing: 0.5px;
             }}
@@ -529,7 +532,7 @@ class ChatView(QWidget):
                 border: 1px solid #EF4444;
                 font-weight: bold;
                 font-size: 12px;
-                border-radius: 8px;
+                border-radius: 16px;
                 color: #FFFFFF;
                 letter-spacing: 0.5px;
             }
@@ -605,47 +608,48 @@ class ChatView(QWidget):
     def _set_generating_state(self, generating: bool):
         self._is_generating = generating
         if generating:
+            p = get_current_palette()
             self.stop_btn.show()
             self.send_btn.setText("■ Stop")
             self.send_btn.setToolTip("Halt response generation and speech (Esc)")
-            self.send_btn.setStyleSheet("""
-                PrimaryPushButton {
-                    background-color: #EF4444;
-                    border: 1px solid #DC2626;
+            self.send_btn.setStyleSheet(f"""
+                PrimaryPushButton {{
+                    background-color: {p['danger_red']};
+                    border: 1px solid {p['danger_red']};
                     font-weight: bold;
                     font-size: 12px;
-                    border-radius: 8px;
+                    border-radius: 16px;
                     color: #FFFFFF;
                     letter-spacing: 0.5px;
-                }
-                PrimaryPushButton:hover {
-                    background-color: #F87171;
-                    border: 1px solid #EF4444;
-                }
-                PrimaryPushButton:pressed {
-                    background-color: #B91C1C;
-                }
+                }}
+                PrimaryPushButton:hover {{
+                    background-color: {p['danger_red_border']};
+                }}
+                PrimaryPushButton:pressed {{
+                    background-color: {p['danger_red']};
+                }}
             """)
         else:
+            p = get_current_palette()
             self.stop_btn.hide()
             self.send_btn.setText("Send")
             self.send_btn.setToolTip("Send directive (Enter)")
-            self.send_btn.setStyleSheet("""
-                PrimaryPushButton {
-                    background-color: #06B6D4;
+            self.send_btn.setStyleSheet(f"""
+                PrimaryPushButton {{
+                    background-color: {p['send_bg']};
                     border: none;
                     font-weight: bold;
                     font-size: 12px;
-                    border-radius: 8px;
-                    color: #000000;
+                    border-radius: 16px;
+                    color: {p['send_text']};
                     letter-spacing: 0.5px;
-                }
-                PrimaryPushButton:hover {
-                    background-color: #22D3EE;
-                }
-                PrimaryPushButton:pressed {
-                    background-color: #0891B2;
-                }
+                }}
+                PrimaryPushButton:hover {{
+                    background-color: {p['send_hover']};
+                }}
+                PrimaryPushButton:pressed {{
+                    background-color: {p['send_pressed']};
+                }}
             """)
 
     def _show_attach_menu(self):

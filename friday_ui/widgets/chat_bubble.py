@@ -56,7 +56,7 @@ class ChatBubble(QFrame):
             self.opacity_effect.setOpacity(1.0)
             self._slide_offset = 0.0
         else:
-            duration = 200 if anim_level == "Full" else 100
+            duration = 260 if anim_level == "Full" else 130
             self.anim_group = QParallelAnimationGroup(self)
 
             self.fade_anim = QPropertyAnimation(self.opacity_effect, b"opacity")
@@ -221,9 +221,9 @@ class ChatBubble(QFrame):
             h3 {{ color: {p['text_secondary']}; font-size: 13px; margin: 4px 0; }}
             a {{ color: {p['accent']}; text-decoration: none; }}
             blockquote {{
-                border-left: 2px solid {p['text_dim']};
+                border-left: 3px solid {p['accent']};
                 margin: 4px 0;
-                padding-left: 8px;
+                padding-left: 10px;
                 color: {p['text_secondary']};
             }}
             ul, ol {{ margin: 4px 0; padding-left: 18px; }}
@@ -255,7 +255,7 @@ class ChatBubble(QFrame):
             ChatBubble {{
                 background-color: {bubble_bg};
                 border: 1px solid {p['border_card']};
-                border-radius: 14px;
+                border-radius: 18px;
                 {margin_style}
             }}
             ChatBubble:hover {{

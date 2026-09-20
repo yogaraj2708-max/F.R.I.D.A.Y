@@ -136,113 +136,215 @@ TACTICAL_DARK: Dict[str, str] = {
     "border_subtle": "rgba(0, 240, 255, 0.08)",
 }
 
-# ── 3. Complete Light Palette ───────────────────────────────────────────
-LIGHT_THEME: Dict[str, str] = {
-    # Canvas & Backgrounds
-    "bg_canvas":        "#F8FAFC",
-    "bg_sidebar":       "#FFFFFF",
-    "bg_card":          "rgba(255, 255, 255, 0.88)",
-    "bg_card_hover":    "#F1F5F9",
+# ── 3. Complete Warm Editorial 60-30-10 Palettes ───────────────────────
+# 60% Dominant Cream (#FDFBF7), 30% Warm Espresso (#2B2625), 10% Terracotta (#D9745B) & Sage (#6B8E78)
+WARM_EDITORIAL_LIGHT: Dict[str, str] = {
+    # 60% Dominant Background
+    "bg_canvas":        "#FDFBF7",
+    "bg_sidebar":       "rgba(253, 251, 247, 0.95)",
+    "bg_card":          "#F7F4EE",
+    "bg_card_hover":    "#EFECE5",
     "bg_surface":       "#FFFFFF",
-    "bg_input":         "#F1F5F9",
-    "input_bg":         "#F1F5F9",
-    "bg_dock":          "rgba(248, 250, 252, 0.88)",
-    "bg_pill":          "#E2E8F0",
-    "bg_pill_active":   "#0F172A",
+    "bg_input":         "#FFFFFF",
+    "input_bg":         "#FFFFFF",
+    "bg_dock":          "rgba(247, 244, 238, 0.95)",
+    "bg_pill":          "#EFECE5",
+    "bg_pill_active":   "#2B2625",
 
-    # Borders
-    "border_subtle":    "rgba(15, 23, 42, 0.08)",
-    "border_card":      "rgba(15, 23, 42, 0.10)",
-    "border_hover":     "rgba(15, 23, 42, 0.18)",
-    "border_focus":     "rgba(37, 99, 235, 0.50)",
+    # 30% Structural Elements & Borders
+    "border_subtle":    "rgba(43, 38, 37, 0.08)",
+    "border_card":      "rgba(43, 38, 37, 0.12)",
+    "border_hover":     "rgba(43, 38, 37, 0.25)",
+    "border_focus":     "#D9745B",
 
-    # Typography
-    "text_primary":     "#0F172A",
-    "text_secondary":   "#475569",
-    "text_muted":       "#94A3B8",
-    "text_dim":         "#CBD5E1",
-    "text_inverted":    "#FFFFFF",
+    # Typography (High-contrast WCAG AAA/AA)
+    "text_primary":     "#2B2625",
+    "text_secondary":   "#5C5552",
+    "text_muted":       "#827A76",
+    "text_dim":         "#A8A19C",
+    "text_inverted":    "#FDFBF7",
 
-    # Restricted Status Colors
-    "live_green":       LIVE_GREEN,
-    "live_green_bg":    "rgba(16, 185, 129, 0.10)",
-    "live_green_border":"rgba(16, 185, 129, 0.30)",
-
-    "danger_red":       DANGER_RED,
-    "danger_red_bg":    "rgba(239, 68, 68, 0.10)",
-    "danger_red_border":"rgba(239, 68, 68, 0.30)",
-
-    # Contextual Sparse Highlights
-    "cyan_tag":         "#0891B2",
-    "cyan_tag_bg":      "rgba(8, 145, 178, 0.08)",
-    "cyan_tag_border":  "rgba(8, 145, 178, 0.25)",
-
-    "amber_tag":        "#D97706",
-    "amber_tag_bg":     "rgba(217, 119, 6, 0.08)",
-    "amber_tag_border": "rgba(217, 119, 6, 0.25)",
-
-    # Accent — richer blue for light backgrounds
-    "accent":           "#2563EB",
-    "accent_hover":     "#3B82F6",
-    "accent_pressed":   "#1D4ED8",
-    "accent_bg":        "rgba(37, 99, 235, 0.08)",
-    "accent_border":    "rgba(37, 99, 235, 0.25)",
+    # 10% Accent Interaction Points
+    "accent":           "#D9745B",
+    "accent_hover":     "#C66249",
+    "accent_pressed":   "#B25039",
+    "accent_bg":        "rgba(217, 116, 91, 0.12)",
+    "accent_border":    "rgba(217, 116, 91, 0.35)",
     "accent_text":      "#FFFFFF",
 
-    # Scrollbars
-    "scrollbar_handle": "#CBD5E1",
-    "scrollbar_hover":  "#94A3B8",
+    # Secondary Accent: Muted Sage
+    "live_green":       "#6B8E78",
+    "live_green_bg":    "rgba(107, 142, 120, 0.14)",
+    "live_green_border":"rgba(107, 142, 120, 0.35)",
 
-    # Chat Bubbles
-    "bubble_user":      "#E2E8F0",
-    "bubble_assistant":  "#FFFFFF",
-    "bubble_system":    "#F1F5F9",
+    "danger_red":       "#D9745B",
+    "danger_red_bg":    "rgba(217, 116, 91, 0.14)",
+    "danger_red_border":"rgba(217, 116, 91, 0.35)",
+
+    "cyan_tag":         "#6B8E78",
+    "cyan_tag_bg":      "rgba(107, 142, 120, 0.12)",
+    "cyan_tag_border":  "rgba(107, 142, 120, 0.30)",
+
+    "amber_tag":        "#D9745B",
+    "amber_tag_bg":     "rgba(217, 116, 91, 0.12)",
+    "amber_tag_border": "rgba(217, 116, 91, 0.30)",
+
+    # Scrollbars
+    "scrollbar_handle": "#DDD6CE",
+    "scrollbar_hover":  "#C2B9AF",
+
+    # Chat Bubbles (Heavily rounded editorial cards)
+    "bubble_user":      "#2B2625",
+    "bubble_assistant":  "#F7F4EE",
+    "bubble_system":    "#EFECE5",
 
     # Code Blocks
-    "code_bg":          "#F1F5F9",
-    "code_block_bg":    "#F8FAFC",
-    "code_text":        "#059669",
-    "code_border":      "rgba(15, 23, 42, 0.10)",
+    "code_bg":          "#EFECE5",
+    "code_block_bg":    "#2B2625",
+    "code_text":        "#7FA88D",
+    "code_border":      "rgba(43, 38, 37, 0.14)",
 
-    # Chips & Quick Actions
-    "chip_bg":          "#F1F5F9",
-    "chip_hover":       "#E2E8F0",
-    "chip_pressed":     "#CBD5E1",
-    "chip_text":        "#475569",
-    "chip_text_hover":  "#0F172A",
+    # Chips & Quick Actions (Pills >= 16px)
+    "chip_bg":          "#F7F4EE",
+    "chip_hover":       "#EFECE5",
+    "chip_pressed":     "#E3DDD4",
+    "chip_text":        "#5C5552",
+    "chip_text_hover":  "#2B2625",
 
-    # Navigation
-    "nav_bg":           "rgba(255, 255, 255, 0.92)",
-    "nav_border":       "rgba(15, 23, 42, 0.08)",
+    # Navigation & Dock
+    "nav_bg":           "rgba(253, 251, 247, 0.95)",
+    "nav_border":       "rgba(43, 38, 37, 0.08)",
 
-    # Selection
-    "selection_bg":     "rgba(37, 99, 235, 0.20)",
-
-    # Send Button
-    "send_bg":          "#2563EB",
-    "send_hover":       "#3B82F6",
-    "send_pressed":     "#1D4ED8",
+    # Selection & Send
+    "selection_bg":     "rgba(217, 116, 91, 0.25)",
+    "send_bg":          "#D9745B",
+    "send_hover":       "#C66249",
+    "send_pressed":     "#B25039",
     "send_text":        "#FFFFFF",
 
     # Combo Box
-    "combo_bg":         "rgba(241, 245, 249, 0.90)",
-    "combo_hover_bg":   "rgba(226, 232, 240, 0.95)",
-    "combo_border":     "rgba(15, 23, 42, 0.12)",
-    "combo_hover_border": "rgba(37, 99, 235, 0.40)",
+    "combo_bg":         "#FFFFFF",
+    "combo_hover_bg":   "#F7F4EE",
+    "combo_border":     "rgba(43, 38, 37, 0.14)",
+    "combo_hover_border": "#D9745B",
 
-    # Header card
-    "header_bg":        "rgba(255, 255, 255, 0.75)",
+    # Header Card
+    "header_bg":        "rgba(247, 244, 238, 0.90)",
 }
 
+# 60% Dominant Espresso Charcoal (#1C1917), 30% Warm Cream Typography (#FDFBF7), 10% Soft Terracotta (#E07A5F) & Sage (#7FA88D)
+WARM_EDITORIAL_DARK: Dict[str, str] = {
+    # 60% Dominant Background
+    "bg_canvas":        "#1C1917",
+    "bg_sidebar":       "#151312",
+    "bg_card":          "rgba(38, 33, 31, 0.75)",
+    "bg_card_hover":    "#322B29",
+    "bg_surface":       "#25201E",
+    "bg_input":         "#171514",
+    "input_bg":         "#171514",
+    "bg_dock":          "rgba(23, 20, 19, 0.90)",
+    "bg_pill":          "#322B29",
+    "bg_pill_active":   "#FDFBF7",
+
+    # 30% Structural Elements & Borders
+    "border_subtle":    "rgba(253, 251, 247, 0.08)",
+    "border_card":      "rgba(253, 251, 247, 0.12)",
+    "border_hover":     "rgba(253, 251, 247, 0.25)",
+    "border_focus":     "#E07A5F",
+
+    # Typography (High-contrast Warm Cream)
+    "text_primary":     "#FDFBF7",
+    "text_secondary":   "#C4BCB5",
+    "text_muted":       "#8E8681",
+    "text_dim":         "#5E5652",
+    "text_inverted":    "#1C1917",
+
+    # 10% Accent Interaction Points
+    "accent":           "#E07A5F",
+    "accent_hover":     "#EB8C72",
+    "accent_pressed":   "#C9674D",
+    "accent_bg":        "rgba(224, 122, 95, 0.15)",
+    "accent_border":    "rgba(224, 122, 95, 0.35)",
+    "accent_text":      "#FFFFFF",
+
+    # Secondary Accent: Muted Sage
+    "live_green":       "#7FA88D",
+    "live_green_bg":    "rgba(127, 168, 141, 0.14)",
+    "live_green_border":"rgba(127, 168, 141, 0.35)",
+
+    "danger_red":       "#E07A5F",
+    "danger_red_bg":    "rgba(224, 122, 95, 0.14)",
+    "danger_red_border":"rgba(224, 122, 95, 0.35)",
+
+    "cyan_tag":         "#7FA88D",
+    "cyan_tag_bg":      "rgba(127, 168, 141, 0.12)",
+    "cyan_tag_border":  "rgba(127, 168, 141, 0.30)",
+
+    "amber_tag":        "#E07A5F",
+    "amber_tag_bg":     "rgba(224, 122, 95, 0.12)",
+    "amber_tag_border": "rgba(224, 122, 95, 0.30)",
+
+    # Scrollbars
+    "scrollbar_handle": "#3A3330",
+    "scrollbar_hover":  "#4D4440",
+
+    # Chat Bubbles (Heavily rounded editorial cards)
+    "bubble_user":      "#322B29",
+    "bubble_assistant":  "#1F1A19",
+    "bubble_system":    "#181514",
+
+    # Code Blocks
+    "code_bg":          "#282321",
+    "code_block_bg":    "#12100F",
+    "code_text":        "#7FA88D",
+    "code_border":      "rgba(253, 251, 247, 0.12)",
+
+    # Chips & Quick Actions (Pills >= 16px)
+    "chip_bg":          "#25201E",
+    "chip_hover":       "#322B29",
+    "chip_pressed":     "#3D3532",
+    "chip_text":        "#C4BCB5",
+    "chip_text_hover":  "#FDFBF7",
+
+    # Navigation & Dock
+    "nav_bg":           "rgba(21, 19, 18, 0.95)",
+    "nav_border":       "rgba(253, 251, 247, 0.08)",
+
+    # Selection & Send
+    "selection_bg":     "rgba(224, 122, 95, 0.30)",
+    "send_bg":          "#E07A5F",
+    "send_hover":       "#EB8C72",
+    "send_pressed":     "#C9674D",
+    "send_text":        "#FFFFFF",
+
+    # Combo Box
+    "combo_bg":         "#25201E",
+    "combo_hover_bg":   "#322B29",
+    "combo_border":     "rgba(253, 251, 247, 0.14)",
+    "combo_hover_border": "#E07A5F",
+
+    # Header Card
+    "header_bg":        "rgba(32, 28, 26, 0.85)",
+}
+
+# Aliases for compatibility
+LIGHT_THEME = WARM_EDITORIAL_LIGHT
 STARK_DARK = MONO_DARK
 
 def get_theme_palette(theme_mode: str = "dark") -> Dict[str, str]:
     mode = str(theme_mode).lower()
-    if "tactical" in mode:
+    if "warm_light" in mode or "editorial_light" in mode or mode == "light":
+        return WARM_EDITORIAL_LIGHT
+    elif "warm_dark" in mode or "editorial_dark" in mode or "warm" in mode or "editorial" in mode:
+        return WARM_EDITORIAL_DARK
+    elif "tactical" in mode:
         return TACTICAL_DARK
-    elif "light" in mode:
-        return LIGHT_THEME
-    return MONO_DARK
+    elif "neon" in mode:
+        return MONO_DARK
+    elif "void" in mode or "mono" in mode:
+        return MONO_DARK
+    # Default to Warm Editorial Dark for soothing, calming experience
+    return WARM_EDITORIAL_DARK
 
 
 def get_current_palette() -> Dict[str, str]:
@@ -256,7 +358,7 @@ def get_current_palette() -> Dict[str, str]:
 
 
 def generate_global_qss(theme_mode: str = "dark") -> str:
-    """Generates the unified desktop stylesheet with dynamic property selectors."""
+    """Generates the unified desktop stylesheet with 60-30-10 tokens, 16px+ rounded corners and clean typography."""
     p = get_theme_palette(theme_mode)
     is_light = "light" in str(theme_mode).lower()
 
@@ -268,7 +370,7 @@ def generate_global_qss(theme_mode: str = "dark") -> str:
 
     return f"""
         QWidget {{
-            font-family: 'Inter', 'Segoe UI', -apple-system, sans-serif;
+            font-family: 'Plus Jakarta Sans', 'Inter', 'Segoe UI', -apple-system, sans-serif;
             color: {p['text_primary']};
         }}
 
@@ -310,26 +412,77 @@ def generate_global_qss(theme_mode: str = "dark") -> str:
             background: transparent;
         }}
 
-        /* ── Inputs & Buttons ── */
+        /* ── Inputs & Buttons (16px+ Soft Heavily-Rounded Corners) ── */
         QLineEdit, QTextEdit, QPlainTextEdit {{
             background-color: {p['bg_input']};
             color: {p['text_primary']};
             border: 1px solid {p['border_card']};
-            border-radius: 8px;
+            border-radius: 16px;
             selection-background-color: {p['selection_bg']};
+            padding: 8px 12px;
         }}
         QLineEdit:focus, QTextEdit:focus {{
-            border: 1px solid {p['border_focus']};
+            border: 1.5px solid {p['border_focus']};
         }}
 
-        /* ── CardWidget (QFluentWidgets) ── */
+        /* ── CardWidget (QFluentWidgets with 18px radius) ── */
         CardWidget {{
             background-color: {p['bg_surface']};
             border: 1px solid {p['border_card']};
-            border-radius: 10px;
+            border-radius: 18px;
         }}
         CardWidget:hover {{
             border: 1px solid {p['border_hover']};
+        }}
+
+        /* ── Buttons & Action Controls (16px+ Heavily-Rounded Corners) ── */
+        PrimaryPushButton {{
+            background-color: {p['send_bg']};
+            color: {p['send_text']};
+            border-radius: 16px;
+            font-weight: bold;
+            font-size: 12px;
+            border: none;
+            padding: 6px 18px;
+            letter-spacing: 0.3px;
+        }}
+        PrimaryPushButton:hover {{
+            background-color: {p['send_hover']};
+        }}
+        PrimaryPushButton:pressed {{
+            background-color: {p['send_pressed']};
+        }}
+
+        PushButton {{
+            background-color: {p['chip_bg']};
+            color: {p['chip_text']};
+            border: 1px solid {p['border_card']};
+            border-radius: 16px;
+            font-weight: 500;
+            font-size: 11px;
+            padding: 5px 14px;
+        }}
+        PushButton:hover {{
+            background-color: {p['chip_hover']};
+            border: 1px solid {p['border_hover']};
+            color: {p['chip_text_hover']};
+        }}
+        PushButton:pressed {{
+            background-color: {p['chip_pressed']};
+        }}
+
+        ComboBox {{
+            background-color: {p['combo_bg']};
+            border: 1px solid {p['combo_border']};
+            border-radius: 14px;
+            color: {p['text_primary']};
+            font-size: 11px;
+            font-weight: 500;
+            padding: 4px 10px;
+        }}
+        ComboBox:hover {{
+            border: 1px solid {p['combo_hover_border']};
+            background-color: {p['combo_hover_bg']};
         }}
 
         /* ── HUD State Label ── */

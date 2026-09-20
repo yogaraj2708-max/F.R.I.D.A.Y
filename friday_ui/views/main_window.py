@@ -35,7 +35,7 @@ from friday_ui.rag.store import FridayVectorStore
 from friday_ui.widgets.confirmation_dialog import SecurityConfirmationDialog
 from friday_ui.widgets.operations_panel import OperationsPanel
 from friday_ui.widgets.glass_panel import GlassPanel
-from friday_ui.styles.themes import generate_global_qss, MONO_DARK, fade_in
+from friday_ui.styles.themes import generate_global_qss, MONO_DARK, fade_in, get_theme_palette
 from friday_core.gatekeeper.gatekeeper import gatekeeper
 from friday_core.settings import settings
 from friday_core.system import get_battery_info, get_memory_info
@@ -194,19 +194,23 @@ class FridayMainWindow(FluentWindow):
 
     def _apply_global_style(self):
         """Apply Centralized Monochrome / Tactical Desktop Styling with transparent backing."""
-        theme_mode = settings.get("theme_mode", "dark")
-        # This used to append to the existing sheet. Every theme switch bolted on
-        # another full copy, so the sheet kept growing and Qt re-parsed all of it
-        # on each repaint -- the app got visibly slower the more you toggled.
-        self.setStyleSheet(generate_global_qss(theme_mode) + """
-            #FridayMainWindow, #content_container, #chat_view, #rag_view, #research_view, #settings_view, #workspace_container {
+        theme_mode = settings.get("theme_mode", "warm_dark")
+        p = get_theme_palette(theme_mode)
+        self.setStyleSheet(generate_global_qss(theme_mode) + f"""
+            #FridayMainWindow, #content_container, #chat_view, #rag_view, #research_view, #settings_view, #workspace_container {{
                 background-color: transparent;
-            }
-            NavigationInterface {
-                background-color: rgba(9, 9, 11, 0.85);
-                border-right: 1px solid rgba(255, 255, 255, 0.08);
-            }
+            }}
+            NavigationInterface {{
+                background-color: {p['nav_bg']};
+                border-right: 1px solid {p['nav_border']};
+            }}
         """)
+        if hasattr(self, 'hud_dock') and self.hud_dock:
+            self.hud_dock.set_glass_style(
+                bg_color=p.get('bg_dock', 'rgba(14, 14, 18, 0.75)'),
+                border_color=p.get('border_subtle', 'rgba(255, 255, 255, 0.08)'),
+                radius=0
+            )
 
     def _init_sub_interfaces(self):
         # 1. Chat View (Default)
