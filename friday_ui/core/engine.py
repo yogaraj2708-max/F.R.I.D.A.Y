@@ -1704,10 +1704,11 @@ Core Persona Rules:
                 play_chime(CHIME_CONFIRM)
                 self.signals.skill_executed.emit("App Launch", "explorer")
                 return "Opening File Explorer, Boss."
-            else:
+            elif any(w in cmd_clean for w in ["screenshot", "snip", "snap", "capture screen", "capture active screen"]):
                 gatekeeper.execute_action(ActionIntent(action="screenshot"))
                 play_chime(CHIME_CONFIRM)
                 return "Screenshot snipping tool activated, Boss."
+            return None
 
         elif intent == SkillIntent.WEATHER:
             loc_name = entities.get("location", "")
@@ -1741,7 +1742,10 @@ Core Persona Rules:
                 if m:
                     target = m.group(1).replace("on youtube", "").replace("on spotify", "").strip()
             if not target or target in ["tunes", "music", "songs"]:
-                target = "lofi beats"
+                if any(k in cmd_clean for k in ["tunes", "music", "song", "songs", "tracks", "lofi", "beats", "play", "listen"]):
+                    target = "lofi beats"
+                else:
+                    return None
             video_url, resolved_title = await resolve_youtube_video_async(target)
             gatekeeper.execute_action(ActionIntent(action="open_url", target=video_url))
             play_chime(CHIME_CONFIRM)
@@ -1750,14 +1754,21 @@ Core Persona Rules:
 
         elif intent == SkillIntent.APP_LAUNCH:
             target_app = entities.get("app_name", "")
-            if not target_app:
-                target_app = re.sub(r"^(?:open|launch|start|run|pull\s+up)\s+", "", cmd_clean).strip()
+            if not target_app or any(target_app.startswith(p) for p in ["open ", "launch ", "start ", "please ", "can you ", "a "]):
+                target_app = re.sub(
+                    r"^(?:hey\s+|hi\s+|friday\s+|jarvis\s+|ok\s+|please\s+|can\s+you\s+|could\s+you\s+|just\s+|would\s+you\s+|a\s+|an\s+|the\s+)+",
+                    "",
+                    cmd_clean
+                ).strip()
+                target_app = re.sub(r"^(?:open|ope|opn|launch|lnch|start|run|pull\s+up)\s+", "", target_app).strip()
             target_app = re.sub(r"\s+(?:for\s+me|please|app)$", "", target_app).strip()
             if target_app in ["word", "ms word", "microsoft word", "winword", "wrd"]:
                 open_blank_word()
                 play_chime(CHIME_CONFIRM)
                 self.signals.skill_executed.emit("Microsoft Word", "Blank Document")
                 return "Opening a blank document in Microsoft Word, Boss."
+            if target_app in ["browser", "web browser"]:
+                target_app = "edge"
             if target_app:
                 intent_obj = ActionIntent(action="open_app", target=target_app)
                 res = gatekeeper.execute_action(intent_obj)
@@ -1832,12 +1843,63 @@ Core Persona Rules:
 
         # 0.02 Check coding or technical explanation requests to preserve full LLM generation
         is_code_request = any(p in cmd for p in [
-            "html code", "python code", "css code", "js code", "javascript code",
-            "write code", "give code", "generate code", "code for", "code of",
-            "write a python", "write a script", "write an app", "write python", "write html"
+            "html code", "python code", "css code", "js code", "javascript code", "c++ code",
+            "write code", "give code", "generate code", "code for", "code of", "code to",
+            "write a python", "write a script", "write an app", "write python", "write html", "write c++", "write bash",
+            "python script", "bash script", "powershell script", "shell script",
+            "python function", "javascript function", "js function", "write a function", "function to", "function that",
+            "how to use subprocess", "how does", "explain how", "why did internet explorer",
+            "tell me the history", "history of microsoft", "alternatives to file explorer", "difference between",
+            "is vs code better", "who invented", "tell me a joke", "favorite movie",
+            "speed of light", "first person", "general relativity", "solar panels",
+            "aurora borealis", "why is the sky", "how do airplanes", "quantum computing",
+            "blockchain technology", "immune system", "without any app trigger",
+            "ran out of", "yesterday", "this morning", "i was using"
+        ]) or any(cmd.startswith(prefix) for prefix in [
+            "how to ", "how do ", "how does ", "explain ", "why did ", "why does ", "what is the difference ", "who invented ",
+            "tell me a joke", "what is your favorite", "tell me about ", "tell me the history ", "general question "
         ])
         if is_code_request:
             return None
+
+        # 0.04 SCREEN VISION & AWARENESS (Priority over static desktop action)
+        vision_triggers = [
+            "look at my screen", "what is on my screen", "what's on my screen",
+            "check my screen", "analyze my screen", "analyze screen", "screen analysis", "look at this code",
+            "inspect my screen", "see my screen", "read my screen", "summarize my screen",
+            "what do you see on my screen", "explain what's on my screen", "what is wrong with this code"
+        ]
+        if any(t in cmd for t in vision_triggers):
+            play_chime(CHIME_CONFIRM)
+            self.signals.stream_started.emit("friday", "Capturing tactical screen buffer...")
+            self.signals.status_updated.emit("Screen captured. Analyzing visuals...")
+            self.signals.skill_executed.emit("Screen Vision", "Desktop Buffer")
+            b64_img, saved_path = self.capture_screen_base64()
+            if not b64_img:
+                return "Unable to capture visual display buffer, Boss."
+
+            vision_model = await self._get_available_vision_model()
+            if vision_model:
+                self.signals.status_updated.emit(f"Synthesizing visual analysis with {vision_model}...")
+                prompt = (
+                    f"Boss asked: '{command}'\n"
+                    "You are analyzing a live desktop screenshot. "
+                    "Identify the active application, IDE, code, error messages, terminal output, or browser content visible. "
+                    "Provide a direct, technical, clear answer solving Boss's question."
+                )
+                await self._stream_vision_chat(vision_model, prompt, b64_img)
+                return "__STREAMED__"
+            else:
+                note = (
+                    f"Visual snapshot secured at `{saved_path}`.\n\n"
+                    "⚠️ **Vision Model Required**: To analyze screenshots locally with zero telemetry lag, "
+                    "please run `ollama pull qwen2-vl:2b` or `ollama pull llava:7b` in your terminal. "
+                    "Once downloaded, visual analysis activates automatically."
+                )
+                self.signals.transcript_received.emit("friday", note)
+                if self.tts:
+                    await self.tts.speak("Visual snapshot secured, Boss. To analyze screen visuals locally, please pull qwen2-vl in Ollama.")
+                return "__STREAMED__"
 
         # 0.05 VISUAL THEME & MODE SWITCHING ("turn to dark mode", "switch to light mode")
         theme_cmd = self._check_theme_command(cmd)
@@ -1888,45 +1950,6 @@ Core Persona Rules:
                 self._active_timers = []
             self._active_timers.append(t)
             return f"Timer initialized for {label}, Boss. Standing by."
-
-        # 0.1 SCREEN VISION & AWARENESS
-        vision_triggers = [
-            "look at my screen", "what is on my screen", "what's on my screen",
-            "check my screen", "analyze my screen", "analyze screen", "screen analysis", "look at this code",
-            "inspect my screen", "see my screen", "read my screen", "summarize my screen",
-            "what do you see on my screen", "explain what's on my screen", "what is wrong with this code"
-        ]
-        if any(t in cmd for t in vision_triggers):
-            play_chime(CHIME_CONFIRM)
-            self.signals.stream_started.emit("friday", "Capturing tactical screen buffer...")
-            self.signals.status_updated.emit("Screen captured. Analyzing visuals...")
-            self.signals.skill_executed.emit("Screen Vision", "Desktop Buffer")
-            b64_img, saved_path = self.capture_screen_base64()
-            if not b64_img:
-                return "Unable to capture visual display buffer, Boss."
-
-            vision_model = await self._get_available_vision_model()
-            if vision_model:
-                self.signals.status_updated.emit(f"Synthesizing visual analysis with {vision_model}...")
-                prompt = (
-                    f"Boss asked: '{command}'\n"
-                    "You are analyzing a live desktop screenshot. "
-                    "Identify the active application, IDE, code, error messages, terminal output, or browser content visible. "
-                    "Provide a direct, technical, clear answer solving Boss's question."
-                )
-                await self._stream_vision_chat(vision_model, prompt, b64_img)
-                return "__STREAMED__"
-            else:
-                note = (
-                    f"Visual snapshot secured at `{saved_path}`.\n\n"
-                    "⚠️ **Vision Model Required**: To analyze screenshots locally with zero telemetry lag, "
-                    "please run `ollama pull qwen2-vl:2b` or `ollama pull llava:7b` in your terminal. "
-                    "Once downloaded, visual analysis activates automatically."
-                )
-                self.signals.transcript_received.emit("friday", note)
-                if self.tts:
-                    await self.tts.speak("Visual snapshot secured, Boss. To analyze screen visuals locally, please pull qwen2-vl in Ollama.")
-                return "__STREAMED__"
 
         # 0.2 AUTONOMOUS FILE ORGANIZER
         organize_keywords = [

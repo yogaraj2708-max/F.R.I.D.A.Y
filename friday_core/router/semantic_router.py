@@ -111,7 +111,10 @@ INTENT_EXEMPLARS: Dict[SkillIntent, List[str]] = {
     SkillIntent.APP_LAUNCH: [
         "open word", "launch ms word", "open blank word document", "open visual studio code",
         "launch vs code", "open edge browser", "open web browser", "launch spotify app",
-        "open chrome", "launch notepad", "start vscode",
+        "open chrome", "launch notepad", "start vscode", "start spotify", "open spotify",
+        "start browser", "start edge", "open edge", "open settings", "start settings",
+        "open task manager", "start task manager", "open file explorer", "start file explorer",
+        "start calculator", "can you launch spotify", "please open spotify",
         "ope vs coe for me", "open vs coe", "opn vs code", "open vs code for me", "ope wrd for me", "open vsc"
     ],
     SkillIntent.TIMER_CLOCK: [
@@ -135,7 +138,12 @@ INTENT_EXEMPLARS: Dict[SkillIntent, List[str]] = {
         "what is the capital of france", "how does a turbojet engine work",
         "can you help me with something", "tell me a story",
         "give html code for simple working calculator", "write a poem about space",
-        "what is the difference between a process and a thread"
+        "what is the difference between a process and a thread",
+        "javascript function to get current time and date",
+        "write a python script to open notepad and write text",
+        "how to use subprocess to launch calculator in python",
+        "what is the difference between spotify and apple music",
+        "tell me the history of microsoft word"
     ]
 }
 
@@ -168,14 +176,21 @@ def extract_parameters(intent: SkillIntent, text: str) -> Dict[str, Any]:
             params["action"] = "calculator"
         elif any(w in clean for w in ["explorer", "files"]):
             params["action"] = "explorer"
-        else:
+        elif any(w in clean for w in ["screenshot", "snip", "snap", "capture screen", "screen capture"]):
             params["action"] = "screenshot"
+        else:
+            params["action"] = "unknown"
     elif intent == SkillIntent.WEATHER:
         m = re.search(r"\b(?:in|for|at)\s+([a-zA-Z\s]+)$", clean)
         if m:
             params["location"] = m.group(1).strip()
     elif intent == SkillIntent.APP_LAUNCH:
-        app = re.sub(r"^(?:open|ope|opn|launch|lnch|start|run|pull\s+up)\s+", "", clean).strip()
+        app = re.sub(
+            r"^(?:hey\s+|hi\s+|friday\s+|jarvis\s+|ok\s+|okay\s+|please\s+|can\s+you\s+|could\s+you\s+|just\s+|would\s+you\s+|a\s+|an\s+|the\s+)+",
+            "",
+            clean
+        ).strip()
+        app = re.sub(r"^(?:open|ope|opn|launch|lnch|start|run|pull\s+up)\s+", "", app).strip()
         app = re.sub(r"\s+(?:for\s+me|please|app)$", "", app).strip()
         if app in ["vs coe", "vs cod", "vsc", "vscode", "vs code", "vs coe for me", "vs code for me"]:
             app = "vs code"
@@ -183,6 +198,8 @@ def extract_parameters(intent: SkillIntent, text: str) -> Dict[str, Any]:
             app = "word"
         elif app in ["crhome", "chrom", "google chrom", "google crhome"]:
             app = "chrome"
+        elif app in ["browser", "web browser"]:
+            app = "edge"
         params["app_name"] = app
     elif intent == SkillIntent.MEDIA_CONTROL:
         norm_clean = re.sub(r"\byou\s*t[ui]be\b|\byuotube\b|\byotube\b", "youtube", clean)
@@ -391,15 +408,18 @@ class SemanticIntentRouter:
         """
         Decision Maker Routing:
         1. When Ollama is available, actively executes the small Ollama decision maker.
-           It parses intent with full semantic reasoning, handling typos, slang, and indirect speech.
+            It parses intent with full semantic reasoning, handling typos, slang, and indirect speech.
         2. If Ollama is offline or unavailable, falls back to Tier 1 local vector embedding match.
         """
         threshold = confidence_threshold if confidence_threshold is not None else self.threshold
 
+        # Strip vocal disfluency and speech artifacts (e.g. "a open calculator" -> "open calculator")
+        norm_text = re.sub(r"^(?:uh\s+|um\s+|ah\s+|a\s+|an\s+|the\s+)+(open|launch|start|run)\b", r"\1", text.lower().strip())
+
         # 1. Primary: Active Local Ollama Decision Maker (Handles typos, slang, and nuances)
-        nano_intent = await self.route_tier2_nano(text, client=client, model=model)
+        nano_intent = await self.route_tier2_nano(norm_text, client=client, model=model)
         if nano_intent is not None:
-            params = extract_parameters(nano_intent, text)
+            params = extract_parameters(nano_intent, norm_text)
             return RouteResult(
                 intent=nano_intent,
                 confidence=0.95,
@@ -409,9 +429,9 @@ class SemanticIntentRouter:
             )
 
         # 2. Resilient Fallback: Tier 1 Vector Embedding Centroid Match (< 2ms)
-        intent, score, exemplar = self.route_tier1(text)
+        intent, score, exemplar = self.route_tier1(norm_text)
         if score >= threshold:
-            params = extract_parameters(intent, text)
+            params = extract_parameters(intent, norm_text)
             return RouteResult(
                 intent=intent,
                 confidence=score,
@@ -421,7 +441,7 @@ class SemanticIntentRouter:
             )
 
         # 3. Fallback to General Chat
-        params = extract_parameters(SkillIntent.GENERAL_CHAT, text)
+        params = extract_parameters(SkillIntent.GENERAL_CHAT, norm_text)
         return RouteResult(
             intent=SkillIntent.GENERAL_CHAT,
             confidence=score,
