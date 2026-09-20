@@ -50,6 +50,9 @@ class AddModelDialog(QDialog):
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(14)
 
+        from friday_ui.styles.themes import get_current_palette
+        p = get_current_palette()
+
         # Header
         header = QWidget(self)
         h_layout = QVBoxLayout(header)
@@ -58,23 +61,23 @@ class AddModelDialog(QDialog):
 
         title = QLabel("UNIVERSAL AI MODEL MANAGER")
         title.setFont(QFont("Segoe UI", 13, QFont.Bold))
-        title.setStyleSheet("color: #00F0FF; letter-spacing: 1px;")
+        title.setStyleSheet(f"color: {p['accent']}; letter-spacing: 1px;")
         h_layout.addWidget(title)
 
         desc = QLabel("Add any Ollama model name, tag, or fine-tuned checkpoint to F.R.I.D.A.Y.")
         desc.setFont(QFont("Segoe UI", 9))
-        desc.setStyleSheet("color: #A1A1AA;")
+        desc.setStyleSheet(f"color: {p['text_secondary']};")
         h_layout.addWidget(desc)
         layout.addWidget(header)
 
         # Main Card
         card = CardWidget(self)
-        card.setStyleSheet("""
-            CardWidget {
-                background-color: rgba(255, 255, 255, 0.04);
-                border: 1px solid rgba(0, 240, 255, 0.25);
-                border-radius: 8px;
-            }
+        card.setStyleSheet(f"""
+            CardWidget {{
+                background-color: {p['bg_surface']};
+                border: 1px solid {p['border_card']};
+                border-radius: 10px;
+            }}
         """)
         card_layout = QVBoxLayout(card)
         card_layout.setContentsMargins(16, 16, 16, 16)
@@ -82,7 +85,7 @@ class AddModelDialog(QDialog):
 
         input_label = QLabel("MODEL TAG / IDENTIFIER:")
         input_label.setFont(QFont("Segoe UI", 8, QFont.Bold))
-        input_label.setStyleSheet("color: #00F0FF; font-family: monospace;")
+        input_label.setStyleSheet(f"color: {p['accent']}; font-family: monospace;")
         card_layout.addWidget(input_label)
 
         self.model_input = LineEdit(card)
@@ -91,31 +94,31 @@ class AddModelDialog(QDialog):
 
         chips_label = QLabel("QUICK PRESETS:")
         chips_label.setFont(QFont("Segoe UI", 8, QFont.Bold))
-        chips_label.setStyleSheet("color: #71717A; font-family: monospace;")
+        chips_label.setStyleSheet(f"color: {p['text_muted']}; font-family: monospace;")
         card_layout.addWidget(chips_label)
 
         chips_row = QHBoxLayout()
         chips_row.setSpacing(6)
         presets = ["llama3.2:1b", "mistral:7b", "deepseek-r1:8b", "phi3:mini", "qwen2.5:3b"]
-        for p in presets:
-            btn = PushButton(p, card)
+        for preset_tag in presets:
+            btn = PushButton(preset_tag, card)
             btn.setFixedHeight(24)
             btn.setFont(QFont("Segoe UI", 8))
-            btn.setStyleSheet("""
-                PushButton {
-                    background-color: rgba(255, 255, 255, 0.06);
-                    border: 1px solid rgba(255, 255, 255, 0.12);
-                    color: #D4D4D8;
-                    border-radius: 4px;
+            btn.setStyleSheet(f"""
+                PushButton {{
+                    background-color: {p['chip_bg']};
+                    border: 1px solid {p['border_subtle']};
+                    color: {p['chip_text']};
+                    border-radius: 6px;
                     padding: 0 8px;
-                }
-                PushButton:hover {
-                    background-color: rgba(0, 240, 255, 0.15);
-                    border-color: #00F0FF;
-                    color: #FFFFFF;
-                }
+                }}
+                PushButton:hover {{
+                    background-color: {p['accent_bg']};
+                    border-color: {p['accent']};
+                    color: {p['accent']};
+                }}
             """)
-            btn.clicked.connect(lambda checked=False, tag=p: self.model_input.setText(tag))
+            btn.clicked.connect(lambda checked=False, tag=preset_tag: self.model_input.setText(tag))
             chips_row.addWidget(btn)
         card_layout.addLayout(chips_row)
 
@@ -124,25 +127,26 @@ class AddModelDialog(QDialog):
         # Status & Progress
         self.status_label = QLabel("")
         self.status_label.setFont(QFont("Segoe UI", 9))
-        self.status_label.setStyleSheet("color: #10B981;")
+        self.status_label.setStyleSheet(f"color: {p['live_green']};")
         layout.addWidget(self.status_label)
 
         self.progress_bar = QProgressBar(self)
         self.progress_bar.setFixedHeight(6)
         self.progress_bar.setTextVisible(False)
-        self.progress_bar.setStyleSheet("""
-            QProgressBar {
-                background-color: rgba(255, 255, 255, 0.08);
+        self.progress_bar.setStyleSheet(f"""
+            QProgressBar {{
+                background-color: {p['border_subtle']};
                 border-radius: 3px;
                 border: none;
-            }
-            QProgressBar::chunk {
-                background-color: #00F0FF;
+            }}
+            QProgressBar::chunk {{
+                background-color: {p['accent']};
                 border-radius: 3px;
-            }
+            }}
         """)
         self.progress_bar.hide()
         layout.addWidget(self.progress_bar)
+
 
         # Buttons
         btn_layout = QHBoxLayout()

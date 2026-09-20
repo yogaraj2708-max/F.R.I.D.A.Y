@@ -38,67 +38,86 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "voice": "en-US-AriaNeural",
     "pitch": "+0Hz",
     "rate": "+0%",
+    "speech_speed": 1.0,
+    "wake_word": "friday",
+    "wake_word_sensitivity": 0.5,
     "chimes_enabled": True,
+    "sound_effects": True,
     "telemetry_poll_interval": 20,
     "animation_level": "Full",  # Full, Reduced, Off
     "command_bar_position": "top",  # top, bottom, last
     "auto_start_voice_loop": True,
+    "auto_listen": True,
+    "audio_ducking": True,
+    "mic_cooldown": 0.45,
     "global_hotkey": "Ctrl+Space",
     "observe_only": False,  # Panic switch mode
     "last_x": -1,
     "last_y": -1,
     "audio_input_device": None,
     "mic_sensitivity": "high",
-    "theme_mode": "warm_light"
+    "theme_mode": "warm_light",
+    "theme": "warm_light",
+    "seamless_speech": True,
+    "continuous_conversation": True,
+    "speak_full_response": True,
+    "semantic_routing": True,
+    "semantic_router_threshold": 0.76
 }
+
 
 class SettingsManager:
     """Singleton manager for reading and persisting user settings to disk."""
     _instance: Optional['SettingsManager'] = None
 
-    def __new__(cls) -> 'SettingsManager':
+    def __new__(cls, config_path: Optional[Any] = None) -> 'SettingsManager':
+        if config_path is not None:
+            instance = super(SettingsManager, cls).__new__(cls)
+            instance._initialized = False
+            return instance
         if cls._instance is None:
             cls._instance = super(SettingsManager, cls).__new__(cls)
             cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self):
-        if getattr(self, "_initialized", False):
+    def __init__(self, config_path: Optional[Any] = None):
+        if getattr(self, "_initialized", False) and config_path is None:
             return
         self._initialized = True
+        self._config_file = Path(config_path) if config_path else SETTINGS_FILE
         self._settings: Dict[str, Any] = dict(DEFAULT_SETTINGS)
         self._listeners: List[Callable[[str, Any], None]] = []
         self.load()
 
     def load(self) -> Dict[str, Any]:
         """Loads settings from disk; falls back to defaults if file missing or corrupted."""
-        APP_DATA_DIR.mkdir(parents=True, exist_ok=True)
-        if SETTINGS_FILE.exists():
+        self._config_file.parent.mkdir(parents=True, exist_ok=True)
+        if self._config_file.exists():
             try:
-                with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                with open(self._config_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     if isinstance(data, dict):
                         # Migrate legacy cyber/dark themes to warm editorial
                         if data.get("theme_mode") in ["tactical", "neon", "mono", "dark"]:
                             data["theme_mode"] = "warm_light"
                         self._settings.update(data)
-                        logger.info(f"[Settings]: Loaded user preferences from {SETTINGS_FILE}")
+                        logger.info(f"[Settings]: Loaded user preferences from {self._config_file}")
             except Exception as e:
-                logger.error(f"[Settings]: Error loading {SETTINGS_FILE}: {e}. Retaining defaults.")
+                logger.error(f"[Settings]: Error loading {self._config_file}: {e}. Retaining defaults.")
         else:
             self.save()
         return dict(self._settings)
 
     def save(self) -> bool:
-        """Persists current in-memory settings to settings.json."""
-        APP_DATA_DIR.mkdir(parents=True, exist_ok=True)
+        """Persists current in-memory settings to configuration file."""
+        self._config_file.parent.mkdir(parents=True, exist_ok=True)
         try:
-            with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+            with open(self._config_file, "w", encoding="utf-8") as f:
                 json.dump(self._settings, f, indent=2)
-            logger.info(f"[Settings]: Saved preferences to {SETTINGS_FILE}")
+            logger.info(f"[Settings]: Saved preferences to {self._config_file}")
             return True
         except Exception as e:
-            logger.error(f"[Settings]: Failed saving to {SETTINGS_FILE}: {e}")
+            logger.error(f"[Settings]: Failed saving to {self._config_file}: {e}")
             return False
 
     def get(self, key: str, default: Any = None) -> Any:
@@ -106,6 +125,8 @@ class SettingsManager:
         val = self._settings.get(key)
         if val is not None:
             return val
+        if key == "theme":
+            return self._settings.get("theme_mode", default if default is not None else DEFAULT_SETTINGS.get("theme"))
         return default if default is not None else DEFAULT_SETTINGS.get(key)
 
     def set(self, key: str, value: Any, auto_save: bool = True):

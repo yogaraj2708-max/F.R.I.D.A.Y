@@ -26,6 +26,19 @@ DANGER_RED = "#EF4444"
 AMBER_WARN = "#F59E0B"
 PURPLE_ACCENT = "#7B2CBF"
 
+def hex_to_rgb(hex_code: str) -> List[float]:
+    """Converts hex color string (e.g. #D9745B) to a list of RGB floats [r, g, b]."""
+    try:
+        clean = hex_code.strip().lstrip("#")
+        if len(clean) == 6:
+            return [float(int(clean[i:i+2], 16)) for i in (0, 2, 4)]
+        elif len(clean) == 3:
+            return [float(int(c * 2, 16)) for c in clean]
+    except Exception:
+        pass
+    return [217.0, 116.0, 91.0]
+
+
 TEXT_PRIMARY = "#FFFFFF"
 TEXT_SECONDARY = "#A1A1AA"
 TEXT_MUTED = "#71717A"

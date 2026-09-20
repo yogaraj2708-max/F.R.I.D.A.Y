@@ -4,6 +4,7 @@ Premium Glassmorphic Message Card with Markdown, Hover Effects & 60FPS Animation
 """
 
 import math
+import re
 from datetime import datetime
 from PySide6.QtCore import (
     Qt, QPropertyAnimation, QEasingCurve, Property,
@@ -36,15 +37,33 @@ class ChatBubble(QFrame):
     - Dynamic auto-expanding height (zero clipping)
     """
     def __init__(self, role: str, text: str = "", is_streaming: bool = False, status_text: str = "", parent=None):
+        if isinstance(is_streaming, QWidget):
+            parent = is_streaming
+            is_streaming = False
         super().__init__(parent)
         import time
         self.role = role.lower()
-        self.raw_text = text
+        self.raw_text = ""
+        self.thinking_text = ""
         self.is_streaming = is_streaming
         self.status_text = status_text
+        self.is_thinking = False
+        self.thinking_start_time = None
+        self._thinking_expanded = True
         self.start_time = time.time()
         self.timestamp = datetime.now().strftime("%I:%M %p")
         self._slide_offset = 12.0
+
+        if text:
+            m_think = re.search(r"<think>(.*?)</think>", text, flags=re.DOTALL)
+            if m_think:
+                self.thinking_text = m_think.group(1).strip()
+                clean_raw = text[:m_think.start()] + text[m_think.end():]
+                self.raw_text = clean_raw.strip()
+                self._thinking_expanded = False
+            else:
+                self.raw_text = text
+
         self._init_ui()
 
         # 60 FPS Fade-in + slide entrance
@@ -155,6 +174,59 @@ class ChatBubble(QFrame):
 
         self.main_layout.addLayout(header_layout)
 
+        # ── Thinking Process Card (Collapsible Reasoning Box) ──
+        self.thinking_container = QFrame(self)
+        self.thinking_container.setObjectName("thinkingContainer")
+        t_layout = QVBoxLayout(self.thinking_container)
+        t_layout.setContentsMargins(10, 8, 10, 8)
+        t_layout.setSpacing(4)
+
+        # Clickable Header Row
+        self.thinking_header = QWidget(self.thinking_container)
+        self.thinking_header.setCursor(Qt.PointingHandCursor)
+        th_layout = QHBoxLayout(self.thinking_header)
+        th_layout.setContentsMargins(0, 0, 0, 0)
+        th_layout.setSpacing(6)
+
+        self.thinking_icon = QLabel("🧠")
+        self.thinking_icon.setStyleSheet("font-size: 13px; background: transparent; border: none;")
+        th_layout.addWidget(self.thinking_icon)
+
+        initial_think_title = "Thought Process" if self.thinking_text else "Thinking..."
+        self.thinking_title_label = QLabel(initial_think_title)
+        self.thinking_title_label.setFont(QFont("Segoe UI", 9, QFont.Bold))
+        self.thinking_title_label.setStyleSheet(f"color: {p.get('amber_tag', '#F59E0B')}; font-size: 11px; background: transparent; border: none;")
+        th_layout.addWidget(self.thinking_title_label)
+
+        th_layout.addStretch(1)
+
+        self.thinking_toggle_btn = QLabel("▼" if self._thinking_expanded else "▶")
+        self.thinking_toggle_btn.setStyleSheet(f"color: {p['text_muted']}; font-size: 10px; font-weight: bold; background: transparent; border: none;")
+        th_layout.addWidget(self.thinking_toggle_btn)
+
+        self.thinking_header.mousePressEvent = lambda e: self.toggle_thinking()
+        t_layout.addWidget(self.thinking_header)
+
+        # Thinking Text Browser
+        self.thinking_browser = QTextBrowser(self.thinking_container)
+        self.thinking_browser.setOpenExternalLinks(True)
+        self.thinking_browser.setReadOnly(True)
+        self.thinking_browser.setLineWrapMode(QTextBrowser.WidgetWidth)
+        self.thinking_browser.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.thinking_browser.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.thinking_browser.document().setDefaultFont(QFont("Cascadia Code", 9))
+        self.thinking_browser.document().documentLayout().documentSizeChanged.connect(self._adjust_height)
+        t_layout.addWidget(self.thinking_browser)
+
+        if self.thinking_text:
+            self.thinking_browser.setMarkdown(self.thinking_text)
+            self.thinking_browser.setVisible(self._thinking_expanded)
+            self.thinking_container.setVisible(True)
+        else:
+            self.thinking_container.setVisible(False)
+
+        self.main_layout.addWidget(self.thinking_container)
+
         # ── Content Card (Dynamic Auto-Expanding Markdown) ──
         self.text_browser = QTextBrowser()
         self.text_browser.setOpenExternalLinks(True)
@@ -193,6 +265,15 @@ class ChatBubble(QFrame):
             doc_h = int(self.text_browser.document().size().height())
             target_h = max(doc_h + 18, 44)
             self.text_browser.setFixedHeight(target_h)
+
+            if hasattr(self, 'thinking_container') and not self.thinking_container.isHidden():
+                if hasattr(self, 'thinking_browser') and not self.thinking_browser.isHidden():
+                    t_w = self.thinking_browser.viewport().width()
+                    if t_w > 10:
+                        self.thinking_browser.document().setTextWidth(t_w)
+                    t_doc_h = int(self.thinking_browser.document().size().height())
+                    self.thinking_browser.setFixedHeight(min(max(t_doc_h + 12, 36), 260))
+
             self.updateGeometry()
         except Exception as ex:
             import logging
@@ -202,8 +283,62 @@ class ChatBubble(QFrame):
         super().resizeEvent(event)
         self._adjust_height()
 
+    def append_thinking(self, token: str):
+        """Appends a streamed thinking chunk in real time and displays it live."""
+        if not token:
+            return
+        if not self.is_thinking:
+            self.is_thinking = True
+            import time
+            self.thinking_start_time = time.time()
+            self.thinking_container.setVisible(True)
+            self._thinking_expanded = True
+            self.thinking_browser.setVisible(True)
+            self.thinking_toggle_btn.setText("▼")
+            if not self.raw_text:
+                p = get_current_palette()
+                self.text_browser.setHtml(f"<div style='color: {p['text_muted']}; font-family: monospace; font-size: 12px; padding: 4px 0;'>⚡ Reasoning in progress...</div>")
+
+        self.thinking_text += token
+        self.thinking_browser.setMarkdown(self.thinking_text)
+
+        if self.thinking_start_time:
+            import time
+            elapsed = max(1, int(time.time() - self.thinking_start_time))
+            self.thinking_title_label.setText(f"Thinking ({elapsed}s)...")
+
+        vsb = self.thinking_browser.verticalScrollBar()
+        vsb.setValue(vsb.maximum())
+        self._adjust_height()
+
+    def finish_thinking(self):
+        """Finalizes the thinking phase, updates header with duration, and resets state."""
+        if not self.is_thinking:
+            return
+        self.is_thinking = False
+        import time
+        if self.thinking_start_time:
+            duration = max(0.1, time.time() - self.thinking_start_time)
+            self.thinking_title_label.setText(f"Thought for {duration:.1f}s")
+        else:
+            self.thinking_title_label.setText("Thought Process")
+        self.thinking_toggle_btn.setText("▼" if self._thinking_expanded else "▶")
+        self._adjust_height()
+
+    def toggle_thinking(self):
+        """Toggles the visibility of the thinking text browser."""
+        self._thinking_expanded = not self._thinking_expanded
+        self.thinking_browser.setVisible(self._thinking_expanded)
+        self.thinking_toggle_btn.setText("▼" if self._thinking_expanded else "▶")
+        self._adjust_height()
+
     def append_token(self, token: str):
         """Appends a streamed token chunk in real time and smoothly expands height."""
+        if not token:
+            return
+        if self.is_thinking:
+            self.finish_thinking()
+
         if not self.raw_text:
             self.raw_text = token
         else:
@@ -223,8 +358,21 @@ class ChatBubble(QFrame):
         """Finalizes the streaming session, updates latency pill, and marks verified."""
         import time
         self.is_streaming = False
+        if self.is_thinking:
+            self.finish_thinking()
+
         if final_text is not None:
-            self.raw_text = final_text
+            m_think = re.search(r"<think>(.*?)</think>", final_text, flags=re.DOTALL)
+            if m_think:
+                if not self.thinking_text:
+                    self.thinking_text = m_think.group(1).strip()
+                    self.thinking_browser.setMarkdown(self.thinking_text)
+                    self.thinking_container.setVisible(True)
+                clean_ans = final_text[:m_think.start()] + final_text[m_think.end():]
+                self.raw_text = clean_ans.strip()
+            else:
+                self.raw_text = final_text
+
         self.text_browser.setMarkdown(self.raw_text)
 
         elapsed = max(0.1, time.time() - self.start_time)
@@ -328,6 +476,30 @@ class ChatBubble(QFrame):
             ul, ol {{ margin: 4px 0; padding-left: 18px; }}
             li {{ margin-bottom: 2px; }}
         """)
+        if hasattr(self, 'thinking_container'):
+            self.thinking_container.setStyleSheet(f"""
+                QFrame#thinkingContainer {{
+                    background-color: {p['bg_card']};
+                    border: 1px solid {p.get('border_subtle', p['border_card'])};
+                    border-radius: 8px;
+                    margin: 4px 0px 6px 0px;
+                }}
+            """)
+        if hasattr(self, 'thinking_title_label'):
+            self.thinking_title_label.setStyleSheet(f"color: {p.get('amber_tag', '#F59E0B')}; font-size: 11px; background: transparent; border: none;")
+        if hasattr(self, 'thinking_toggle_btn'):
+            self.thinking_toggle_btn.setStyleSheet(f"color: {p['text_muted']}; font-size: 10px; font-weight: bold; background: transparent; border: none;")
+        if hasattr(self, 'thinking_browser'):
+            self.thinking_browser.setStyleSheet(f"""
+                QTextBrowser {{
+                    background-color: transparent;
+                    border: none;
+                    color: {p['text_secondary']};
+                    font-size: 11.5px;
+                    line-height: 1.4;
+                    padding: 2px 0px;
+                }}
+            """)
         if self.raw_text:
             self.text_browser.setMarkdown(self.raw_text)
         self._adjust_height()

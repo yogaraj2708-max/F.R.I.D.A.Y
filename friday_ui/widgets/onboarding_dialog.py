@@ -41,7 +41,10 @@ class OnboardingDialog(QDialog):
         layout.setContentsMargins(28, 28, 28, 28)
         layout.setSpacing(16)
 
-        # Header with Stark Cyan accents
+        from friday_ui.styles.themes import get_current_palette
+        p = get_current_palette()
+
+        # Header
         header_widget = QWidget(self)
         header_layout = QVBoxLayout(header_widget)
         header_layout.setContentsMargins(0, 0, 0, 0)
@@ -49,29 +52,29 @@ class OnboardingDialog(QDialog):
 
         title = QLabel("F.R.I.D.A.Y. 2.0")
         title.setFont(QFont("Segoe UI", 18, QFont.Bold))
-        title.setStyleSheet("color: #00F0FF; letter-spacing: 2px;")
+        title.setStyleSheet(f"color: {p['accent']}; letter-spacing: 2px;")
         header_layout.addWidget(title)
 
         subtitle = QLabel("TACTICAL WORKSTATION INITIALIZATION")
         subtitle.setFont(QFont("Segoe UI", 10, QFont.Bold))
-        subtitle.setStyleSheet("color: #71717A; letter-spacing: 1px;")
+        subtitle.setStyleSheet(f"color: {p['text_muted']}; letter-spacing: 1px;")
         header_layout.addWidget(subtitle)
 
         desc = QLabel("Configure your operator identity and intelligence core to calibrate Friday.")
         desc.setFont(QFont("Segoe UI", 9))
-        desc.setStyleSheet("color: #A1A1AA;")
+        desc.setStyleSheet(f"color: {p['text_secondary']};")
         header_layout.addWidget(desc)
 
         layout.addWidget(header_widget)
 
         # Main Identity Configuration Card
         card = CardWidget(self)
-        card.setStyleSheet("""
-            CardWidget {
-                background-color: rgba(255, 255, 255, 0.04);
-                border: 1px solid rgba(0, 240, 255, 0.25);
-                border-radius: 10px;
-            }
+        card.setStyleSheet(f"""
+            CardWidget {{
+                background-color: {p['bg_surface']};
+                border: 1px solid {p['border_card']};
+                border-radius: 12px;
+            }}
         """)
         card_layout = QVBoxLayout(card)
         card_layout.setContentsMargins(20, 20, 20, 20)
@@ -80,7 +83,7 @@ class OnboardingDialog(QDialog):
         # 1. Owner Name
         name_label = QLabel("OPERATOR / OWNER NAME:")
         name_label.setFont(QFont("Segoe UI", 9, QFont.Bold))
-        name_label.setStyleSheet("color: #00F0FF; font-family: monospace;")
+        name_label.setStyleSheet(f"color: {p['accent']}; font-family: monospace;")
         card_layout.addWidget(name_label)
 
         self.name_input = LineEdit(card)
@@ -92,7 +95,7 @@ class OnboardingDialog(QDialog):
         # 2. Preferred Call-Sign / Title
         title_label = QLabel("PREFERRED CALL-SIGN / TITLE:")
         title_label.setFont(QFont("Segoe UI", 9, QFont.Bold))
-        title_label.setStyleSheet("color: #00F0FF; font-family: monospace;")
+        title_label.setStyleSheet(f"color: {p['accent']}; font-family: monospace;")
         card_layout.addWidget(title_label)
 
         self.title_combo = ComboBox(card)
@@ -107,7 +110,7 @@ class OnboardingDialog(QDialog):
         # 3. Active Neural AI Model
         model_label = QLabel("ACTIVE NEURAL MODEL (OLLAMA):")
         model_label.setFont(QFont("Segoe UI", 9, QFont.Bold))
-        model_label.setStyleSheet("color: #00F0FF; font-family: monospace;")
+        model_label.setStyleSheet(f"color: {p['accent']}; font-family: monospace;")
         card_layout.addWidget(model_label)
 
         self.model_combo = ComboBox(card)
@@ -131,18 +134,19 @@ class OnboardingDialog(QDialog):
 
         self.init_btn = PrimaryPushButton("INITIALIZE PROTOCOLS", self)
         self.init_btn.setFixedHeight(38)
-        self.init_btn.setStyleSheet("""
-            PrimaryPushButton {
-                background-color: #00F0FF;
-                color: #000000;
+        self.init_btn.setStyleSheet(f"""
+            PrimaryPushButton {{
+                background-color: {p['accent']};
+                color: {p.get('accent_text', '#FFFFFF')};
                 font-weight: bold;
-                border-radius: 6px;
+                border-radius: 8px;
                 letter-spacing: 1px;
-            }
-            PrimaryPushButton:hover {
-                background-color: #38F8FF;
-            }
+            }}
+            PrimaryPushButton:hover {{
+                background-color: {p['accent_hover']};
+            }}
         """)
+
         self.init_btn.clicked.connect(self._on_initialize)
         button_layout.addWidget(self.init_btn)
 

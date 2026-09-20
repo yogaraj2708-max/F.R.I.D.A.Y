@@ -152,6 +152,7 @@ class ChatView(QWidget):
     voice_changed = Signal(str)
     stop_requested = Signal()
     inspector_toggle_requested = Signal()
+    session_changed = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -249,6 +250,12 @@ class ChatView(QWidget):
         self.new_session_btn.setToolTip("Start New Session")
         self.new_session_btn.clicked.connect(self._on_new_session)
         quick_switcher_layout.addWidget(self.new_session_btn)
+
+        self.delete_session_btn = TransparentToolButton(FluentIcon.DELETE, header_card)
+        self.delete_session_btn.setFixedSize(28, 28)
+        self.delete_session_btn.setToolTip("Delete Current Session")
+        self.delete_session_btn.clicked.connect(self._on_delete_session)
+        quick_switcher_layout.addWidget(self.delete_session_btn)
 
         self.model_combo = ComboBox(header_card)
         self.model_combo.setFixedHeight(28)
@@ -993,25 +1000,26 @@ class ChatView(QWidget):
 
         self.attachments_container.show()
 
+        p = get_current_palette()
         if self.deep_research_active:
             pill = PushButton("🌐 Deep Research: Active  ✕", self.attachments_container)
             pill.setFixedHeight(26)
             pill.setCursor(Qt.PointingHandCursor)
-            pill.setStyleSheet("""
-                PushButton {
-                    background-color: rgba(0, 240, 255, 0.2);
-                    border: 1px solid #00F0FF;
-                    color: #00F0FF;
+            pill.setStyleSheet(f"""
+                PushButton {{
+                    background-color: {p['accent_bg']};
+                    border: 1px solid {p['accent_border']};
+                    color: {p['accent']};
                     font-size: 11px;
                     font-weight: 600;
                     padding: 2px 10px;
                     border-radius: 12px;
-                }
-                PushButton:hover {
-                    background-color: rgba(255, 75, 75, 0.3);
-                    border: 1px solid #FF4B4B;
-                    color: #FFB0B0;
-                }
+                }}
+                PushButton:hover {{
+                    background-color: {p['danger_red_bg']};
+                    border: 1px solid {p['danger_red']};
+                    color: {p['danger_red']};
+                }}
             """)
             pill.clicked.connect(self._toggle_deep_research)
             self.attachments_layout.addWidget(pill)
@@ -1033,24 +1041,25 @@ class ChatView(QWidget):
             pill = PushButton(f"{icon_char} {fname} ({sz_str})  ✕", self.attachments_container)
             pill.setFixedHeight(26)
             pill.setCursor(Qt.PointingHandCursor)
-            pill.setStyleSheet("""
-                PushButton {
-                    background-color: rgba(14, 25, 45, 0.9);
-                    border: 1px solid rgba(0, 240, 255, 0.35);
-                    color: #E2F7FF;
+            pill.setStyleSheet(f"""
+                PushButton {{
+                    background-color: {p['chip_bg']};
+                    border: 1px solid {p['border_subtle']};
+                    color: {p['chip_text']};
                     font-size: 11px;
                     font-weight: 500;
                     padding: 2px 10px;
                     border-radius: 12px;
-                }
-                PushButton:hover {
-                    background-color: rgba(255, 75, 75, 0.25);
-                    border: 1px solid #FF4B4B;
-                    color: #FFB0B0;
-                }
+                }}
+                PushButton:hover {{
+                    background-color: {p['danger_red_bg']};
+                    border: 1px solid {p['danger_red']};
+                    color: {p['danger_red']};
+                }}
             """)
             pill.clicked.connect(lambda checked=False, p=fpath: self._remove_attachment(p))
             self.attachments_layout.addWidget(pill)
+
 
         self.attachments_layout.addStretch(1)
 
@@ -1143,6 +1152,19 @@ class ChatView(QWidget):
         if vsb.maximum() - vsb.value() < 160:
             vsb.setValue(vsb.maximum())
 
+    def append_thinking(self, token: str):
+        """Streams a thinking/reasoning token chunk into the active streaming bubble."""
+        if not self._is_generating:
+            return
+        if self._streaming_session_id != self.current_session_id:
+            return
+        if not self._current_streaming_bubble:
+            return
+        self._current_streaming_bubble.append_thinking(token)
+        vsb = self.scroll_area.verticalScrollBar()
+        if vsb.maximum() - vsb.value() < 160:
+            vsb.setValue(vsb.maximum())
+
     def update_status(self, status_text: str):
         """Updates the status description on the active streaming bubble."""
         if not self._is_generating or self._streaming_session_id != self.current_session_id:
@@ -1170,6 +1192,8 @@ class ChatView(QWidget):
         finally:
             self.session_combo.blockSignals(False)
             self._is_loading_session = False
+        if self.current_session_id:
+            self.session_changed.emit(self.current_session_id)
 
     def _on_session_combo_changed(self, index: int):
         if self._is_loading_session or index < 0:
@@ -1182,6 +1206,7 @@ class ChatView(QWidget):
             self._set_generating_state(False)
             self.current_session_id = session_id
             self._load_session_messages(session_id)
+            self.session_changed.emit(session_id)
 
     def _on_model_combo_changed(self, text: str):
         if getattr(self, "_refreshing_models", False) or not text:
@@ -1229,9 +1254,34 @@ class ChatView(QWidget):
         self._current_streaming_bubble = None
         self._streaming_session_id = None
         self._set_generating_state(False)
-        new_id = self.session_store.create_session("New Tactical Session")
+
+        # Reuse existing empty session if user is already in an empty session
+        if self.current_session_id:
+            msgs = self.session_store.get_messages(self.current_session_id)
+            if not msgs:
+                InfoBar.info("New Session", "Active session is already empty and ready.", parent=self, position=InfoBarPosition.TOP_RIGHT, duration=2000)
+                return
+
+        new_id = self.session_store.create_session("New Session")
         self._load_sessions_list()
-        InfoBar.success("New Session", "Created new tactical conversation session.", parent=self, position=InfoBarPosition.TOP_RIGHT, duration=2000)
+        InfoBar.success("New Session", "Created new conversation session.", parent=self, position=InfoBarPosition.TOP_RIGHT, duration=2000)
+
+    def _on_delete_session(self):
+        """Prompts confirmation and deletes current chat session."""
+        if not self.current_session_id:
+            return
+
+        from qfluentwidgets import MessageBox
+        box = MessageBox("Delete Session", "Are you sure you want to delete this chat session? This action cannot be undone.", self)
+        if box.exec():
+            self.stop_requested.emit()
+            self._current_streaming_bubble = None
+            self._streaming_session_id = None
+            self._set_generating_state(False)
+
+            self.session_store.delete_session(self.current_session_id)
+            self._load_sessions_list()
+            InfoBar.success("Session Deleted", "Chat session removed.", parent=self, position=InfoBarPosition.TOP_RIGHT, duration=2000)
 
     def _load_session_messages(self, session_id: str):
         # Clear existing bubbles (all except stretch item at end)
@@ -1258,8 +1308,15 @@ class ChatView(QWidget):
         if self._current_streaming_bubble:
             self._current_streaming_bubble.finish_stream(final_text)
             self._last_streamed_text = self._current_streaming_bubble.raw_text.strip()
-            if self.current_session_id and self._streaming_session_id == self.current_session_id and self._last_streamed_text:
-                self.session_store.add_message(self.current_session_id, "friday", self._last_streamed_text)
+            # If bubble has thinking text, persist complete text including <think> block
+            t_text = getattr(self._current_streaming_bubble, 'thinking_text', '').strip()
+            if t_text:
+                full_persisted = f"<think>\n{t_text}\n</think>\n\n{self._last_streamed_text}"
+            else:
+                full_persisted = self._last_streamed_text
+
+            if self.current_session_id and self._streaming_session_id == self.current_session_id and full_persisted:
+                self.session_store.add_message(self.current_session_id, "friday", full_persisted)
             self._current_streaming_bubble = None
         self._streaming_session_id = None
         QTimer.singleShot(60, self._scroll_to_bottom)
@@ -1403,18 +1460,18 @@ class ChatView(QWidget):
             """)
             self.typing_indicator.hide_indicator()
             self.mic_btn.setToolTip("Voice Loop Ready — Click to Mute")
-            self.mic_btn.setStyleSheet("""
-                ToolButton {
-                    background-color: #141416;
-                    border: 1px solid rgba(255, 255, 255, 0.10);
+            self.mic_btn.setStyleSheet(f"""
+                ToolButton {{
+                    background-color: {p['bg_surface']};
+                    border: 1px solid {p['border_card']};
                     border-radius: 8px;
-                    color: #A1A1AA;
-                }
-                ToolButton:hover {
-                    background-color: #1E1E22;
-                    border: 1px solid rgba(255, 255, 255, 0.25);
-                    color: #FFFFFF;
-                }
+                    color: {p['text_secondary']};
+                }}
+                ToolButton:hover {{
+                    background-color: {p['bg_card_hover']};
+                    border: 1px solid {p['border_hover']};
+                    color: {p['text_primary']};
+                }}
             """)
 
     def update_energy(self, level: float):

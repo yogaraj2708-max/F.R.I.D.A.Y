@@ -141,6 +141,7 @@ def main():
     command_bar = FloatingCommandBar()
     command_bar.setWindowIcon(stark_icon)
     command_bar.setWindowTitle("F.R.I.D.A.Y. 2.0 Command Bar")
+    command_bar.apply_theme()
     window.command_bar = command_bar
     app.aboutToQuit.connect(command_bar.unregister_hotkey)
 
@@ -153,8 +154,8 @@ def main():
         pass
 
     # Bridge Floating Command Bar <-> Engine
-    window.command_bar = command_bar
     window.signals.state_changed.connect(command_bar.set_state)
+    window.signals.theme_change_requested.connect(command_bar.apply_theme)
     command_bar.voice_toggle_requested.connect(window.toggle_voice_loop)
     command_bar.stop_requested.connect(window.handle_stop_requested)
 

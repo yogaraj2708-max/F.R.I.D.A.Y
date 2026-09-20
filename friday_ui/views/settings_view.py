@@ -185,6 +185,16 @@ class SettingsView(QWidget):
         host_row.addWidget(self.ollama_host_input)
         llm_layout.addLayout(host_row)
 
+        # Semantic Intent Router (System 1 Fast Dispatch)
+        router_row = QHBoxLayout()
+        router_label = QLabel("Semantic Intent Router (System 1 Fast Dispatch):")
+        self.semantic_router_switch = SwitchButton(self)
+        self.semantic_router_switch.setChecked(settings.get("semantic_routing", True))
+        router_row.addWidget(router_label)
+        router_row.addWidget(self.semantic_router_switch)
+        router_row.addStretch(1)
+        llm_layout.addLayout(router_row)
+
         layout.addWidget(llm_card)
 
         # 2. Voice & Speech Acoustics
@@ -322,6 +332,15 @@ class SettingsView(QWidget):
         conv_row.addWidget(self.conv_switch)
         conv_row.addStretch(1)
         ui_layout.addLayout(conv_row)
+
+        full_speech_row = QHBoxLayout()
+        full_speech_row.addWidget(QLabel("Speak Complete Responses (Deliver full spoken answers without cutting off):"))
+        self.full_speech_switch = SwitchButton(self)
+        self.full_speech_switch.setChecked(settings.get("speak_full_response", True))
+        full_speech_row.addWidget(self.full_speech_switch)
+        full_speech_row.addStretch(1)
+        ui_layout.addLayout(full_speech_row)
+
 
         anim_row = QHBoxLayout()
         anim_row.addWidget(QLabel("Particle & Visualizer Performance:"))
@@ -514,7 +533,10 @@ class SettingsView(QWidget):
             "auto_start_voice_loop": self.auto_voice_switch.isChecked(),
             "seamless_speech": self.seamless_switch.isChecked(),
             "continuous_conversation": self.conv_switch.isChecked(),
+            "speak_full_response": self.full_speech_switch.isChecked(),
+            "semantic_routing": self.semantic_router_switch.isChecked(),
             "animation_level": anim_text,
+
             "command_bar_position": pos_text
         }
         settings.update(data)

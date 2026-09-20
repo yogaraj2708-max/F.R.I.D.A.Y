@@ -19,7 +19,7 @@ import urllib.request
 import webbrowser
 from collections import deque
 from datetime import datetime, timedelta
-from typing import Optional, Tuple, List, Dict
+from typing import Optional, Tuple, List, Dict, Any
 
 import numpy as np
 import pygame
@@ -62,6 +62,7 @@ from friday_core.settings import settings
 from friday_core.gatekeeper.models import ActionIntent
 from friday_core.gatekeeper.gatekeeper import gatekeeper
 from friday_core.platform_guard import IS_WINDOWS
+from friday_core.router.semantic_router import SemanticIntentRouter, SkillIntent, RouteResult
 
 logger = logging.getLogger("FRIDAY.Engine")
 if not logger.handlers:
@@ -123,8 +124,10 @@ class FridaySignals(QObject):
     error_occurred = Signal(str)
     stream_started = Signal(str, str)     # role ('friday'), initial_status
     stream_token = Signal(str)            # token chunk
+    stream_thinking = Signal(str)         # thinking/reasoning token chunk
     stream_finished = Signal(str)         # full message
     status_updated = Signal(str)          # dynamic status updates
+    theme_change_requested = Signal(str)  # 'warm_light', 'warm_dark'
 
 class KokoroTTSManager:
     """
@@ -167,7 +170,7 @@ class KokoroTTSManager:
                 self._load_failed = True
                 logger.warning("Failed to initialize Kokoro ONNX: %s", ex)
 
-    def synthesize(self, text: str, voice: str = "bf_emma", speed: float = 1.05) -> Optional[bytes]:
+    def synthesize(self, text: str, voice: str = "bf_emma", speed: float = 1.10) -> Optional[bytes]:
         """Synchronously generates 24kHz WAV audio in-memory."""
         self._ensure_loaded()
         if not self._kokoro:
@@ -189,7 +192,7 @@ class KokoroTTSManager:
             logger.debug("Kokoro synthesis error for '%s': %s", voice, ex)
             return None
 
-    async def synthesize_async(self, text: str, voice: str = "bf_emma", speed: float = 1.05) -> Optional[bytes]:
+    async def synthesize_async(self, text: str, voice: str = "bf_emma", speed: float = 1.10) -> Optional[bytes]:
         """Runs Kokoro synthesis in a worker thread to keep the asyncio event loop non-blocking."""
         return await asyncio.to_thread(self.synthesize, text, voice, speed)
 
@@ -244,8 +247,8 @@ class OfflineWhisperSTT:
             return ""
 
 class FridayVoiceEngine:
-    def __init__(self, signals: FridaySignals, voice=TTS_VOICE, pitch=TTS_PITCH, rate=TTS_RATE):
-        self.signals = signals
+    def __init__(self, signals: Optional[FridaySignals] = None, voice=TTS_VOICE, pitch=TTS_PITCH, rate=TTS_RATE):
+        self.signals = signals or FridaySignals()
         self.voice = voice
         self.pitch = pitch
         self.rate = rate
@@ -283,7 +286,11 @@ class FridayVoiceEngine:
         text = re.sub(r"https?://\S+", " ", text)
         # 5. Strip markdown headers, bold, italics, quotes, bullets, tables
         text = re.sub(r"[*#_~>|•▪▫\-\+]", " ", text)
-        # 6. Common abbreviations and symbols
+        # 6. Common abbreviations, names, and symbols
+        text = re.sub(r"\bF\.R\.I\.D\.A\.Y\.\b", "Friday", text, flags=re.IGNORECASE)
+        text = re.sub(r"\bF\.R\.I\.D\.A\.Y\b", "Friday", text, flags=re.IGNORECASE)
+        text = re.sub(r"\bA\.I\.\b", "AI", text, flags=re.IGNORECASE)
+        text = re.sub(r"\bO\.S\.\b", "OS", text, flags=re.IGNORECASE)
         text = text.replace("&", " and ")
         text = text.replace("%", " percent ")
         text = text.replace("@", " at ")
@@ -489,17 +496,21 @@ class FridayVoiceEngine:
         else:
             await self.speak_phrase_sapi(phrase, cancel_event=cancel_event)
 
-    def _chunk_text_for_speech(self, text: str, target_chunk_words: int = 40) -> list:
+    def _chunk_text_for_speech(self, text: str, target_chunk_words: int = 70) -> list:
         """
         Splits multi-paragraph or long responses into natural sentence-boundary chunks.
-        Ensures voice starts speaking immediately on the first chunk, continues
-        reading all paragraphs to completion without cutoff, and responds instantly to stop/interrupt.
+        For responses under target_chunk_words, keeps as a single chunk for 100% unbroken audio.
         """
         if not text:
             return []
         clean = self.clean_text_for_speech(text)
         if not clean:
             return []
+
+        # If concise, keep as a single unbroken audio chunk for zero pauses
+        words = clean.split()
+        if len(words) <= target_chunk_words:
+            return [clean]
 
         # Split on sentence terminals (. ! ?) followed by whitespace or linebreaks
         raw_sentences = re.split(r'(?<=[.!?])\s+', clean)
@@ -511,17 +522,16 @@ class FridayVoiceEngine:
             s = s.strip()
             if not s:
                 continue
-            words = s.split()
-            if not words:
+            s_words = s.split()
+            if not s_words:
                 continue
-            # If adding this sentence exceeds target_chunk_words and we already have content, push current chunk
-            if current_words + len(words) > target_chunk_words and current_chunk:
+            if current_words + len(s_words) > target_chunk_words and current_chunk:
                 chunks.append(" ".join(current_chunk))
                 current_chunk = [s]
-                current_words = len(words)
+                current_words = len(s_words)
             else:
                 current_chunk.append(s)
-                current_words += len(words)
+                current_words += len(s_words)
 
         if current_chunk:
             chunks.append(" ".join(current_chunk))
@@ -555,18 +565,44 @@ class FridayVoiceEngine:
             self.signals.state_changed.emit("idle")
             return
 
-        for chunk in chunks:
+        # Pipelined Synthesis: Pre-fetches the NEXT chunk in the background while
+        # the current chunk is playing, eliminating stops and pauses between sentences.
+        next_audio_task: Optional[asyncio.Task] = None
+        for i, chunk in enumerate(chunks):
+            if self.cancel_event.is_set():
+                if next_audio_task and not next_audio_task.done():
+                    next_audio_task.cancel()
+                break
+
+            # Await pre-fetched audio or synthesize directly
+            if next_audio_task:
+                try:
+                    audio_stream = await next_audio_task
+                except asyncio.CancelledError:
+                    break
+                next_audio_task = None
+            else:
+                audio_stream = await self.synthesize_audio(chunk, cancel_event=self.cancel_event)
+
             if self.cancel_event.is_set():
                 break
 
-            # Unified Tier 1 (Local Kokoro) & Tier 2 (Cloud Neural) synthesis
-            audio_stream = await self.synthesize_audio(chunk, cancel_event=self.cancel_event)
+            # Start pre-fetching next chunk immediately BEFORE playing current chunk
+            if i + 1 < len(chunks) and not self.cancel_event.is_set():
+                next_chunk = chunks[i + 1]
+                next_audio_task = asyncio.create_task(
+                    self.synthesize_audio(next_chunk, cancel_event=self.cancel_event)
+                )
 
+            # Play current audio chunk
             if audio_stream and not self.cancel_event.is_set():
                 await self.play_audio_stream(audio_stream, cancel_event=self.cancel_event)
             elif not self.cancel_event.is_set():
                 # Tier 3: In-process Windows SAPI COM fallback
                 await self.speak_phrase_sapi(chunk, cancel_event=self.cancel_event)
+
+        if next_audio_task and not next_audio_task.done():
+            next_audio_task.cancel()
 
         self.signals.speech_level_changed.emit(0.0)
         next_state = "listening" if self.voice_loop_active else "idle"
@@ -667,6 +703,41 @@ def fetch_web_results(query: str, max_results: int = 4) -> list:
 
     return results
 
+def fetch_page_content(url: str, max_chars: int = 2500) -> Optional[str]:
+    """Fetches and cleans visible text content from a web page URL for deep research."""
+    try:
+        import urllib.request
+        import html
+        if not url or not url.startswith(("http://", "https://")):
+            return None
+        req = urllib.request.Request(
+            url,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            }
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            content_type = resp.headers.get('Content-Type', '')
+            if 'text/html' not in content_type and 'text/plain' not in content_type:
+                return None
+            raw = resp.read(150000).decode('utf-8', errors='ignore')
+
+        cleaned = re.sub(r'<script.*?>.*?</script>', ' ', raw, flags=re.DOTALL | re.IGNORECASE)
+        cleaned = re.sub(r'<style.*?>.*?</style>', ' ', cleaned, flags=re.DOTALL | re.IGNORECASE)
+        cleaned = re.sub(r'<nav.*?>.*?</nav>', ' ', cleaned, flags=re.DOTALL | re.IGNORECASE)
+        cleaned = re.sub(r'<footer.*?>.*?</footer>', ' ', cleaned, flags=re.DOTALL | re.IGNORECASE)
+        cleaned = re.sub(r'<header.*?>.*?</header>', ' ', cleaned, flags=re.DOTALL | re.IGNORECASE)
+        cleaned = re.sub(r'<(?:p|div|h[1-6]|li|br)[^>]*>', '\n', cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r'<[^>]+>', ' ', cleaned)
+        cleaned = html.unescape(cleaned)
+        lines = [line.strip() for line in cleaned.split('\n') if len(line.strip()) > 30]
+        result = '\n'.join(lines)
+        return result[:max_chars].strip() if result else None
+    except Exception as ex:
+        logger.debug("Page fetch error for %s: %s", url, ex)
+        return None
+
 class FridayBrain:
     def __init__(self, signals: FridaySignals, tts_engine: FridayVoiceEngine):
         self.signals = signals
@@ -679,6 +750,11 @@ class FridayBrain:
         self.conversation_history = []
         self.vector_store = None
         self._init_system_prompt()
+        self.semantic_router = SemanticIntentRouter(
+            threshold=float(settings.get("semantic_router_threshold", 0.76)),
+            ollama_host=host,
+            ollama_model=self.model
+        )
         settings.add_listener(self._on_settings_change)
 
     def abort_generation(self):
@@ -690,8 +766,18 @@ class FridayBrain:
     def _on_settings_change(self, key: str, value):
         if key == "model" and value:
             self.model = value
+            if hasattr(self, "semantic_router"):
+                self.semantic_router.ollama_model = value
         elif key == "ollama_host" and value:
             self.client = AsyncClient(host=value)
+            if hasattr(self, "semantic_router"):
+                self.semantic_router.ollama_host = value
+        elif key == "semantic_router_threshold" and value is not None:
+            if hasattr(self, "semantic_router"):
+                try:
+                    self.semantic_router.threshold = float(value)
+                except Exception:
+                    pass
         elif key in ("user_name", "user_title"):
             self.reload_persona()
 
@@ -740,6 +826,19 @@ Core Persona Rules:
         """Reloads system prompt with updated user name and title."""
         self._init_system_prompt()
 
+    def load_session_history(self, messages: List[Dict[str, Any]]):
+        """Synchronizes LLM conversation history with the active session."""
+        self.conversation_history = [{'role': 'system', 'content': self.system_prompt}]
+        recent_msgs = messages[-10:] if len(messages) > 10 else messages
+        for msg in recent_msgs:
+            role = msg.get("role", "")
+            content = msg.get("content", "")
+            if role in ("user", "assistant", "friday") and content:
+                llm_role = "assistant" if role.lower() in ("friday", "assistant") else "user"
+                clean_content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip() if llm_role == "assistant" else content
+                if clean_content:
+                    self.conversation_history.append({'role': llm_role, 'content': clean_content})
+
 
 
     def capture_screen_base64(self) -> Tuple[Optional[str], Optional[str]]:
@@ -769,7 +868,23 @@ Core Persona Rules:
     async def _get_available_vision_model(self) -> Optional[str]:
         try:
             models_info = await self.client.list()
-            installed = [m.get("name", "") or m.get("model", "") for m in models_info.get("models", [])]
+            # Handle both dict-style and object-style Ollama client responses
+            if hasattr(models_info, 'models'):
+                raw_models = models_info.models
+            elif isinstance(models_info, dict):
+                raw_models = models_info.get("models", [])
+            else:
+                raw_models = []
+            installed = []
+            for m in raw_models:
+                if isinstance(m, dict):
+                    name = m.get("name", "") or m.get("model", "")
+                elif hasattr(m, 'model'):
+                    name = m.model
+                else:
+                    name = str(m)
+                if name:
+                    installed.append(name)
             for pref in VISION_MODELS:
                 for inst in installed:
                     if pref in inst.lower():
@@ -802,7 +917,8 @@ Core Persona Rules:
             self.signals.stream_finished.emit(reply)
 
             if self.tts and not cancel_event.is_set() and not self.abort_event.is_set() and not self.tts.cancel_event.is_set():
-                spoken = self.tts.extract_spoken_summary(reply)
+                speak_full = settings.get("speak_full_response", True)
+                spoken = self.tts.extract_spoken_summary(reply) if speak_full else self.tts.extract_spoken_summary(reply, max_sentences=3, max_words=65)
                 if spoken and not cancel_event.is_set() and not self.abort_event.is_set() and not self.tts.cancel_event.is_set():
                     await self.tts.speak(spoken, emit_transcript=False)
         except Exception as ex:
@@ -1470,6 +1586,228 @@ Core Persona Rules:
 
         return None
 
+    def _check_theme_command(self, cmd: str) -> Optional[tuple]:
+        """Detects voice/text intent to change visual theme between warm light and warm dark."""
+        clean_cmd = cmd.lower().strip()
+        clean_cmd = re.sub(r"^(?:please\s+|can\s+you\s+|could\s+you\s+|friday\s+|hey\s+friday\s+)+", "", clean_cmd).strip()
+
+        # Dark mode triggers
+        dark_patterns = [
+            r"^(?:turn\s+(?:on|to|into)|switch\s+(?:to|into)|change\s+(?:to|into)|set(?:\s+to)?|enable|activate|go\s+to|put\s+(?:it\s+|the\s+app\s+)?in(?:to)?)\s+dark\s*(?:mode|theme)?$",
+            r"^dark\s*(?:mode|theme)$",
+            r"^(?:turn|switch|change|set)\s+dark$",
+        ]
+        # Light mode triggers
+        light_patterns = [
+            r"^(?:turn\s+(?:on|to|into)|switch\s+(?:to|into)|change\s+(?:to|into)|set(?:\s+to)?|enable|activate|go\s+to|put\s+(?:it\s+|the\s+app\s+)?in(?:to)?)\s+light\s*(?:mode|theme)?$",
+            r"^light\s*(?:mode|theme)$",
+            r"^(?:turn|switch|change|set)\s+light$",
+        ]
+        # Toggle triggers
+        toggle_patterns = [
+            r"^(?:toggle|switch)\s+(?:the\s+)?theme$",
+            r"^toggle\s+(?:dark|light)\s*(?:mode|theme)?$",
+        ]
+
+        user_title = settings.get("user_title", "Boss")
+        user_name = settings.get("user_name", "Boss")
+        call_sign = user_title if user_title and str(user_title).lower() != "none" else (user_name if user_name else "Boss")
+
+        for p in dark_patterns:
+            if re.search(p, clean_cmd):
+                return ("warm_dark", f"Switched to Warm Dark mode, {call_sign}. Displaying the Obsidian 60-30-10 palette.")
+
+        for p in light_patterns:
+            if re.search(p, clean_cmd):
+                return ("warm_light", f"Switched to Warm Light mode, {call_sign}. Displaying the Cream 60-30-10 palette.")
+
+        for p in toggle_patterns:
+            if re.search(p, clean_cmd):
+                current = settings.get("theme_mode", "warm_light")
+                new_mode = "warm_dark" if "light" in str(current).lower() else "warm_light"
+                mode_name = "Warm Dark" if new_mode == "warm_dark" else "Warm Light"
+                return (new_mode, f"Toggled to {mode_name} mode, {call_sign}.")
+
+        return None
+
+    async def _dispatch_semantic_intent(
+        self,
+        intent: SkillIntent,
+        entities: Dict[str, Any],
+        command: str,
+        cmd_clean: str
+    ) -> Optional[str]:
+        """Executes the action corresponding to a semantically routed intent."""
+        if intent == SkillIntent.SYSTEM_TELEMETRY:
+            res = gatekeeper.execute_action(ActionIntent(action="get_telemetry"))
+            battery, charging = get_battery_info()
+            mem_load = get_memory_info()
+            parts = []
+            if battery is not None:
+                chg_str = "connected to AC power" if charging else "on battery reserve"
+                parts.append(f"Battery is holding at {battery} percent, {chg_str}.")
+            if mem_load is not None:
+                parts.append(f"System memory load is at {mem_load} percent.")
+            play_chime(CHIME_CONFIRM)
+            self.signals.telemetry_updated.emit({"battery": battery, "charging": charging, "memory": mem_load})
+            self.signals.skill_executed.emit("Telemetry", f"Battery: {battery}%, RAM: {mem_load}%")
+            if parts:
+                return " ".join(parts) + " All subsystems operational, Boss."
+            return "All diagnostic scans are green. Systems running nominally, Boss."
+
+        elif intent == SkillIntent.SYSTEM_TIME_DATE:
+            action = entities.get("action", "")
+            if action == "date" or any(w in cmd_clean for w in ["date", "day"]):
+                gatekeeper.execute_action(ActionIntent(action="get_date"))
+                play_chime(CHIME_CONFIRM)
+                return f"Today's date is {datetime.now().strftime('%A, %B %d')}, Boss."
+            else:
+                gatekeeper.execute_action(ActionIntent(action="get_time"))
+                play_chime(CHIME_CONFIRM)
+                return f"The current time is {datetime.now().strftime('%I:%M %p')}, Boss."
+
+        elif intent == SkillIntent.DESKTOP_AUDIO:
+            action = entities.get("action", "")
+            if not action:
+                if any(w in cmd_clean for w in ["mute", "unmute", "silence"]):
+                    action = "mute"
+                elif any(w in cmd_clean for w in ["down", "lower", "quiet", "decrease", "reduce"]):
+                    action = "down"
+                else:
+                    action = "up"
+
+            if action == "mute":
+                gatekeeper.execute_action(ActionIntent(action="adjust_volume", target="mute"))
+                play_chime(CHIME_CONFIRM)
+                return "Audio volume toggled, Boss."
+            elif action == "down":
+                gatekeeper.execute_action(ActionIntent(action="adjust_volume", target="down"))
+                play_chime(CHIME_CONFIRM)
+                return "Master volume decreased."
+            else:
+                gatekeeper.execute_action(ActionIntent(action="adjust_volume", target="up"))
+                play_chime(CHIME_CONFIRM)
+                return "Master volume increased."
+
+        elif intent == SkillIntent.DESKTOP_ACTION:
+            action = entities.get("action", "")
+            if "lock" in cmd_clean or action == "lock":
+                gatekeeper.execute_action(ActionIntent(action="lock_workstation"))
+                return "Locking workstation now."
+            elif "calc" in cmd_clean or action == "calculator":
+                gatekeeper.execute_action(ActionIntent(action="open_app", target="calculator"))
+                play_chime(CHIME_CONFIRM)
+                self.signals.skill_executed.emit("App Launch", "calculator")
+                return "Opening calculator, Boss."
+            elif "explorer" in cmd_clean or "files" in cmd_clean or action == "explorer":
+                gatekeeper.execute_action(ActionIntent(action="open_app", target="explorer"))
+                play_chime(CHIME_CONFIRM)
+                self.signals.skill_executed.emit("App Launch", "explorer")
+                return "Opening File Explorer, Boss."
+            else:
+                gatekeeper.execute_action(ActionIntent(action="screenshot"))
+                play_chime(CHIME_CONFIRM)
+                return "Screenshot snipping tool activated, Boss."
+
+        elif intent == SkillIntent.WEATHER:
+            loc_name = entities.get("location", "")
+            if not loc_name:
+                loc_match = re.search(r"weather (?:in|for|at) ([a-zA-Z\s]+)", cmd_clean)
+                loc_name = loc_match.group(1).strip() if loc_match else ""
+            try:
+                url = f"https://wttr.in/{urllib.parse.quote(loc_name)}?format=j1" if loc_name else "https://wttr.in/?format=j1"
+                req = urllib.request.Request(url, headers={'User-Agent': 'curl/7.68.0'})
+                with urllib.request.urlopen(req, timeout=3.5) as res_w:
+                    data = json.loads(res_w.read().decode())
+                    curr = data['current_condition'][0]
+                    temp = curr['temp_C']
+                    desc = curr['weatherDesc'][0]['value']
+                    display_loc = loc_name.title() if loc_name else "outside"
+                    gatekeeper.execute_action(ActionIntent(action="get_weather", target=display_loc))
+                    play_chime(CHIME_CONFIRM)
+                    self.signals.skill_executed.emit("Weather", f"{temp}°C, {desc}")
+                    if loc_name:
+                        return f"In {display_loc}, it is currently {temp} degrees Celsius with {desc}, Boss."
+                    return f"It is currently {temp} degrees Celsius with {desc} outside, Boss."
+            except Exception:
+                return "Atmospheric sensors are currently experiencing telemetry lag."
+
+        elif intent == SkillIntent.MEDIA_CONTROL:
+            target = entities.get("target", "")
+            if not target:
+                m = re.search(r"(?:play|put on|stream|listen to|crank)\s+(.+)", cmd_clean)
+                if m:
+                    target = m.group(1).replace("on youtube", "").replace("on spotify", "").strip()
+            if not target or target in ["tunes", "music", "songs"]:
+                target = "lofi beats"
+            video_url, resolved_title = await resolve_youtube_video_async(target)
+            gatekeeper.execute_action(ActionIntent(action="open_url", target=video_url))
+            play_chime(CHIME_CONFIRM)
+            self.signals.skill_executed.emit("YouTube Play", target[:30])
+            return f"Playing '{resolved_title or target}' on YouTube, Boss."
+
+        elif intent == SkillIntent.APP_LAUNCH:
+            target_app = entities.get("app_name", "")
+            if not target_app:
+                target_app = re.sub(r"^(?:open|launch|start|run|pull\s+up)\s+", "", cmd_clean).strip()
+            target_app = re.sub(r"\s+(?:for\s+me|please|app)$", "", target_app).strip()
+            if target_app in ["word", "ms word", "microsoft word", "winword", "wrd"]:
+                open_blank_word()
+                play_chime(CHIME_CONFIRM)
+                self.signals.skill_executed.emit("Microsoft Word", "Blank Document")
+                return "Opening a blank document in Microsoft Word, Boss."
+            if target_app:
+                intent_obj = ActionIntent(action="open_app", target=target_app)
+                res = gatekeeper.execute_action(intent_obj)
+                if res.success:
+                    play_chime(CHIME_CONFIRM)
+                    self.signals.skill_executed.emit("App Launch", target_app)
+                    return f"Opening {target_app}, Boss."
+
+        elif intent == SkillIntent.TIMER_CLOCK:
+            timer_data = self._parse_timer_request(cmd_clean)
+            if timer_data:
+                secs, label = timer_data
+                play_chime(CHIME_CONFIRM)
+                self.signals.skill_executed.emit("Timer", label)
+                t = asyncio.create_task(self._run_timer_countdown(secs, label))
+                if not hasattr(self, "_active_timers"):
+                    self._active_timers = []
+                self._active_timers.append(t)
+                return f"Timer initialized for {label}, Boss. Standing by."
+
+        elif intent == SkillIntent.DEEP_RESEARCH:
+            topic = entities.get("query", "") or cmd_clean
+            topic = re.sub(r"^(?:deep\s+research|deeply\s+research|investigate|thoroughly\s+analyze)\s+(?:on|about)?\s*", "", topic).strip()
+            if not topic:
+                topic = cmd_clean
+            search_match = topic
+            self.signals.stream_started.emit("friday", f"Scanning live web intelligence for '{search_match}'...")
+            self.signals.status_updated.emit(f"Scanning web for '{search_match}'...")
+            play_chime(CHIME_CONFIRM)
+            self.signals.skill_executed.emit("Deep Research", search_match[:30])
+            results = await asyncio.to_thread(fetch_web_results, search_match, 4)
+            if results:
+                self.signals.status_updated.emit(f"Synthesizing {len(results)} web sources...")
+                web_context = f"\n\n[LIVE WEB SOURCES FOR '{search_match.upper()}']:\n"
+                for i, r in enumerate(results[:3], 1):
+                    title = r.get("title", f"Source {i}")
+                    body = r.get("body", "No description available.")[:220]
+                    link = r.get("href", "")
+                    web_context += f"{i}. **{title}**\n   {body}\n   *Source*: {link}\n\n"
+                synth_prompt = (
+                    f"Boss asked: '{command}'\n\n"
+                    f"LIVE DUCKDUCKGO WEB SEARCH INTELLIGENCE:\n{web_context}\n"
+                    f"CRITICAL INSTRUCTIONS:\n"
+                    f"1. Conduct a deep, exhaustive analysis on '{search_match}' using the live web sources above.\n"
+                    f"2. Provide a multi-section report with background, technical details, key findings, and future outlook.\n"
+                    f"3. Format with clean Markdown headers, bullet points, and source citations."
+                )
+                await self.query_llm(synth_prompt, stream_to_ui=True, stream_to_speech=True)
+                return "__STREAMED__"
+
+        return None
+
     async def execute_smart_skill(self, command: str) -> Optional[str]:
         # 0. Bypass smart skills if analyzing attached documents or multi-paragraph content
         if "[Attached Document:" in command or "Boss Directive:" in command:
@@ -1481,19 +1819,77 @@ Core Persona Rules:
         cmd = command.lower().strip()
         cmd = re.sub(r"\byou\s+tube\b", "youtube", cmd)
 
+        # 0.01 Check calculations first so math is always resolved immediately
+        calc_result = self._try_calculate(cmd)
+        if calc_result:
+            gatekeeper.execute_action(ActionIntent(action="calculate", target=cmd))
+            play_chime(CHIME_CONFIRM)
+            self.signals.skill_executed.emit("Calculator", calc_result)
+            return calc_result
+
+        # 0.02 Check coding or technical explanation requests to preserve full LLM generation
+        is_code_request = any(p in cmd for p in [
+            "html code", "python code", "css code", "js code", "javascript code",
+            "write code", "give code", "generate code", "code for", "code of",
+            "write a python", "write a script", "write an app", "write python", "write html"
+        ])
+        if is_code_request:
+            return None
+
+        # 0.05 VISUAL THEME & MODE SWITCHING ("turn to dark mode", "switch to light mode")
+        theme_cmd = self._check_theme_command(cmd)
+        if theme_cmd:
+            mode, resp = theme_cmd
+            play_chime(CHIME_CONFIRM)
+            self.signals.skill_executed.emit("Visual Theme", mode.replace("warm_", "").title())
+            self.signals.theme_change_requested.emit(mode)
+            return resp
+
+        # 0.06 Semantic Intent Router (System 1 Local Neural Dispatch < 1ms)
+        if settings.get("semantic_routing", True) and hasattr(self, "semantic_router"):
+            try:
+                threshold = float(settings.get("semantic_router_threshold", 0.76))
+                route_match = await self.semantic_router.route(
+                    cmd,
+                    client=self.client,
+                    confidence_threshold=threshold
+                )
+                if route_match.intent != SkillIntent.GENERAL_CHAT and route_match.confidence >= threshold:
+                    logger.info(f"Semantic router dispatched: {route_match.intent.name} (tier: {route_match.tier}, confidence: {route_match.confidence:.2f})")
+                    routed_res = await self._dispatch_semantic_intent(route_match.intent, route_match.entities, command, cmd)
+                    if routed_res:
+                        return routed_res
+            except Exception as router_err:
+                logger.debug(f"Semantic router dispatch skipped: {router_err}")
+
         # 0. TIMERS & COUNTDOWNS
+        if any(w in cmd for w in ["cancel timer", "stop timer", "clear timer", "reset timer", "cancel the timer", "stop the timer"]):
+            cancelled_count = 0
+            if hasattr(self, "_active_timers"):
+                for t in self._active_timers:
+                    if not t.done():
+                        t.cancel()
+                        cancelled_count += 1
+                self._active_timers.clear()
+            play_chime(CHIME_CONFIRM)
+            self.signals.skill_executed.emit("Timer", "Cancelled")
+            return "Active timers have been cancelled, Boss."
+
         timer_data = self._parse_timer_request(cmd)
         if timer_data:
             secs, label = timer_data
             play_chime(CHIME_CONFIRM)
             self.signals.skill_executed.emit("Timer", label)
-            asyncio.create_task(self._run_timer_countdown(secs, label))
+            t = asyncio.create_task(self._run_timer_countdown(secs, label))
+            if not hasattr(self, "_active_timers"):
+                self._active_timers = []
+            self._active_timers.append(t)
             return f"Timer initialized for {label}, Boss. Standing by."
 
         # 0.1 SCREEN VISION & AWARENESS
         vision_triggers = [
             "look at my screen", "what is on my screen", "what's on my screen",
-            "check my screen", "analyze my screen", "look at this code",
+            "check my screen", "analyze my screen", "analyze screen", "screen analysis", "look at this code",
             "inspect my screen", "see my screen", "read my screen", "summarize my screen",
             "what do you see on my screen", "explain what's on my screen", "what is wrong with this code"
         ]
@@ -1543,7 +1939,8 @@ Core Persona Rules:
         ]
         question_indicators = [
             "how to", "how do", "how can", "why ", "what is", "what are", "explain",
-            "describe", "write a", "show me how", "tell me", "guide me", "meaning of"
+            "describe", "write a", "write ", "script", "code", "bash", "python", "powershell",
+            "batch", "show me how", "tell me", "guide me", "meaning of", "tutorial"
         ]
 
         is_question = any(q in cmd for q in question_indicators)
@@ -1857,14 +2254,27 @@ Core Persona Rules:
             return calc_result
 
         # 7. HARDWARE TELEMETRY (TIER 0)
-        if any(w in cmd for w in ["status", "diagnostics", "battery", "power level", "telemetry"]):
+        # Ensure we don't intercept programming or explanatory questions
+        is_code_or_explanatory = any(p in cmd for p in [
+            "write ", "code", "script", "function", "program", "algorithm",
+            "tutorial", "explain", "describe", "how does", "how do i", "how to calculate"
+        ])
+        telemetry_patterns = [
+            r"\b(?:battery\s+(?:level|status|percent|percentage|health|remaining|life)|how\s+much\s+battery|what(?:'s|\s+is)\s+the\s+battery|check\s+battery|battery\s+check)\b",
+            r"\b(?:is\s+(?:the\s+|my\s+|laptop\s+)?(?:laptop\s+)?charging|charging\s+status|is\s+it\s+charging)\b",
+            r"\b(?:memory\s+(?:usage|load|status)|ram\s+(?:usage|load|status)|check\s+(?:ram|memory)|how\s+much\s+ram)\b",
+            r"\b(?:system\s+(?:diagnostics|status|telemetry|health)|diagnostics|telemetry|system\s+specs)\b",
+            r"^(?:status|battery|telemetry|ram|memory)$"
+        ]
+        is_telemetry_intent = not is_code_or_explanatory and any(re.search(p, cmd, re.IGNORECASE) for p in telemetry_patterns)
+        if is_telemetry_intent:
             res = gatekeeper.execute_action(ActionIntent(action="get_telemetry"))
             battery, charging = get_battery_info()
             mem_load = get_memory_info()
             parts = []
             if battery is not None:
                 chg_str = "connected to AC power" if charging else "on battery reserve"
-                parts.append(f"Main power is holding at {battery} percent, {chg_str}.")
+                parts.append(f"Battery is holding at {battery} percent, {chg_str}.")
             if mem_load is not None:
                 parts.append(f"System memory load is at {mem_load} percent.")
             play_chime(CHIME_CONFIRM)
@@ -1875,34 +2285,34 @@ Core Persona Rules:
             return "All diagnostic scans are green. Systems running nominally, Boss."
 
         # 8. VOLUME CONTROLS (TIER 1)
-        if "volume up" in cmd or "turn it up" in cmd:
+        if any(w in cmd for w in ["volume up", "turn it up", "turn up the volume", "turn volume up", "increase volume", "raise volume"]):
             gatekeeper.execute_action(ActionIntent(action="adjust_volume", target="up"))
             play_chime(CHIME_CONFIRM)
             return "Master volume increased."
-        if "volume down" in cmd or "lower volume" in cmd:
+        if any(w in cmd for w in ["volume down", "lower volume", "turn it down", "turn down the volume", "turn volume down", "decrease volume", "reduce volume"]):
             gatekeeper.execute_action(ActionIntent(action="adjust_volume", target="down"))
             play_chime(CHIME_CONFIRM)
             return "Master volume decreased."
         if "mute" in cmd or "unmute" in cmd:
             gatekeeper.execute_action(ActionIntent(action="adjust_volume", target="mute"))
             play_chime(CHIME_CONFIRM)
-            return "Audio toggled, Boss."
+            return "Audio volume toggled, Boss."
 
         # 9. TIME & DATE (TIER 0)
-        if any(w in cmd for w in ["what time is it", "current time", "what's the time"]):
+        if not is_code_or_explanatory and any(w in cmd for w in ["what time is it", "current time", "what's the time", "tell me the time", "the time"]):
             gatekeeper.execute_action(ActionIntent(action="get_time"))
             play_chime(CHIME_CONFIRM)
-            return f"It's {datetime.now().strftime('%I:%M %p')}, Boss."
-        if any(w in cmd for w in ["what date is it", "what's today's date", "what day is it"]):
+            return f"The current time is {datetime.now().strftime('%I:%M %p')}, Boss."
+        if not is_code_or_explanatory and any(w in cmd for w in ["what date is it", "what's today's date", "what day is it", "current date", "today's date"]):
             gatekeeper.execute_action(ActionIntent(action="get_date"))
             play_chime(CHIME_CONFIRM)
-            return f"Today is {datetime.now().strftime('%A, %B %d')}, Boss."
+            return f"Today's date is {datetime.now().strftime('%A, %B %d')}, Boss."
 
         # 10. SCREENSHOT & LOCK PC (TIER 1)
-        if "screenshot" in cmd or "snip" in cmd:
+        if any(w in cmd for w in ["screenshot", "snip", "capture screen", "screen capture", "take a screenshot"]):
             gatekeeper.execute_action(ActionIntent(action="screenshot"))
             play_chime(CHIME_CONFIRM)
-            return "Snipping tool activated, Boss."
+            return "Screenshot snipping tool activated, Boss."
         if "lock pc" in cmd or "lock my computer" in cmd:
             gatekeeper.execute_action(ActionIntent(action="lock_workstation"))
             return "Locking workstation now."
@@ -2009,7 +2419,7 @@ Core Persona Rules:
     def _try_calculate(self, cmd: str) -> Optional[str]:
         return safe_calculate(cmd)
 
-    async def query_llm(self, user_text: str, stream_to_ui: bool = True, stream_to_speech: bool = True) -> str:
+    async def query_llm(self, user_text: str, stream_to_ui: bool = True, stream_to_speech: bool = True, save_history: bool = True) -> str:
         self.signals.state_changed.emit("thinking")
         self.abort_event.clear()
 
@@ -2017,16 +2427,22 @@ Core Persona Rules:
         if getattr(self, "vector_store", None):
             try:
                 kb_results = self.vector_store.query(user_text, top_k=1)
-                if kb_results and kb_results[0].get("score", 0) > 0.12:
+                if kb_results and kb_results[0].get("score", 0) > 0.40:
                     snippet = kb_results[0].get("content", "")[:300]
                     prompt_text = f"{user_text}\n[Relevant Knowledge: {snippet}]"
             except Exception as ex:
                 logger.warning("Vector store query warning: %s", ex)
 
-        self.conversation_history.append({'role': 'user', 'content': prompt_text})
-
-        if len(self.conversation_history) > 12:
-            self.conversation_history = [self.conversation_history[0]] + self.conversation_history[-10:]
+        if save_history:
+            self.conversation_history.append({'role': 'user', 'content': prompt_text})
+            if len(self.conversation_history) > 12:
+                self.conversation_history = [self.conversation_history[0]] + self.conversation_history[-10:]
+            messages_to_send = self.conversation_history
+        else:
+            messages_to_send = [
+                {'role': 'system', 'content': self.system_prompt},
+                {'role': 'user', 'content': prompt_text}
+            ]
 
         collected = []
         seamless_speech = settings.get("seamless_speech", SEAMLESS_SPEECH)
@@ -2115,33 +2531,71 @@ Core Persona Rules:
 
             response_stream = await self.client.chat(
                 model=self.model,
-                messages=self.conversation_history,
+                messages=messages_to_send,
                 options={'temperature': 0.7, 'top_p': 0.9},
                 stream=True
             )
             sentence_buffer = ""
+            in_think_tag = False
             async for chunk in response_stream:
                 if is_cancelled():
                     logger.info("Ollama chat stream aborted via user cancellation.")
                     break
 
-                token = chunk['message']['content']
-                collected.append(token)
-                if stream_to_ui:
-                    self.signals.stream_token.emit(token)
+                msg = chunk.message if hasattr(chunk, 'message') else (chunk.get('message') if isinstance(chunk, dict) else None)
+                thinking_token = ""
+                content_token = ""
+                if msg is not None:
+                    thinking_token = getattr(msg, 'thinking', '') if hasattr(msg, 'thinking') else (msg.get('thinking', '') if isinstance(msg, dict) else '')
+                    content_token = getattr(msg, 'content', '') if hasattr(msg, 'content') else (msg.get('content', '') if isinstance(msg, dict) else '')
+                else:
+                    content_token = getattr(chunk, 'content', '') if hasattr(chunk, 'content') else str(chunk)
 
-                if not seamless_speech and phrase_queue and not is_cancelled():
-                    sentence_buffer += token
-                    abbrev_m = re.search(r"(?:e\.g|i\.e|vs|dr|mr|mrs|ms|prof|inc|ltd|v\d+)\.\s*$", sentence_buffer, re.IGNORECASE)
-                    if not abbrev_m:
-                        m = re.search(r"([.!?]+[\"'\)\]]*|\n{2,})\s*", sentence_buffer)
-                        if m and (len(sentence_buffer.split()) >= 6 or "\n\n" in sentence_buffer):
-                            split_pos = m.end()
-                            phrase = sentence_buffer[:split_pos].strip()
-                            sentence_buffer = sentence_buffer[split_pos:]
-                            clean = self.tts.clean_text_for_speech(phrase)
-                            if clean and len(clean.split()) >= 1 and not is_cancelled():
-                                await phrase_queue.put(clean)
+                # 1. Native thinking field from Ollama (e.g. DeepSeek-R1)
+                if thinking_token and stream_to_ui:
+                    self.signals.stream_thinking.emit(thinking_token)
+
+                # 2. Check for <think> tags in content_token
+                if content_token:
+                    if "<think>" in content_token:
+                        parts = content_token.split("<think>", 1)
+                        if parts[0]:
+                            collected.append(parts[0])
+                            if stream_to_ui:
+                                self.signals.stream_token.emit(parts[0])
+                        in_think_tag = True
+                        content_token = parts[1]
+
+                    if in_think_tag:
+                        if "</think>" in content_token:
+                            t_part, c_part = content_token.split("</think>", 1)
+                            if t_part and stream_to_ui:
+                                self.signals.stream_thinking.emit(t_part)
+                            in_think_tag = False
+                            content_token = c_part
+                        else:
+                            if content_token and stream_to_ui:
+                                self.signals.stream_thinking.emit(content_token)
+                            content_token = ""
+
+                # 3. Stream normal content tokens
+                if content_token:
+                    collected.append(content_token)
+                    if stream_to_ui:
+                        self.signals.stream_token.emit(content_token)
+
+                    if not seamless_speech and phrase_queue and not is_cancelled():
+                        sentence_buffer += content_token
+                        abbrev_m = re.search(r"(?:e\.g|i\.e|vs|dr|mr|mrs|ms|prof|inc|ltd|v\d+)\.\s*$", sentence_buffer, re.IGNORECASE)
+                        if not abbrev_m:
+                            m = re.search(r"([.!?]+[\"'\)\]]*|\n{2,})\s*", sentence_buffer)
+                            if m and (len(sentence_buffer.split()) >= 6 or "\n\n" in sentence_buffer):
+                                split_pos = m.end()
+                                phrase = sentence_buffer[:split_pos].strip()
+                                sentence_buffer = sentence_buffer[split_pos:]
+                                clean = self.tts.clean_text_for_speech(phrase)
+                                if clean and len(clean.split()) >= 1 and not is_cancelled():
+                                    await phrase_queue.put(clean)
 
             reply = "".join(collected).strip()
             if is_cancelled():
@@ -2154,14 +2608,16 @@ Core Persona Rules:
                 if stream_to_ui:
                     self.signals.stream_token.emit(reply)
 
-            self.conversation_history.append({'role': 'assistant', 'content': reply})
+            if save_history:
+                self.conversation_history.append({'role': 'assistant', 'content': reply})
             if stream_to_ui:
                 self.signals.stream_finished.emit(reply)
 
             if seamless_speech:
-                # Seamless single-track speech: synthesize and speak the complete spoken summary
+                # Seamless single-track speech: synthesize and speak the complete generated response
                 if stream_to_speech and self.tts and not is_cancelled():
-                    spoken = self.tts.extract_spoken_summary(reply)
+                    speak_full = settings.get("speak_full_response", True)
+                    spoken = self.tts.extract_spoken_summary(reply) if speak_full else self.tts.extract_spoken_summary(reply, max_sentences=3, max_words=65)
                     if spoken and not is_cancelled():
                         await self.tts.speak(spoken, emit_transcript=False)
             else:
@@ -2218,6 +2674,7 @@ def extract_wake_and_command(raw_text: str):
       - 'Friday tell about cars' -> ('friday', 'tell about cars')
       - 'Hey Friday what's the weather' -> ('hey friday', "what's the weather")
       - 'Friday' -> ('friday', '')
+      - 'um friday what time is it' -> ('friday', 'what time is it')
     """
     if not raw_text:
         return None, ""
@@ -2226,23 +2683,31 @@ def extract_wake_and_command(raw_text: str):
     # Sort wake words by length descending so longer phrases match first
     sorted_wakes = sorted(WAKE_WORDS, key=len, reverse=True)
     matched_wake = None
+    match_span = None
     for w in sorted_wakes:
-        if re.search(rf"\b{re.escape(w)}\b", text, re.IGNORECASE):
+        m = re.search(rf"\b{re.escape(w)}\b", text, re.IGNORECASE)
+        if m:
             matched_wake = w
+            match_span = m.span()
             break
 
     if not matched_wake:
         return None, ""
 
-    # Remove matched wake word
-    remainder = re.sub(rf"\b{re.escape(matched_wake)}\b", " ", text, flags=re.IGNORECASE).strip(" ,:.-?!")
-    # Clean common conversational filler prefixes
+    # Prefer command after the wake word; if trailing/empty, check before
+    after = text[match_span[1]:].lstrip(" ,:.-").strip()
+    if after:
+        remainder = after
+    else:
+        remainder = text[:match_span[0]].lstrip(" ,:.-").strip()
+
+    # Clean common conversational filler prefixes and hesitation sounds while preserving sentence punctuation
     cleaned = re.sub(
-        r"^(?:hey|hi|hello|ok|okay|please|can you|could you|would you)\s+",
+        r"^(?:hey|hi|hello|ok|okay|please|can you|could you|would you|uh|um|so|well)\s+",
         "",
         remainder,
         flags=re.IGNORECASE
-    ).strip(" ,:.-?!")
+    ).lstrip(" ,:.-").strip()
     return matched_wake, cleaned
 
 

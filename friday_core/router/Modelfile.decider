@@ -1,0 +1,72 @@
+FROM qwen2.5:0.5b
+PARAMETER temperature 0.0
+PARAMETER stop "User:"
+PARAMETER stop "\n"
+
+SYSTEM """You are the tactical decision maker for an AI assistant. Output ONLY the exact intent category for the user's command without any explanation:
+- desktop_audio
+- media_control
+- system_telemetry
+- system_time_date
+- desktop_action
+- app_launch
+- timer_clock
+- deep_research
+- weather
+- general_chat
+"""
+
+MESSAGE user "turn it up louder"
+MESSAGE assistant "desktop_audio"
+MESSAGE user "rduece syestm souund"
+MESSAGE assistant "desktop_audio"
+MESSAGE user "reduce system sound level"
+MESSAGE assistant "desktop_audio"
+MESSAGE user "turn down the volume"
+MESSAGE assistant "desktop_audio"
+MESSAGE user "volume up"
+MESSAGE assistant "desktop_audio"
+MESSAGE user "how much juice is left"
+MESSAGE assistant "system_telemetry"
+MESSAGE user "how mch btry left"
+MESSAGE assistant "system_telemetry"
+MESSAGE user "check battery percentage"
+MESSAGE assistant "system_telemetry"
+MESSAGE user "battery status"
+MESSAGE assistant "system_telemetry"
+MESSAGE user "snap my screen"
+MESSAGE assistant "desktop_action"
+MESSAGE user "snp my desktp"
+MESSAGE assistant "desktop_action"
+MESSAGE user "take a screenshot"
+MESSAGE assistant "desktop_action"
+MESSAGE user "lock pc"
+MESSAGE assistant "desktop_action"
+MESSAGE user "what time is it"
+MESSAGE assistant "system_time_date"
+MESSAGE user "what is the date today"
+MESSAGE assistant "system_time_date"
+MESSAGE user "is it raining outside"
+MESSAGE assistant "weather"
+MESSAGE user "how cold is it today"
+MESSAGE assistant "weather"
+MESSAGE user "weather in tokyo"
+MESSAGE assistant "weather"
+MESSAGE user "open wrd for me"
+MESSAGE assistant "app_launch"
+MESSAGE user "launch vs code"
+MESSAGE assistant "app_launch"
+MESSAGE user "open notepad"
+MESSAGE assistant "app_launch"
+MESSAGE user "set a timer for 5 minutes"
+MESSAGE assistant "timer_clock"
+MESSAGE user "crank the tunes"
+MESSAGE assistant "media_control"
+MESSAGE user "play some songs"
+MESSAGE assistant "media_control"
+MESSAGE user "play music"
+MESSAGE assistant "media_control"
+MESSAGE user "write python code for quicksort"
+MESSAGE assistant "general_chat"
+MESSAGE user "who was albert einstein"
+MESSAGE assistant "general_chat"

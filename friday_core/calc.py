@@ -24,6 +24,19 @@ SAFE_OPERATORS = {
 }
 
 # Safe math functions & constants
+def _safe_factorial(n):
+    if isinstance(n, float) and not n.is_integer():
+        raise ValueError("Factorial is only defined for integers")
+    n_int = int(n)
+    if 0 <= n_int <= 100:
+        return math.factorial(n_int)
+    raise ValueError("Factorial input out of bounds (0-100)")
+
+def _safe_pow(base, exp):
+    if abs(base) > 1000 or abs(exp) > 1000:
+        raise ValueError("Exponent exceeds safe operational bounds")
+    return math.pow(base, exp)
+
 SAFE_FUNCTIONS = {
     "sqrt": math.sqrt,
     "sin": math.sin,
@@ -35,6 +48,12 @@ SAFE_FUNCTIONS = {
     "round": round,
     "ceil": math.ceil,
     "floor": math.floor,
+    "min": min,
+    "max": max,
+    "degrees": math.degrees,
+    "radians": math.radians,
+    "factorial": _safe_factorial,
+    "pow": _safe_pow,
 }
 
 SAFE_CONSTANTS = {
@@ -129,6 +148,8 @@ def safe_calculate(cmd: str) -> Optional[str]:
         result = evaluator.visit(tree)
 
         if isinstance(result, (int, float)):
+            if math.isinf(result) or math.isnan(result):
+                return "Calculation result is infinite or undefined, Boss."
             if isinstance(result, float) and result.is_integer():
                 result = int(result)
             elif isinstance(result, float):

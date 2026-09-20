@@ -193,13 +193,6 @@ class FloatingCommandBar(QWidget):
         # 1. Main Horizontal Floating Bar Card
         self.bar_card = QFrame(self)
         self.bar_card.setFixedHeight(56)
-        self.bar_card.setStyleSheet("""
-            QFrame {
-                background-color: rgba(18, 22, 32, 0.94);
-                border: 1px solid rgba(0, 240, 255, 0.35);
-                border-radius: 28px;
-            }
-        """)
 
         bar_layout = QHBoxLayout(self.bar_card)
         bar_layout.setContentsMargins(14, 6, 14, 6)
@@ -212,19 +205,7 @@ class FloatingCommandBar(QWidget):
         # Prompt Input Field
         self.prompt_input = LineEdit(self.bar_card)
         self.prompt_input.setPlaceholderText("Ask F.R.I.D.A.Y. anything or enter tactical command...")
-        self.prompt_input.setStyleSheet("""
-            LineEdit {
-                background-color: transparent;
-                border: none;
-                color: #FFFFFF;
-                font-size: 13px;
-                font-weight: 500;
-                padding-left: 4px;
-            }
-        """)
         self.prompt_input.returnPressed.connect(self._on_submit)
-
-
         bar_layout.addWidget(self.prompt_input, 1)
 
         # Model Selector ComboBox
@@ -244,18 +225,9 @@ class FloatingCommandBar(QWidget):
         self.model_combo.setCurrentText(saved_model)
         self.model_combo.currentTextChanged.connect(self._on_model_changed)
         settings.add_listener(self._on_settings_model_sync)
+        settings.add_listener(self._on_settings_theme_sync)
         # Schedule asynchronous discovery of local Ollama models without blocking GUI thread
         QTimer.singleShot(150, self.refresh_models)
-        self.model_combo.setStyleSheet("""
-            ComboBox {
-                background-color: rgba(255, 255, 255, 0.06);
-                border: 1px solid rgba(255, 255, 255, 0.15);
-                border-radius: 14px;
-                color: #00F0FF;
-                font-size: 11px;
-                padding: 4px 10px;
-            }
-        """)
         bar_layout.addWidget(self.model_combo)
 
         # Voice Trigger Button (Mic)
@@ -267,19 +239,6 @@ class FloatingCommandBar(QWidget):
         # Mode Chip (Tactical / Speed / Deep)
         self.mode_btn = PillPushButton("⚡ Tactical", self.bar_card)
         self.mode_btn.setFixedWidth(88)
-        self.mode_btn.setStyleSheet("""
-            PillPushButton {
-                background-color: rgba(0, 240, 255, 0.15);
-                border: 1px solid #00F0FF;
-                color: #00F0FF;
-                font-size: 11px;
-                font-weight: bold;
-                padding: 4px 8px;
-            }
-            PillPushButton:hover {
-                background-color: rgba(0, 240, 255, 0.3);
-            }
-        """)
         self.mode_btn.clicked.connect(self._cycle_mode)
         bar_layout.addWidget(self.mode_btn)
 
@@ -288,22 +247,6 @@ class FloatingCommandBar(QWidget):
         self.stop_btn.setFixedWidth(68)
         self.stop_btn.setCursor(Qt.PointingHandCursor)
         self.stop_btn.setToolTip("Immediately halt voice playback (Esc)")
-        self.stop_btn.setStyleSheet("""
-            PillPushButton {
-                background-color: #DC2626;
-                border: 1px solid #EF4444;
-                color: #FFFFFF;
-                font-size: 11px;
-                font-weight: bold;
-                padding: 4px 8px;
-            }
-            PillPushButton:hover {
-                background-color: #EF4444;
-            }
-            PillPushButton:pressed {
-                background-color: #991B1B;
-            }
-        """)
         self.stop_btn.clicked.connect(self.stop_requested.emit)
         self.stop_btn.hide()
         bar_layout.addWidget(self.stop_btn)
@@ -319,13 +262,6 @@ class FloatingCommandBar(QWidget):
 
         # 2. Expandable Response Panel Card
         self.response_card = QFrame(self)
-        self.response_card.setStyleSheet("""
-            QFrame {
-                background-color: rgba(14, 18, 28, 0.96);
-                border: 1px solid rgba(0, 240, 255, 0.25);
-                border-radius: 14px;
-            }
-        """)
         self.response_layout = QVBoxLayout(self.response_card)
         self.response_layout.setContentsMargins(14, 12, 14, 12)
         self.response_layout.setSpacing(6)
@@ -334,7 +270,6 @@ class FloatingCommandBar(QWidget):
         resp_header = QHBoxLayout()
         self.resp_title = QLabel("F.R.I.D.A.Y. RESPONSE")
         self.resp_title.setFont(QFont("Segoe UI", 9, QFont.Bold))
-        self.resp_title.setStyleSheet("color: #00F0FF; letter-spacing: 1px;")
         resp_header.addWidget(self.resp_title)
         resp_header.addStretch(1)
 
@@ -357,15 +292,6 @@ class FloatingCommandBar(QWidget):
         self.response_text = QTextBrowser(self.response_card)
         self.response_text.setOpenExternalLinks(True)
         self.response_text.setReadOnly(True)
-        self.response_text.setStyleSheet("""
-            QTextBrowser {
-                background-color: transparent;
-                border: none;
-                color: #E2E8F0;
-                font-size: 12px;
-                line-height: 1.4;
-            }
-        """)
         self.response_text.setMinimumHeight(60)
         self.response_text.setMaximumHeight(220)
         self.response_layout.addWidget(self.response_text)
@@ -376,7 +302,11 @@ class FloatingCommandBar(QWidget):
         self.setFixedWidth(740)
         self.mic_shortcut = QShortcut(QKeySequence("Ctrl+M"), self)
         self.mic_shortcut.activated.connect(self.voice_toggle_requested.emit)
-        self.set_mic_active(False)
+        self._mic_active = False
+
+        # Apply active theme dynamically
+        self.apply_theme()
+
 
     def _setup_position(self):
         """Places the bar on screen according to user settings or last saved coords."""
@@ -590,6 +520,131 @@ class FloatingCommandBar(QWidget):
         if key in ("model", "custom_models"):
             QTimer.singleShot(0, self.refresh_models)
 
+    def _on_settings_theme_sync(self, key: str, value):
+        if key in ("theme_mode", "theme"):
+            QTimer.singleShot(0, lambda: self.apply_theme(str(value)))
+
+    def apply_theme(self, theme_mode: str = None):
+        """Dynamically styles the floating bar, combo, mode pill, response card, and mic button."""
+        from friday_ui.styles.themes import get_theme_palette, get_current_palette
+        p = get_theme_palette(theme_mode) if theme_mode else get_current_palette()
+        mode_str = str(theme_mode or settings.get("theme_mode", "warm_light")).lower()
+        is_light = "light" in mode_str or "cream" in mode_str
+
+        # 1. Bar Card (Pill Container)
+        bar_bg = "rgba(253, 251, 247, 0.96)" if is_light else ("rgba(28, 25, 23, 0.94)" if "warm" in mode_str else "rgba(18, 22, 32, 0.94)")
+        bar_border = p.get("accent_border", "rgba(0, 240, 255, 0.35)")
+        self.bar_card.setStyleSheet(f"""
+            QFrame {{
+                background-color: {bar_bg};
+                border: 1.5px solid {bar_border};
+                border-radius: 28px;
+            }}
+        """)
+
+        # 2. Prompt Input
+        self.prompt_input.setStyleSheet(f"""
+            LineEdit {{
+                background-color: transparent;
+                border: none;
+                color: {p['text_primary']};
+                font-size: 13px;
+                font-weight: 500;
+                padding-left: 4px;
+            }}
+        """)
+
+        # 3. Model Selector ComboBox
+        self.model_combo.setStyleSheet(f"""
+            ComboBox {{
+                background-color: {p['combo_bg']};
+                border: 1px solid {p['combo_border']};
+                border-radius: 14px;
+                color: {p['accent']};
+                font-size: 11px;
+                font-weight: 600;
+                padding: 4px 10px;
+            }}
+            ComboBox:hover {{
+                background-color: {p.get('combo_hover_bg', p['combo_bg'])};
+                border: 1px solid {p['combo_hover_border']};
+            }}
+        """)
+
+        # 4. Mode Chip
+        self.mode_btn.setStyleSheet(f"""
+            PillPushButton {{
+                background-color: {p['accent_bg']};
+                border: 1px solid {p['accent_border']};
+                color: {p['accent']};
+                font-size: 11px;
+                font-weight: bold;
+                padding: 4px 8px;
+                border-radius: 14px;
+            }}
+            PillPushButton:hover {{
+                background-color: {p['accent']};
+                color: {p.get('accent_text', '#FFFFFF')};
+                border: 1px solid {p['accent_hover']};
+            }}
+        """)
+
+        # 5. Stop Button
+        self.stop_btn.setStyleSheet(f"""
+            PillPushButton {{
+                background-color: {p['danger_red']};
+                border: 1px solid {p['danger_red']};
+                color: #FFFFFF;
+                font-size: 11px;
+                font-weight: bold;
+                padding: 4px 8px;
+                border-radius: 14px;
+            }}
+            PillPushButton:hover {{
+                background-color: #DC2626;
+                border: 1px solid #EF4444;
+            }}
+        """)
+
+        # 6. Response Panel Card
+        resp_bg = "rgba(247, 244, 238, 0.96)" if is_light else ("rgba(23, 20, 19, 0.96)" if "warm" in mode_str else "rgba(14, 18, 28, 0.96)")
+        self.response_card.setStyleSheet(f"""
+            QFrame {{
+                background-color: {resp_bg};
+                border: 1px solid {p['accent_border']};
+                border-radius: 14px;
+            }}
+        """)
+        self.resp_title.setStyleSheet(f"color: {p['accent']}; letter-spacing: 1px;")
+        self.response_text.setStyleSheet(f"""
+            QTextBrowser {{
+                background-color: transparent;
+                border: none;
+                color: {p['text_primary']};
+                font-size: 12px;
+                line-height: 1.4;
+            }}
+        """)
+
+        # 7. Close button subtle hover
+        self.close_btn.setStyleSheet(f"""
+            TransparentToolButton {{
+                color: {p['text_muted']};
+                border-radius: 14px;
+            }}
+            TransparentToolButton:hover {{
+                background-color: {p['border_subtle']};
+                color: {p['text_primary']};
+            }}
+        """)
+
+        # 8. Update Mic Button with active theme colors
+        self.set_mic_active(getattr(self, '_mic_active', False))
+
+        # 9. Update Arc Reactor
+        if hasattr(self, 'mini_reactor') and hasattr(self.mini_reactor, 'apply_theme'):
+            self.mini_reactor.apply_theme(theme_mode)
+
     def refresh_models(self):
         """Asynchronously queries Ollama for installed models without blocking UI thread."""
         if getattr(self, "_refreshing_models", False):
@@ -630,36 +685,37 @@ class FloatingCommandBar(QWidget):
 
 
     def set_mic_active(self, active: bool):
-        """Updates mic button appearance in FloatingCommandBar."""
+        """Updates mic button appearance in FloatingCommandBar matching active theme."""
         self._mic_active = active
+        from friday_ui.styles.themes import get_current_palette
+        p = get_current_palette()
         if active:
             self.mic_btn.setToolTip("Mute Microphone (Ctrl+M)")
-            self.mic_btn.setStyleSheet("""
-                ToolButton {
-                    background-color: rgba(0, 240, 255, 0.25);
-                    border: 1px solid #00F0FF;
+            self.mic_btn.setStyleSheet(f"""
+                ToolButton {{
+                    background-color: {p['live_green_bg']};
+                    border: 1.5px solid {p['live_green']};
                     border-radius: 18px;
-                    color: #00F0FF;
-                }
-                ToolButton:hover {
-                    background-color: rgba(0, 240, 255, 0.4);
-                    border: 1px solid #22D3EE;
-                }
+                    color: {p['live_green']};
+                }}
+                ToolButton:hover {{
+                    background-color: {p['live_green_border']};
+                }}
             """)
         else:
             self.mic_btn.setToolTip("Unmute Microphone (Ctrl+M)")
-            self.mic_btn.setStyleSheet("""
-                ToolButton {
-                    background-color: rgba(239, 68, 68, 0.15);
-                    border: 1px solid rgba(239, 68, 68, 0.5);
+            self.mic_btn.setStyleSheet(f"""
+                ToolButton {{
+                    background-color: {p['danger_red_bg']};
+                    border: 1.5px solid {p['danger_red']};
                     border-radius: 18px;
-                    color: #EF4444;
-                }
-                ToolButton:hover {
-                    background-color: rgba(239, 68, 68, 0.3);
-                    border: 1px solid #EF4444;
-                }
+                    color: {p['danger_red']};
+                }}
+                ToolButton:hover {{
+                    background-color: {p['danger_red_border']};
+                }}
             """)
+
 
     def _cycle_mode(self):
         modes = ["⚡ Tactical", "🎯 Deep", "🚀 Turbo"]

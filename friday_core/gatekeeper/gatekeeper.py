@@ -54,6 +54,24 @@ class ActionGatekeeper:
         self._max_destructive_per_min = 3
         AUDIT_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
+    def enable_panic_mode(self):
+        """Enables observe-only panic switch immediately locking system mutations."""
+        settings.set("observe_only", True)
+
+    def disable_panic_mode(self):
+        """Disables panic switch restoring normal operation."""
+        settings.set("observe_only", False)
+
+    @property
+    def panic_mode(self) -> bool:
+        """Returns True if observe-only panic mode is currently active."""
+        return bool(settings.get("observe_only", False))
+
+    @property
+    def is_panic_mode(self) -> bool:
+        """Returns True if observe-only panic mode is currently active."""
+        return self.panic_mode
+
     def classify_tier(self, intent: ActionIntent) -> int:
         """Determines the safety tier for an incoming intent."""
         if intent.tier is not None:

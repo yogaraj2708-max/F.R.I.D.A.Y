@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aura — Thoughtful AI Assistant</title>
+  <meta name="description" content="A minimalist, clean, and accessible AI assistant interface crafted with a warm, editorial aesthetic and strict 60-30-10 color balance.">
+  
+  <!-- Modern Clean Typography: Plus Jakarta Sans & Newsreader -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+  <!-- Main Application Wrapper -->
+  <div class="app-layout" id="appLayout">
+    
+    <!-- Top Editorial Header -->
+    <header class="app-header" role="banner">
+      <div class="header-left">
+        <div class="brand-badge" aria-label="Aura AI Identity">
+          <div class="brand-avatar" aria-hidden="true">
+            <span class="avatar-letter">A</span>
+            <span class="pulse-indicator" title="Online and receptive"></span>
+          </div>
+          <div class="brand-titles">
+            <h1 class="brand-name">Aura</h1>
+            <span class="brand-tagline">Editorial Intelligence</span>
+          </div>
+        </div>
+      </div>
+
+      <nav class="header-center" aria-label="Workspace Context">
+        <div class="context-pill" id="contextIndicator">
+          <span class="pill-dot" aria-hidden="true"></span>
+          <span class="pill-text">Tone: Thoughtful & Balanced</span>
+          <button class="pill-dropdown-btn" id="toneToggleBtn" aria-label="Change conversation tone" aria-haspopup="true" aria-expanded="false">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+        </div>
+      </nav>
+
+      <div class="header-right">
+        <div class="action-group">
+          <button class="icon-action-btn" id="clearChatBtn" title="Clear conversation history (Ctrl+L)" aria-label="Clear chat history">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+            </svg>
+            <span class="action-label">Clear</span>
+          </button>
+
+          <button class="icon-action-btn" id="exportBtn" title="Export dialogue as markdown" aria-label="Export conversation">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m14-5-5-5-5 5m5-5v12"/>
+            </svg>
+            <span class="action-label">Export</span>
+          </button>
+
+          <button class="icon-action-btn theme-toggle-btn" id="themeToggleBtn" title="Toggle Light / Dark Mode" aria-label="Toggle Light and Dark Mode">
+            <span class="theme-icon" id="themeIcon" aria-hidden="true">🌙</span>
+            <span class="action-label" id="themeLabel">Dark</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Chat Workspace (60% Dominant Cream Canvas) -->
+    <main class="chat-viewport" id="chatViewport" role="main" aria-live="polite" aria-label="Message Stream">
+      <div class="stream-container" id="messageStream">
+        
+        <!-- Welcome Hero Banner -->
+        <section class="welcome-card" id="welcomeCard">
+          <div class="welcome-badge">
+            <span class="accent-star">✦</span>
+            <span>Mindful Assistance</span>
+          </div>
+          <h2 class="welcome-headline">How can I assist your thinking today?</h2>
+          <p class="welcome-subtext">
+            A serene, deliberate space for deep research, essay drafting, problem-solving, and quiet reflection. Free of noise, neon distractions, or rushed answers.
+          </p>
+
+          <!-- Thoughtful Inspiration Prompts -->
+          <div class="suggestion-grid" role="group" aria-label="Suggested topics">
+            <button class="suggestion-card" data-prompt="Analyze the trade-offs between monolithic and microservices architecture with a focus on simplicity.">
+              <div class="card-icon" aria-hidden="true">🏛️</div>
+              <div class="card-content">
+                <span class="card-title">Architecture Strategy</span>
+                <span class="card-desc">Trade-offs between monoliths & microservices</span>
+              </div>
+            </button>
+
+            <button class="suggestion-card" data-prompt="Draft a thoughtful, respectful email declining an invitation while preserving a long-term partnership.">
+              <div class="card-icon" aria-hidden="true">✉️</div>
+              <div class="card-content">
+                <span class="card-title">Editorial Drafting</span>
+                <span class="card-desc">Gracefully decline an invite with care</span>
+              </div>
+            </button>
+
+            <button class="suggestion-card" data-prompt="Synthesize the core ideas of Scandinavian minimalist interior design and how they foster mental calm.">
+              <div class="card-icon" aria-hidden="true">🌿</div>
+              <div class="card-content">
+                <span class="card-title">Aesthetic Philosophy</span>
+                <span class="card-desc">Scandinavian design & mental stillness</span>
+              </div>
+            </button>
+
+            <button class="suggestion-card" data-prompt="Deeply research the history of typography from Gutenberg's movable type to Swiss international style.">
+              <div class="card-icon" aria-hidden="true">📖</div>
+              <div class="card-content">
+                <span class="card-title">Typography History</span>
+                <span class="card-desc">From Gutenberg to Swiss modernism</span>
+              </div>
+            </button>
+          </div>
+        </section>
+
+        <!-- Initial Seed Message Pair -->
+        <article class="message-row user-row" aria-label="Message from You">
+          <div class="message-meta">
+            <span class="sender-name">You</span>
+            <time class="timestamp">10:42 AM</time>
+          </div>
+          <div class="bubble user-bubble">
+            <p>Could you summarize why warm, low-contrast palettes feel more restful for long reading sessions compared to stark dark or harsh neon interfaces?</p>
+          </div>
+        </article>
+
+        <article class="message-row assistant-row" aria-label="Message from Aura">
+          <div class="message-meta">
+            <div class="assistant-ident">
+              <span class="mini-avatar">A</span>
+              <span class="sender-name">Aura</span>
+            </div>
+            <time class="timestamp">10:42 AM</time>
+          </div>
+          <div class="bubble assistant-bubble">
+            <div class="prose">
+              <p>
+                Human vision evolved to read in ambient, reflected daylight rather than staring into direct point-source illumination. When interfaces rely on extreme contrasts—like pitch black against pure white or saturated neon accents—the ciliary muscles in the eyes undergo micro-spasms known as <em>photopic fatigue</em>.
+              </p>
+              
+              <blockquote>
+                "True visual comfort stems not from the absence of light, but from the harmonious relationship between the canvas and ink."
+              </blockquote>
+
+              <p>Here are the three physiological reasons warm cream and espresso palettes preserve cognitive focus:</p>
+
+              <ul>
+                <li><strong>Reduced Pupillary Accommodation:</strong> Warm cream backgrounds (#FDFBF7) match the reflectance of archival paper, keeping pupil dilation steady.</li>
+                <li><strong>Elimination of Halation:</strong> Dark text on light cream avoids the optic glow effect common in high-contrast OLED dark modes, where white glyphs bleed into the black.</li>
+                <li><strong>Terracotta & Sage Accents:</strong> Earth-derived pigments evoke natural landscapes, gently guiding attention to interactive states without triggering sensory alarm.</li>
+              </ul>
+            </div>
+
+            <div class="bubble-actions">
+              <button class="bubble-action-btn copy-btn" title="Copy response" aria-label="Copy message text">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                <span>Copy</span>
+              </button>
+              <button class="bubble-action-btn speak-btn" title="Listen aloud" aria-label="Read message aloud">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                <span>Read</span>
+              </button>
+              <span class="model-badge">Aura 2.0 • 0.8s</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- Container for dynamically added messages -->
+        <div id="dynamicMessages" class="dynamic-messages"></div>
+
+        <!-- Organic AI Thinking Indicator (Hidden by default) -->
+        <div class="message-row assistant-row thinking-row" id="thinkingIndicator" style="display: none;" aria-live="assertive">
+          <div class="message-meta">
+            <div class="assistant-ident">
+              <span class="mini-avatar">A</span>
+              <span class="sender-name">Aura</span>
+            </div>
+            <span class="thinking-label">Synthesizing thoughts...</span>
+          </div>
+          <div class="bubble assistant-bubble thinking-bubble">
+            <div class="organic-spinner" aria-hidden="true">
+              <span class="pulse-ring ring-1"></span>
+              <span class="pulse-ring ring-2"></span>
+              <span class="pulse-core"></span>
+            </div>
+            <span class="thinking-text" id="thinkingStatus">Formulating a nuanced perspective...</span>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- Prominent Floating Editorial Chat Box -->
+    <footer class="composer-region" role="region" aria-label="Message Input">
+      <div class="composer-container">
+        
+        <!-- Attached Files Pill Bar (Hidden when empty) -->
+        <div class="attachments-tray" id="attachmentsTray" style="display: none;" aria-live="polite">
+          <div class="attachment-chip" id="attachmentChip">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            <span class="chip-filename" id="chipFilename">document.txt</span>
+            <button type="button" class="remove-chip-btn" id="removeAttachmentBtn" aria-label="Remove attachment">×</button>
+          </div>
+        </div>
+
+        <form class="composer-card" id="chatForm" autocomplete="off">
+          <div class="composer-input-row">
+            <textarea
+              id="promptInput"
+              class="prompt-textarea"
+              rows="1"
+              placeholder="Ask anything, reflect on an idea, or paste thoughts..."
+              aria-label="Message input"
+              required
+            ></textarea>
+          </div>
+
+          <div class="composer-toolbar">
+            <div class="toolbar-left">
+              <!-- File Attachment Button -->
+              <input type="file" id="fileInput" class="hidden-file-input" accept=".txt,.md,.pdf,.csv,.json,.png,.jpg,.jpeg">
+              <button type="button" class="tool-btn" id="attachBtn" title="Attach text or reference document" aria-label="Attach file">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                </svg>
+              </button>
+
+              <!-- Voice Dictation Button -->
+              <button type="button" class="tool-btn mic-btn" id="voiceBtn" title="Speak your thought (Hold or Click)" aria-label="Voice input">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" x2="12" y1="19" y2="22"/>
+                </svg>
+              </button>
+
+              <!-- Mode Chip -->
+              <button type="button" class="tool-chip" id="deepResearchBtn" aria-pressed="false" title="Toggle Deep Exploration mode">
+                <span class="chip-icon">◈</span>
+                <span class="chip-label">Deep Research</span>
+              </button>
+            </div>
+
+            <div class="toolbar-right">
+              <span class="shortcut-hint" aria-hidden="true">
+                <kbd>Enter</kbd> to send • <kbd>Shift</kbd>+<kbd>Enter</kbd> for line
+              </span>
+
+              <!-- Primary Submit Button (10% Soft Terracotta Accent) -->
+              <button type="submit" class="submit-btn" id="sendBtn" aria-label="Send message">
+                <span class="btn-text">Send</span>
+                <svg class="send-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m5 12 7-7 7 7"/>
+                  <path d="M12 19V5"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </form>
+
+        <!-- Subtle Footer Caption -->
+        <div class="composer-footnote">
+          <span>Aura synthesizes multi-source telemetry. Review critical details carefully.</span>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

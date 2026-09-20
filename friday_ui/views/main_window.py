@@ -222,6 +222,9 @@ class FridayMainWindow(FluentWindow):
             )
         if hasattr(self, 'chat_view') and hasattr(self.chat_view, 'apply_theme'):
             self.chat_view.apply_theme(theme_mode)
+        if hasattr(self, 'command_bar') and hasattr(self.command_bar, 'apply_theme'):
+            self.command_bar.apply_theme(theme_mode)
+
 
     def _init_sub_interfaces(self):
         # 1. Chat View (Default)
@@ -295,6 +298,7 @@ class FridayMainWindow(FluentWindow):
         self.signals.transcript_received.connect(self.chat_view.add_message)
         self.signals.stream_started.connect(self.chat_view.start_stream)
         self.signals.stream_token.connect(self.chat_view.append_token)
+        self.signals.stream_thinking.connect(self.chat_view.append_thinking)
         self.signals.stream_finished.connect(self.chat_view.finish_stream)
         self.signals.status_updated.connect(self.chat_view.update_status)
         self.signals.stream_started.connect(lambda role, status: self.operations_panel.add_audit("STREAM", f"Started: {status[:25]}", "#06B6D4"))
@@ -316,13 +320,36 @@ class FridayMainWindow(FluentWindow):
         self.chat_view.stop_requested.connect(self.handle_stop_requested)
         self.chat_view.model_changed.connect(self._on_model_quick_switched)
         self.chat_view.voice_changed.connect(self._on_voice_quick_switched)
+        self.chat_view.session_changed.connect(self._on_session_changed)
         if hasattr(self.chat_view, 'inspector_toggle_requested'):
             self.chat_view.inspector_toggle_requested.connect(self._toggle_operations_panel)
         self.operations_panel.quick_command_triggered.connect(self.handle_user_command)
         self.rag_view.document_ingested.connect(self.handle_doc_ingest)
         self.rag_view.query_requested.connect(self.handle_rag_query)
         self.research_view.research_requested.connect(self.handle_research)
+        self.signals.theme_change_requested.connect(self._on_theme_change_requested)
         self.settings_view.settings_saved.connect(self.handle_settings_update)
+
+    def _on_session_changed(self, session_id: str):
+        """Synchronizes brain conversation history with the active session."""
+        if hasattr(self, 'chat_view') and hasattr(self.chat_view, 'session_store') and hasattr(self, 'brain'):
+            messages = self.chat_view.session_store.get_messages(session_id)
+            self.brain.load_session_history(messages)
+
+    def _on_theme_change_requested(self, mode: str):
+        settings.set("theme_mode", mode)
+        self._apply_global_style()
+        mode_label = "Warm Dark (Obsidian)" if "dark" in mode else "Warm Light (Cream)"
+        try:
+            InfoBar.info(
+                "Theme Switched",
+                f"Visual mode set to {mode_label}",
+                parent=self,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=2000
+            )
+        except Exception:
+            pass
 
     def _on_model_quick_switched(self, model_name: str):
         self.brain.model = model_name
@@ -495,16 +522,10 @@ class FridayMainWindow(FluentWindow):
             if skill_res:
                 if skill_res != "__STREAMED__":
                     await self.tts.speak(skill_res)
+                self.signals.state_changed.emit("idle")
             else:
-                # 2. Check local vector knowledge base
-                kb_results = await self.vector_store.query_async(command, top_k=1)
-                kb_context = ""
-                if kb_results and kb_results[0]["score"] > 0.12:
-                    kb_context = f"\n[Relevant Local Knowledge: {kb_results[0]['content'][:300]}]"
-
-                prompt_text = command + kb_context if kb_context else command
-                # 3. Local Ollama LLM with real-time streaming to UI and speech
-                await self.brain.query_llm(prompt_text, stream_to_ui=True, stream_to_speech=True)
+                # 2. Local Ollama LLM with real-time streaming to UI and speech
+                await self.brain.query_llm(command, stream_to_ui=True, stream_to_speech=True)
         except Exception as e:
             import logging
             logging.getLogger("FRIDAY.MainWindow").exception(f"Command execution error: {e}")
@@ -556,11 +577,11 @@ class FridayMainWindow(FluentWindow):
 
     async def _run_research(self, topic: str, depth: str):
         loop = asyncio.get_running_loop()
-        num_results = 8 if "Deep" in depth else 4
+        from friday_ui.core.engine import fetch_web_results, fetch_page_content
 
         # Clean topic: remove prompt prefixes like "deep research web and tell about", etc.
         clean_topic = re.sub(
-            r"^(?:(?:do\s+(?:a\s+)?)?deep\s+(?:web\s+)?research\s+(?:web\s+and\s+tell\s+about|web\s+about|on|about)?|research\s+(?:web\s+and\s+tell\s+about|on|about)?|tell\s+(?:me\s+)?about\s+(?:company\s+named\s+)?|deep\s+search\s+(?:on|about)?)\s*",
+            r"^(?:(?:do\s+(?:a\s+)?)?deep(?:ly)?\s+(?:web\s+)?research\s+(?:web\s+and\s+tell\s+about|web\s+about|on|about)?|research\s+(?:web\s+and\s+tell\s+about|on|about)?|tell\s+(?:me\s+)?about\s+(?:company\s+named\s+)?|deep\s+search\s+(?:on|about)?)\s*",
             "",
             topic,
             flags=re.IGNORECASE
@@ -569,92 +590,162 @@ class FridayMainWindow(FluentWindow):
             clean_topic = topic
 
         self.signals.state_changed.emit("thinking")
-        self.signals.stream_started.emit("friday", f"Conducting deep research on '{clean_topic}' across live web telemetry...")
+        self.signals.stream_started.emit("friday", f"Conducting autonomous deep research on '{clean_topic}' across live web telemetry...")
 
-        def fetch_ddg():
-            from friday_ui.core.engine import fetch_web_results
-            res = fetch_web_results(clean_topic, max_results=num_results)
-            if not res and clean_topic != topic:
-                res = fetch_web_results(topic, max_results=num_results)
-            return res
+        # 1. Multi-Vector Strategic Research Decomposition
+        vectors = [
+            ("Core Architecture & Specifications", f"{clean_topic} architecture specifications overview"),
+            ("Latest 2025–2026 Telemetry & Releases", f"{clean_topic} latest developments news updates 2025 2026"),
+            ("Technical Benchmarks & Performance", f"{clean_topic} benchmarks performance comparison review"),
+            ("Challenges, Risks & Limitations", f"{clean_topic} challenges limitations risks issues")
+        ]
 
-        sources = await loop.run_in_executor(None, fetch_ddg)
+        if "Quick" in depth:
+            vectors = vectors[:2]
 
-        report_md = f"# Tactical Intelligence Report: {clean_topic.title()}\n\n"
-        report_md += f"**Investigation Scope**: {depth} | **Timestamp**: Modernization Run 2026\n\n"
-        report_md += "## Executive Synthesis\n\n"
+        all_sources = []
+        seen_urls = set()
 
-        if sources:
-            for i, s in enumerate(sources, 1):
-                title = s.get("title", f"Source {i}")
-                body = s.get("body", "No description available.")
-                link = s.get("href", "#")
-                report_md += f"### {i}. [{title}]({link})\n"
-                report_md += f"{body}\n\n"
-        else:
-            report_md += "> No direct external sources were returned by web telemetry.\n\n"
+        def fetch_vector_sync(query_str: str, max_res: int):
+            return fetch_web_results(query_str, max_results=max_res)
 
-        report_md += "## Strategic Conclusions\n\n"
-        report_md += "- Multi-source correlation confirms active operational viability.\n"
-        report_md += "- Telemetry synthesized for Boss.\n"
+        def fetch_page_sync(url_str: str):
+            return fetch_page_content(url_str, max_chars=1800)
 
-        # Update dedicated Research Tab
-        self.research_view.update_report(clean_topic, report_md)
-
-        # Synthesize in-chat Executive Summary
-        executive_summary = ""
-        if sources:
+        # 2. Autonomous Multi-Vector Crawling
+        for i, (vector_label, vector_query) in enumerate(vectors):
+            self.signals.status_updated.emit(f"🔍 Vector {i+1}/{len(vectors)}: Investigating {vector_label}...")
             try:
-                synth_prompt = (
-                    f"Boss requested deep research on: '{clean_topic}'.\n"
-                    f"Here are the live multi-source web search findings:\n{report_md}\n\n"
-                    "Provide a well-structured, professional Executive Intelligence Summary in Markdown. "
-                    "Include:\n"
-                    "1. Executive Overview (who/what it is, core operations, key facts)\n"
-                    "2. Key Strategic Findings & Developments (bullet points with numbers/dates if available)\n"
-                    "3. Strategic Takeaway for Boss.\n"
-                    "Be direct, insightful, and authoritative. Do not include introductory conversational filler."
-                )
-                executive_summary = await self.brain.query_llm(synth_prompt, stream_to_ui=False, stream_to_speech=False)
-            except Exception as e:
-                import logging
-                logging.getLogger("FRIDAY.MainWindow").debug(f"LLM synthesis error for research: {e}")
+                res = await loop.run_in_executor(None, fetch_vector_sync, vector_query, 4)
+                if res:
+                    for s in res:
+                        href = s.get("href", "").strip()
+                        if href and href not in seen_urls:
+                            seen_urls.add(href)
+                            all_sources.append(s)
+            except Exception as ex:
+                logger.debug("Vector search error for %s: %s", vector_query, ex)
 
-        # Construct comprehensive in-chat briefing message
-        chat_msg = f"### 🌐 Executive Intelligence Dossier: **{clean_topic.title()}**\n\n"
-        chat_msg += f"**Investigation Scope**: `{depth}` | **Verified Sources**: `{len(sources)}`\n\n"
+        # Also search clean_topic directly to ensure baseline hits
+        try:
+            direct_res = await loop.run_in_executor(None, fetch_vector_sync, clean_topic, 4)
+            if direct_res:
+                for s in direct_res:
+                    href = s.get("href", "").strip()
+                    if href and href not in seen_urls:
+                        seen_urls.add(href)
+                        all_sources.append(s)
+        except Exception as ex:
+            logger.debug("Direct search error for %s: %s", clean_topic, ex)
 
+        # 3. Deep Page Content Extraction for primary sources
+        self.signals.status_updated.emit(f"📄 Deep-reading primary sources across {len(all_sources)} discovered endpoints...")
+        top_sources = all_sources[:6]
+        for s in top_sources:
+            href = s.get("href", "")
+            if href and href.startswith(("http://", "https://")):
+                try:
+                    page_text = await loop.run_in_executor(None, fetch_page_sync, href)
+                    if page_text:
+                        s["deep_content"] = page_text
+                except Exception as ex:
+                    logger.debug("Deep page fetch error: %s", ex)
+
+        # 4. Neural Cross-Correlation & Synthesis
+        self.signals.status_updated.emit(f"🧠 Correlating intelligence across {len(all_sources)} sources into comprehensive dossier...")
+
+        sources_context_list = []
+        for idx, s in enumerate(all_sources[:10], 1):
+            title = s.get("title", f"Source {idx}")
+            href = s.get("href", "#")
+            body = s.get("body", "")
+            deep = s.get("deep_content", "")
+            entry = f"### [{idx}] {title}\nURL: {href}\nSummary: {body}"
+            if deep:
+                entry += f"\nDetailed Content:\n{deep[:1200]}"
+            sources_context_list.append(entry)
+
+        sources_context_str = "\n\n".join(sources_context_list) if sources_context_list else "> No live sources returned."
+
+        synth_prompt = (
+            f"You are F.R.I.D.A.Y., a premier Autonomous Intelligence Assistant. "
+            f"Boss has commissioned an exhaustive Deep Research Dossier on: '{clean_topic}'.\n\n"
+            f"Below is live multi-vector intelligence collected from {len(all_sources)} verified sources across foundational architecture, "
+            f"recent 2025–2026 telemetry, benchmarks, and operational risks:\n\n"
+            f"{sources_context_str}\n\n"
+            "Synthesize an authoritative, highly detailed, and exhaustive Intelligence Dossier in Markdown.\n"
+            "Structure your report exactly as follows:\n\n"
+            f"### 🌐 Executive Intelligence Dossier: **{clean_topic.title()}**\n\n"
+            f"**Investigation Scope**: `{depth}` | **Verified Sources**: `{len(all_sources)}`\n\n"
+            "## 1. Executive Summary & Core Identity\n"
+            "Provide an in-depth executive overview explaining what it is, why it matters, core mission/specs, and key strategic conclusions.\n\n"
+            "## 2. Technical Architecture & Foundational Specifications\n"
+            "Detail the underlying technical architecture, hardware/software design, operational mechanics, protocols, and performance profile.\n\n"
+            "## 3. Deep Multi-Vector Analysis & Key Discoveries\n"
+            "Provide detailed analysis with concrete technical facts, benchmarks, performance numbers, comparisons, and dates.\n\n"
+            "## 4. Latest Developments & Market Telemetry (2025–2026)\n"
+            "Detail recent updates, firmware/software iterations, community adoption, or breaking developments.\n\n"
+            "## 5. Critical Limitations, Challenges & Risks\n"
+            "Examine constraints (power, memory, security, bottlenecks), operational trade-offs, or known challenges.\n\n"
+            "## 6. Strategic Takeaways & Actionable Guidance for Boss\n"
+            "Deliver practical, authoritative recommendations on how to deploy, evaluate, or leverage this intelligence.\n\n"
+            "## 7. Primary Intelligence Sources\n"
+            "Numbered list of all primary sources with markdown links [Title](URL).\n\n"
+            "Deliver an exhaustive, deeply informative dossier. Do not include brief superficial placeholders."
+        )
+
+        executive_summary = ""
+        try:
+            executive_summary = await self.brain.query_llm(synth_prompt, stream_to_ui=False, stream_to_speech=False, save_history=False)
+        except Exception as e:
+            logger.debug(f"LLM synthesis error for research: {e}")
+
+        # Assemble full report
+        chat_msg = ""
         if executive_summary and executive_summary.strip():
-            chat_msg += f"{executive_summary.strip()}\n\n"
-        elif sources:
-            chat_msg += "#### Key Intelligence Findings\n"
-            for i, s in enumerate(sources[:4], 1):
-                t = s.get("title", f"Source {i}")
-                b = s.get("body", "")
-                chat_msg += f"- **{t}**: {b}\n"
-            chat_msg += "\n"
+            chat_msg = executive_summary.strip()
+            if "Executive Intelligence Dossier" not in chat_msg:
+                chat_msg = f"### 🌐 Executive Intelligence Dossier: **{clean_topic.title()}**\n\n**Investigation Scope**: `{depth}` | **Verified Sources**: `{len(all_sources)}`\n\n" + chat_msg
         else:
-            chat_msg += "> No live telemetry was retrieved for this topic. Dossier initialized in the Research tab.\n\n"
+            chat_msg = f"### 🌐 Executive Intelligence Dossier: **{clean_topic.title()}**\n\n"
+            chat_msg += f"**Investigation Scope**: `{depth}` | **Verified Sources**: `{len(all_sources)}`\n\n"
+            if all_sources:
+                chat_msg += "#### Key Intelligence Findings\n"
+                for i, s in enumerate(all_sources[:6], 1):
+                    t = s.get("title", f"Source {i}")
+                    b = s.get("body", "")
+                    chat_msg += f"- **{t}**: {b}\n"
+                chat_msg += "\n"
+            else:
+                chat_msg += "> No live telemetry was retrieved for this topic. Dossier initialized in the Research tab.\n\n"
 
-        if sources:
-            chat_msg += "#### 🔗 Primary Intelligence Sources\n"
-            for i, s in enumerate(sources[:4], 1):
+        if all_sources and "Primary Intelligence Sources" not in chat_msg and "http" not in chat_msg[-300:]:
+            chat_msg += "\n\n#### 🔗 Primary Intelligence Sources\n"
+            for i, s in enumerate(all_sources[:6], 1):
                 t = s.get("title", f"Source {i}")
                 h = s.get("href", "#")
                 chat_msg += f"{i}. [{t}]({h})\n"
-            chat_msg += "\n*Full unredacted dossier available in the Research tab.*"
 
+        # Update dedicated Research Tab
+        self.research_view.update_report(clean_topic, chat_msg)
+
+        # Add to chat view (finalizes any streaming bubble)
         self.chat_view.add_message("friday", chat_msg)
 
         # Spoken briefing via TTS
-        spoken_brief = f"Boss, I have completed deep research on {clean_topic}."
+        spoken_brief = f"Boss, I have completed deep autonomous research on {clean_topic}."
         if executive_summary:
-            spoken_brief += f" {self.tts.extract_spoken_summary(executive_summary)}"
-        elif sources:
-            first_body = sources[0].get("body", "")
+            speak_full = settings.get("speak_full_response", True)
+            if speak_full:
+                spoken_brief += f" {self.tts.extract_spoken_summary(executive_summary)}"
+            else:
+                spoken_brief += f" {self.tts.extract_spoken_summary(executive_summary, max_sentences=2, max_words=45)}"
+        elif all_sources:
+            first_body = all_sources[0].get("body", "")
             if first_body:
                 spoken_brief += f" {first_body[:150]}."
         await self.tts.speak(spoken_brief)
+
 
     def handle_doc_ingest(self, title: str, path: str):
         try:

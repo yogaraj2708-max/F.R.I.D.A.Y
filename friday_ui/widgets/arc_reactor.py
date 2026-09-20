@@ -49,10 +49,6 @@ class ArcReactorWidget(QWidget):
         # Assistant state: "idle", "listening", "thinking", "speaking"
         self.state = "idle"
 
-        # Color LERP states (RGB floats) - Warm Editorial Palette
-        self.current_color = [217.0, 116.0, 91.0]  # Soft Terracotta (#D9745B)
-        self.target_color = [217.0, 116.0, 91.0]
-
         # Burst particles
         self.particles: List[Particle] = []
         self.shockwave_radius = 0.0
@@ -61,9 +57,37 @@ class ArcReactorWidget(QWidget):
         # Animation Timer with power adaptation
         self.timer = QTimer(self)
         self.timer.timeout.connect(self._animation_tick)
+
+        # Color LERP states (RGB floats) - Dynamically set by apply_theme
+        self.current_color = [217.0, 116.0, 91.0]
+        self.target_color = [217.0, 116.0, 91.0]
+        self.apply_theme()
+        self.current_color = list(self.target_color)
+
         self._apply_power_budget()
 
+        # Listen for runtime theme changes
+        settings.add_listener(self._on_settings_theme_sync)
+
+    def _on_settings_theme_sync(self, key: str, value):
+        if key in ("theme_mode", "theme"):
+            QTimer.singleShot(0, lambda: self.apply_theme(str(value)))
+
+    def apply_theme(self, theme_mode: str = None):
+        """Dynamically calibrates arc reactor color states according to active theme palette."""
+        from friday_ui.styles.themes import get_theme_palette, get_current_palette, hex_to_rgb
+        p = get_theme_palette(theme_mode) if theme_mode else get_current_palette()
+        self._speaking_color = hex_to_rgb(p.get("accent", "#D9745B"))
+        self._listening_color = hex_to_rgb(p.get("live_green", "#6B8E78"))
+        self._thinking_color = hex_to_rgb(p.get("amber_tag", "#D97706"))
+        self._idle_color = hex_to_rgb(p.get("text_muted", "#8E8681"))
+
+        # Update target immediately
+        self.set_state(getattr(self, "state", "idle"))
+
     def _apply_power_budget(self):
+        if not hasattr(self, 'timer') or self.timer is None:
+            return
         anim_level = settings.get("animation_level", "Full")
         if anim_level == "Off":
             self.timer.stop()
@@ -71,6 +95,7 @@ class ArcReactorWidget(QWidget):
             self.timer.setInterval(33)  # ~30 FPS
             if not self.timer.isActive():
                 self.timer.start()
+
         else:
             # Dynamic power budget: 30 FPS in standby/idle, 60 FPS during active interaction
             interval = 16 if getattr(self, "state", "idle") in ["listening", "thinking", "speaking"] else 33
@@ -89,16 +114,20 @@ class ArcReactorWidget(QWidget):
 
     def set_state(self, state: str):
         self.state = state.lower()
+        if not hasattr(self, '_speaking_color'):
+            self.apply_theme()
+
         if self.state == "listening":
-            self.target_color = [107.0, 142.0, 120.0]   # Muted Sage (#6B8E78)
+            self.target_color = list(self._listening_color)
         elif self.state == "thinking":
-            self.target_color = [217.0, 119.0, 6.0]     # Warm Amber (#D97706)
+            self.target_color = list(self._thinking_color)
         elif self.state == "speaking":
-            self.target_color = [217.0, 116.0, 91.0]    # Soft Terracotta (#D9745B)
+            self.target_color = list(self._speaking_color)
         else:  # idle / standby
-            self.target_color = [160.0, 150.0, 145.0]  # Warm Muted Slate
+            self.target_color = list(self._idle_color)
         self._apply_power_budget()
         self.update()
+
 
     def trigger_burst(self):
         """Triggers radial particle and shockwave ring burst upon wake-word detection."""
