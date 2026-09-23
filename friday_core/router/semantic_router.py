@@ -437,12 +437,12 @@ class SemanticIntentRouter:
                     "type": "choice",
                     "instructions": "Classify the user voice or text command into one precise operational category.",
                     "criteria": {
-                        "desktop_audio": "volume, sound, mute, unmute, louder, quieter, reduce volume, system sound",
-                        "media_control": "play music, spotify, youtube, songs, audio track, tunes, playback",
+                        "desktop_audio": "adjust volume, sound, mute, unmute, louder, quieter, reduce volume, system sound",
+                        "media_control": "play music, play spotify, play youtube, songs, audio track, tunes, playback",
                         "system_telemetry": "battery percentage, ram, memory, cpu, charging, hardware diagnostics",
                         "system_time_date": "what time is it, clock, today's date, what day is it",
-                        "desktop_action": "screenshot, snip screen, lock pc, lock workstation, calculator",
-                        "app_launch": "open or launch an application like word, chrome, vs code, notepad, spotify",
+                        "desktop_action": "take screenshot, snip screen, lock pc, lock computer, lock workstation",
+                        "app_launch": "open, launch, start, run an application or program like vs code, word, chrome, notepad, calculator, spotify",
                         "timer_clock": "set timer, cancel timer, countdown",
                         "deep_research": "deep web research on a specific topic, investigate",
                         "weather": "weather forecast, temperature, rain, outside climate",
@@ -460,7 +460,8 @@ class SemanticIntentRouter:
 
             intent_val = None
             if isinstance(pred, dict):
-                val = pred.get("intent")
+                answers = pred.get("answers", pred)
+                val = answers.get("intent", pred.get("intent"))
                 if isinstance(val, dict):
                     intent_val = val.get("choice") or val.get("value")
                 else:
