@@ -195,6 +195,26 @@ class SettingsView(QWidget):
         router_row.addStretch(1)
         llm_layout.addLayout(router_row)
 
+        # Decision Maker Engine Selector
+        engine_row = QHBoxLayout()
+        engine_label = QLabel("Decision Maker Engine:")
+        self.decision_engine_combo = ComboBox(self)
+        self.decision_engine_combo.addItem("Ollama (friday-decider, 397MB, ~60ms)", "ollama")
+        self.decision_engine_combo.addItem("Laya (Convai System 1, ModernBERT, ~33ms)", "laya")
+        self.decision_engine_combo.addItem("Local Vector Only (Sub-2ms, Ultra-Light)", "vector")
+        self.decision_engine_combo.setFixedWidth(340)
+
+        saved_engine = settings.get("decision_engine", "ollama")
+        for i in range(self.decision_engine_combo.count()):
+            if self.decision_engine_combo.itemData(i) == saved_engine:
+                self.decision_engine_combo.setCurrentIndex(i)
+                break
+
+        engine_row.addWidget(engine_label)
+        engine_row.addWidget(self.decision_engine_combo)
+        engine_row.addStretch(1)
+        llm_layout.addLayout(engine_row)
+
         layout.addWidget(llm_card)
 
         # 2. Voice & Speech Acoustics
@@ -535,6 +555,7 @@ class SettingsView(QWidget):
             "continuous_conversation": self.conv_switch.isChecked(),
             "speak_full_response": self.full_speech_switch.isChecked(),
             "semantic_routing": self.semantic_router_switch.isChecked(),
+            "decision_engine": self.decision_engine_combo.currentData() or "ollama",
             "animation_level": anim_text,
 
             "command_bar_position": pos_text

@@ -225,18 +225,41 @@ class SemanticIntentRouter:
         embedder: Optional[FastLocalEmbedder] = None,
         threshold: float = 0.76,
         ollama_host: str = "http://localhost:11434",
-        ollama_model: str = "llama3.2:3b"
+        ollama_model: str = "llama3.2:3b",
+        decision_engine: str = "ollama"
     ):
         self.embedder = embedder or FastLocalEmbedder()
         self.threshold = threshold
         self.ambiguous_threshold = 0.34
         self.ollama_host = ollama_host
         self.ollama_model = ollama_model
+        self.decision_engine = decision_engine.lower().strip()
+        self._laya_router: Optional[Any] = None
+        self._laya_initialized: bool = False
 
         # Precompute centroids and individual exemplar vectors
         self.centroids: Dict[SkillIntent, np.ndarray] = {}
         self.exemplar_vectors: Dict[SkillIntent, List[Tuple[str, np.ndarray]]] = {}
         self._precompute_exemplars()
+
+    def _get_laya_router(self) -> Optional[Any]:
+        """Lazy-loads Convai Innovations Laya Router if installed."""
+        if not self._laya_initialized:
+            self._laya_initialized = True
+            try:
+                import laya
+                if hasattr(laya, "Router"):
+                    self._laya_router = laya.Router(preload=True)
+                elif hasattr(laya, "load"):
+                    self._laya_router = laya.load("convaiinnovations/laya")
+                logger.info("Convai Laya System 1 decision engine initialized successfully.")
+            except ImportError:
+                logger.info("Laya package not found. (Install with 'pip install laya' to enable Convai System 1).")
+                self._laya_router = None
+            except Exception as ex:
+                logger.debug(f"Laya initialization exception: {ex}")
+                self._laya_router = None
+        return self._laya_router
 
     def _precompute_exemplars(self):
         """Precomputes normalized centroids and exemplar vectors for sub-millisecond scoring."""
@@ -398,6 +421,63 @@ class SemanticIntentRouter:
 
         return None
 
+    async def route_tier2_laya(self, text: str) -> Optional[SkillIntent]:
+        """
+        Laya System 1 Decision Engine (Convai Innovations).
+        Performs sub-35ms non-autoregressive typed intent prediction.
+        """
+        router = self._get_laya_router()
+        if not router:
+            return None
+
+        try:
+            state = {"text": text}
+            questions = {
+                "intent": {
+                    "type": "choice",
+                    "instructions": "Classify the user voice or text command into one precise operational category.",
+                    "criteria": {
+                        "desktop_audio": "volume, sound, mute, unmute, louder, quieter, reduce volume, system sound",
+                        "media_control": "play music, spotify, youtube, songs, audio track, tunes, playback",
+                        "system_telemetry": "battery percentage, ram, memory, cpu, charging, hardware diagnostics",
+                        "system_time_date": "what time is it, clock, today's date, what day is it",
+                        "desktop_action": "screenshot, snip screen, lock pc, lock workstation, calculator",
+                        "app_launch": "open or launch an application like word, chrome, vs code, notepad, spotify",
+                        "timer_clock": "set timer, cancel timer, countdown",
+                        "deep_research": "deep web research on a specific topic, investigate",
+                        "weather": "weather forecast, temperature, rain, outside climate",
+                        "general_chat": "coding requests, questions, explanations, conversation"
+                    }
+                }
+            }
+
+            if hasattr(router, "predict"):
+                pred = router.predict(state, questions)
+            elif callable(router):
+                pred = router(state, questions)
+            else:
+                return None
+
+            intent_val = None
+            if isinstance(pred, dict):
+                val = pred.get("intent")
+                if isinstance(val, dict):
+                    intent_val = val.get("choice") or val.get("value")
+                else:
+                    intent_val = val
+            elif hasattr(pred, "intent"):
+                intent_val = getattr(pred, "intent")
+
+            if intent_val:
+                raw = str(intent_val).strip().lower()
+                for intent in SkillIntent:
+                    if intent.value == raw:
+                        return intent
+        except Exception as ex:
+            logger.debug(f"Laya prediction failed: {ex}")
+
+        return None
+
     async def route(
         self,
         text: str,
@@ -407,28 +487,46 @@ class SemanticIntentRouter:
     ) -> RouteResult:
         """
         Decision Maker Routing:
-        1. When Ollama is available, actively executes the small Ollama decision maker.
-            It parses intent with full semantic reasoning, handling typos, slang, and indirect speech.
-        2. If Ollama is offline or unavailable, falls back to Tier 1 local vector embedding match.
+        1. When Laya is configured and installed, performs sub-35ms typed single-pass routing.
+        2. When Ollama is available, actively executes the small Ollama decision maker (friday-decider).
+           It parses intent with full semantic reasoning, handling typos, slang, and indirect speech.
+        3. If neural engines are offline or unavailable, falls back to Tier 1 local vector embedding match.
         """
         threshold = confidence_threshold if confidence_threshold is not None else self.threshold
 
         # Strip vocal disfluency and speech artifacts (e.g. "a open calculator" -> "open calculator")
         norm_text = re.sub(r"^(?:uh\s+|um\s+|ah\s+|a\s+|an\s+|the\s+)+(open|launch|start|run)\b", r"\1", text.lower().strip())
 
-        # 1. Primary: Active Local Ollama Decision Maker (Handles typos, slang, and nuances)
-        nano_intent = await self.route_tier2_nano(norm_text, client=client, model=model)
-        if nano_intent is not None:
-            params = extract_parameters(nano_intent, norm_text)
-            return RouteResult(
-                intent=nano_intent,
-                confidence=0.95,
-                tier=2,
-                matched_exemplar="ollama_decision_maker",
-                parameters=params
-            )
+        engine = getattr(self, "decision_engine", "ollama")
 
-        # 2. Resilient Fallback: Tier 1 Vector Embedding Centroid Match (< 2ms)
+        # 1. Laya System 1 Engine (Convai Innovations)
+        if engine == "laya":
+            laya_intent = await self.route_tier2_laya(norm_text)
+            if laya_intent is not None:
+                params = extract_parameters(laya_intent, norm_text)
+                return RouteResult(
+                    intent=laya_intent,
+                    confidence=0.98,
+                    tier=2,
+                    matched_exemplar="laya_convai",
+                    parameters=params
+                )
+            logger.debug("Laya engine unavailable or returned None; falling back to Ollama decision maker.")
+
+        # 2. Ollama Decision Maker (friday-decider / Qwen 0.5B)
+        if engine in ["ollama", "laya"]:
+            nano_intent = await self.route_tier2_nano(norm_text, client=client, model=model)
+            if nano_intent is not None:
+                params = extract_parameters(nano_intent, norm_text)
+                return RouteResult(
+                    intent=nano_intent,
+                    confidence=0.95,
+                    tier=2,
+                    matched_exemplar="ollama_decision_maker",
+                    parameters=params
+                )
+
+        # 3. Resilient Fallback: Tier 1 Vector Embedding Centroid Match (< 2ms)
         intent, score, exemplar = self.route_tier1(norm_text)
         if score >= threshold:
             params = extract_parameters(intent, norm_text)
@@ -440,7 +538,7 @@ class SemanticIntentRouter:
                 parameters=params
             )
 
-        # 3. Fallback to General Chat
+        # 4. Fallback to General Chat
         params = extract_parameters(SkillIntent.GENERAL_CHAT, norm_text)
         return RouteResult(
             intent=SkillIntent.GENERAL_CHAT,

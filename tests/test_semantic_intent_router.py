@@ -183,5 +183,44 @@ class TestFridayBrainSemanticIntegration(unittest.TestCase):
         self.assertTrue("youtube" in res.lower() or "playing" in res.lower())
 
 
+class TestLayaDecisionEngineIntegration(unittest.TestCase):
+    """Unit tests for Convai Innovations Laya System 1 decision engine integration."""
+
+    def setUp(self):
+        self.router = SemanticIntentRouter(threshold=0.76, decision_engine="laya")
+
+    def test_laya_graceful_fallback_when_uninstalled(self):
+        """When laya is not installed, router must fall back to Ollama or Tier 1 without throwing."""
+        with patch.object(self.router, "_get_laya_router", return_value=None):
+            res = asyncio.run(self.router.route("volume up"))
+            self.assertIsNotNone(res)
+            self.assertEqual(res.intent, SkillIntent.DESKTOP_AUDIO)
+
+    def test_laya_prediction_dispatch(self):
+        """When laya router is available, single-pass typed choice is dispatched."""
+        mock_laya = MagicMock()
+        mock_laya.predict.return_value = {"intent": "media_control"}
+
+        with patch.object(self.router, "_get_laya_router", return_value=mock_laya):
+            res = asyncio.run(self.router.route("crank the tunes"))
+            self.assertIsNotNone(res)
+            self.assertEqual(res.intent, SkillIntent.MEDIA_CONTROL)
+            self.assertEqual(res.matched_exemplar, "laya_convai")
+            self.assertEqual(res.confidence, 0.98)
+            mock_laya.predict.assert_called_once()
+
+    def test_decision_engine_mode_switching(self):
+        """Switching decision engine between vector, laya, and ollama modes."""
+        # 1. Vector mode (forces Tier 1 embedder)
+        self.router.decision_engine = "vector"
+        res_vec = asyncio.run(self.router.route("volume up"))
+        self.assertEqual(res_vec.tier, 1)
+
+        # 2. Ollama mode (Tier 2 nano decision maker)
+        self.router.decision_engine = "ollama"
+        res_ollama = asyncio.run(self.router.route("volume up"))
+        self.assertEqual(res_ollama.intent, SkillIntent.DESKTOP_AUDIO)
+
+
 if __name__ == "__main__":
     unittest.main()

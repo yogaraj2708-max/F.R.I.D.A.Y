@@ -753,7 +753,8 @@ class FridayBrain:
         self.semantic_router = SemanticIntentRouter(
             threshold=float(settings.get("semantic_router_threshold", 0.76)),
             ollama_host=host,
-            ollama_model=self.model
+            ollama_model=self.model,
+            decision_engine=settings.get("decision_engine", "ollama")
         )
         settings.add_listener(self._on_settings_change)
 
@@ -778,6 +779,9 @@ class FridayBrain:
                     self.semantic_router.threshold = float(value)
                 except Exception:
                     pass
+        elif key == "decision_engine" and value:
+            if hasattr(self, "semantic_router"):
+                self.semantic_router.decision_engine = str(value).lower().strip()
         elif key in ("user_name", "user_title"):
             self.reload_persona()
 

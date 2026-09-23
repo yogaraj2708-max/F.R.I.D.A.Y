@@ -62,7 +62,8 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "continuous_conversation": True,
     "speak_full_response": True,
     "semantic_routing": True,
-    "semantic_router_threshold": 0.76
+    "semantic_router_threshold": 0.76,
+    "decision_engine": "ollama"  # "ollama", "laya", "vector"
 }
 
 
