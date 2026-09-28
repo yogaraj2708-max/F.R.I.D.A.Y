@@ -1,0 +1,24 @@
+{
+  "trace_id": "trace-web-009-b0e58727",
+  "test_id": "TEST-WEB-009",
+  "user_text": "read the paragraph of http://127.0.0.1:58800/substituted_html",
+  "router_result": "TIER_1_FAST_PATH_WEB",
+  "selected_skill": "web_reading",
+  "url": "http://127.0.0.1:58800/substituted_html",
+  "method": "GET",
+  "timestamp": "2026-09-25T16:29:13Z",
+  "status_code": 200,
+  "headers": {
+    "server": "BaseHTTP/0.6 Python/3.11.9",
+    "date": "Fri, 25 Sep 2026 16:29:13 GMT",
+    "content-type": "text/html; charset=utf-8",
+    "content-length": "152"
+  },
+  "response_length": 152,
+  "raw_body_hash": "4f8c09a50b10476061e7c01e3bcc7cbed3b277c808ff3e2c688d6f355141c031",
+  "parser": "lxml.html",
+  "parsed_result": "The speed of light in vacuum is 42 meters per second.",
+  "answer_source": "LIVE_HTTP_RESPONSE",
+  "final_output": "Paragraph from 'http://127.0.0.1:58800/substituted_html': \"The speed of light in vacuum is 42 meters per second.\", Boss.",
+  "verdict": "PASS"
+}

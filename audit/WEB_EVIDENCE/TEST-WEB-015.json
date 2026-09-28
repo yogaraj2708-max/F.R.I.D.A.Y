@@ -1,0 +1,24 @@
+{
+  "trace_id": "trace-web-015-1cadb8a8",
+  "test_id": "TEST-WEB-015",
+  "user_text": "read http://127.0.0.1:58800/large_response",
+  "router_result": "TIER_1_FAST_PATH_WEB",
+  "selected_skill": "web_reading",
+  "url": "http://127.0.0.1:58800/large_response",
+  "method": "GET",
+  "timestamp": "2026-09-25T16:29:14Z",
+  "status_code": 200,
+  "headers": {
+    "server": "BaseHTTP/0.6 Python/3.11.9",
+    "date": "Fri, 25 Sep 2026 16:29:14 GMT",
+    "content-type": "text/plain",
+    "content-length": "200000"
+  },
+  "response_length": 200000,
+  "raw_body_hash": "05ece9bde690bf39239aca4213a06d0a5ddb2eb6ec9ce0c2a5593bb1832f5b2a",
+  "parser": "streaming_buffer",
+  "parsed_result": "200,000 bytes ingested in 0.01s",
+  "answer_source": "LIVE_HTTP_RESPONSE",
+  "final_output": "Bytes: 200000",
+  "verdict": "PASS"
+}

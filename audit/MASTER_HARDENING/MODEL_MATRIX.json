@@ -1,0 +1,36 @@
+{
+  "active_main_model": "qwen3.5:9b",
+  "model_agnostic_architecture": true,
+  "dynamic_resolution": "Model is resolved dynamically from user settings ('model') on every turn; no hard-coded models.",
+  "models_tested": [
+    {
+      "model_name": "qwen3.5:9b",
+      "provider": "ollama",
+      "native_tool_calling": true,
+      "capability_status": "VERIFIED",
+      "notes": "Primary configured model. Evaluated with test_echo probe and multi-tool turns. Successfully plans and executes native tool_calls.",
+      "status": "PASS"
+    },
+    {
+      "model_name": "qwen2.5vl:3b",
+      "provider": "ollama",
+      "native_tool_calling": false,
+      "capability_status": "VISION_SPECIALIST",
+      "notes": "Dedicated visual specialist model. Invoked strictly for image and diagram inspection tasks.",
+      "status": "PASS"
+    },
+    {
+      "model_name": "unsupported-model:latest",
+      "provider": "ollama",
+      "native_tool_calling": false,
+      "capability_status": "UNAVAILABLE",
+      "notes": "Tested in test_model_switching.py. System honestly reports 'UNSUPPORTED_FOR_SELECTED_MODEL', records trace, and skips tool loop without silent substitution.",
+      "status": "PASS"
+    }
+  ],
+  "switching_behavior": {
+    "cache_invalidation": "VERIFIED: Switching models via settings.set('model', new_model) immediately invalidates the capability cache.",
+    "silent_substitution": "PREVENTED: System never substitutes deepseek-r1:8b, llama3.2:1b, or any other model behind the scenes.",
+    "hidden_router": "PREVENTED: Main agent model acts as the sole authority for tool selection; zero hidden 1B router models in production pipeline."
+  }
+}

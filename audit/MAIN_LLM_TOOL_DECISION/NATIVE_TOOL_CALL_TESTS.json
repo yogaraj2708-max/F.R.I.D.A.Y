@@ -1,0 +1,62 @@
+{
+  "TEST_01": {
+    "input": "Hi",
+    "expected": "0 tool calls",
+    "status": "PASS"
+  },
+  "TEST_02": {
+    "input": "What's happening with NVIDIA right now?",
+    "expected": "Model calls native web_search",
+    "status": "PASS"
+  },
+  "TEST_03": {
+    "input": "this is your brain (Graphify attached)",
+    "expected": "0 web_search",
+    "status": "PASS"
+  },
+  "TEST_04": {
+    "input": "Open Notepad and type hello.",
+    "expected": "Model multi-step sequence launch_app -> type_text",
+    "status": "PASS"
+  },
+  "TEST_05": {
+    "input": "Attached PDF: Explain item 12.",
+    "expected": "Model calls read_document",
+    "status": "PASS"
+  },
+  "TEST_06": {
+    "input": "Attached Image: Describe this image.",
+    "expected": "Model calls analyze_image",
+    "status": "PASS"
+  },
+  "TEST_07": {
+    "input": "Attached Image + 'Hi'",
+    "expected": "0 vision calls",
+    "status": "PASS"
+  },
+  "TEST_08": {
+    "input": "Tool failure injection",
+    "expected": "Failure returned to same model for replanning",
+    "status": "PASS"
+  },
+  "TEST_09": {
+    "input": "Unknown tool invocation",
+    "expected": "Safe dispatcher rejection",
+    "status": "PASS"
+  },
+  "TEST_10": {
+    "input": "Malformed tool arguments",
+    "expected": "Safe argument validation rejection",
+    "status": "PASS"
+  },
+  "TEST_11": {
+    "input": "Model switch A -> B",
+    "expected": "Next turn uses B immediately",
+    "status": "PASS"
+  },
+  "TEST_12": {
+    "input": "Select model without tool support",
+    "expected": "Honest UNSUPPORTED status, no fallback",
+    "status": "PASS"
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "audit_phase": "MEMORY_RAG_ZERO_TRUST_HARDENING",
+  "total_bugs_detected": 8,
+  "bugs_resolved": 8,
+  "bugs_remaining": 0,
+  "ledger": [
+    {
+      "bug_id": "BUG_MEM_01",
+      "severity": "CRITICAL",
+      "component": "friday_core/memory/manager.py",
+      "description": "Circular import between friday_core.memory.manager and friday_core.skills.builtins.memory via mission_store -> planner -> skill_registry.",
+      "root_cause": "Top-level module import of MissionStore in manager.py caused partial initialization failure upon importing tiers/manager.",
+      "fix": "Lazy-imported mission_store dynamically inside PersistentMemoryManager.get_task_memory() and protected type annotations with TYPE_CHECKING.",
+      "verification": "test_phase8_memory.py and all 15 test suites import cleanly without ImportError.",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG_MEM_02",
+      "severity": "HIGH",
+      "component": "friday_ui/core/engine.py & friday_ui/app.py",
+      "description": "Python blindly injected vector store knowledge snippets into the user prompt on every request before the Main Model could evaluate intent.",
+      "root_cause": "Hardcoded query checks in engine.py (lines 4220-4228) and app.py (lines 176-180) directly modified prompt_text without model consent.",
+      "fix": "Eliminated blind injection in engine.py and app.py; Main Model is now the sole authority that decides whether to invoke query_knowledge_base.",
+      "verification": "Runtime Mission 12 & 13 verified; user intent preserved without unprompted knowledge injection.",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG_MEM_03",
+      "severity": "HIGH",
+      "component": "friday_core/skills/agent_bridge.py",
+      "description": "Main Model had no native tool schema to query local RAG knowledge base on demand.",
+      "root_cause": "agent_bridge.py omitted a query_knowledge_base function specification, leaving the LLM unable to retrieve indexed documents natively.",
+      "fix": "Added query_knowledge_base OpenAPI schema to core_tools in agent_bridge.py and implemented handler in dispatch_agent_tool().",
+      "verification": "agent_bridge.py tool schema compilation verified; tool dispatch verified.",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG_MEM_04",
+      "severity": "MEDIUM",
+      "component": "friday_core/rag/engine.py & friday_core/memory/store.py",
+      "description": "Windows file lock error [WinError 32] occurred when attempting to rebuild a corrupted SQLite database.",
+      "root_cause": "conn.close() was in an inner finally block after conn.execute('PRAGMA journal_mode=WAL;'); when PRAGMA failed on a corrupt DB, conn.close() was skipped.",
+      "fix": "Restructured _conn_context() with an outer try/finally guaranteeing conn.close() executes regardless of PRAGMA failures, and added gc.collect() in rebuild_database().",
+      "verification": "test_memory_failure_recovery.py test_database_corruption_detection_and_rebuild passes cleanly on Windows.",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG_MEM_05",
+      "severity": "MEDIUM",
+      "component": "friday_core/rag/engine.py & friday_core/memory/store.py",
+      "description": "Lack of knowledge domain segregation allowed cross-domain contamination between Project, Personal, Technical, and Research data.",
+      "root_cause": "Neither SQLite memories table nor document_chunks table had domain indexing or filtering parameters.",
+      "fix": "Added KnowledgeDomain enum, domain columns with automatic schema migration, and domain query filtering.",
+      "verification": "test_knowledge_ingestion.py test_knowledge_domain_isolation passed; 0% cross-domain leakage.",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG_MEM_06",
+      "severity": "MEDIUM",
+      "component": "friday_core/rag/engine.py",
+      "description": "Re-ingesting the same file created duplicate chunks in the vector database, causing bloated results and wasted context.",
+      "root_cause": "ingest_file lacked document content hashing.",
+      "fix": "Added SHA-256 doc_hash and content_hash computation; identical files in the same domain return existing chunks without duplicate insertion.",
+      "verification": "test_knowledge_ingestion.py test_duplicate_ingestion_prevention passed; Runtime Mission 7 verified.",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG_MEM_07",
+      "severity": "MEDIUM",
+      "component": "friday_core/memory/store.py",
+      "description": "Updating a memory fact did not increment versioning, creating risks of stale memory dominance.",
+      "root_cause": "ON CONFLICT DO UPDATE did not track previous versions or mark older records historical.",
+      "fix": "Implemented auto-version increment (v1 -> v2) and marked superseded records historical; queries order by updated_at DESC, version DESC.",
+      "verification": "test_memory_stale_data.py test_stale_memory_defense_gpu_update passed; Runtime Mission 2 & 12 verified.",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG_MEM_08",
+      "severity": "HIGH",
+      "component": "friday_core/memory/store.py & memory.py",
+      "description": "Memory deletion could claim success even if the database transaction did not commit or left zombie records.",
+      "root_cause": "Deletion only inspected rowcount without independent postcondition absence verification.",
+      "fix": "Added immediate readback verification after SQL DELETE; returns True only if absence is independently verified in SQLite.",
+      "verification": "test_memory_deletion.py and test_false_memory_success.py passed with 100% absence verification.",
+      "status": "RESOLVED"
+    }
+  ]
+}

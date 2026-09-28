@@ -1,0 +1,35 @@
+{
+  "test_1_unaugmented_response": {
+    "scenario": "EXISTING_PRODUCTION_PATH",
+    "user_query": "who is jensen huang search web and tell",
+    "model": "llama3.2:1b",
+    "raw_response_role": "assistant",
+    "raw_tool_calls": null,
+    "content_length_chars": 2792,
+    "content_preview": "**Jensen Huang:**\nJensen Huang is a Taiwanese-American technology entrepreneur, businessman, and investor. He is the co-founder, chairman, and CEO of NVIDIA Corporation, a leading artificial intelligence (AI) and graphics processing unit (GPU) company.\n\n**Who is Jensen Huang?**\nHuang is a highly influential figure in the tech industry, known for his vision, leadership, and innovative spirit. He ha",
+    "tool_call_emitted": false,
+    "observed_hallucination": true,
+    "verdict": "MODEL RETURNS PLAIN TEXT DISCUSSION; ZERO TOOL CALLS EMITTED"
+  },
+  "test_2_no_trigger_response": {
+    "query": "Who is Jensen Huang?",
+    "tool_calls": null,
+    "content_preview": "**Jensen Huang: The Visionary Behind NVIDIA**\n\nBoss, let's dive into Jensen Huang, the visionary CEO of NVIDIA. Born on February 19, 1963, in Taiwan, Huang rose through the ranks of the Taiwanese semi"
+  },
+  "test_3_current_info_response": {
+    "query": "What's happening with NVIDIA right now?",
+    "tool_calls": null,
+    "content_preview": "**NVIDIA - September 27, 2026**\n\nBoss, you're in for a treat. NVIDIA's recent developments are making waves in the tech industry. Recently, the company announced its acquisition of Cetus Research, a l"
+  },
+  "test_4_greeting_response": {
+    "query": "Hi",
+    "result": "Good morning, Boss. Systems are nominal and I am standing by at 12:59 AM. How can I assist you today?"
+  },
+  "test_7_tool_augmented_response": {
+    "query": "What's the latest NVIDIA news?",
+    "tool_calls": [
+      "function=Function(name='web_search', arguments={'query': 'latest NVIDIA news'})"
+    ],
+    "content": ""
+  }
+}

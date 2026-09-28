@@ -1,0 +1,7 @@
+{
+  "test_id": "VISION-TEST-007",
+  "description": "Session Isolation -> fresh session has 0 image contexts",
+  "fresh_session_id": "fresh_audit_sess_1790358273",
+  "contexts_found": 0,
+  "verdict": "PASS"
+}

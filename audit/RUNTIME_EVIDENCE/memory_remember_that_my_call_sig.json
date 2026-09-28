@@ -1,0 +1,13 @@
+{
+  "trace_id": "trace-bb-d84ab441",
+  "category": "Memory",
+  "user_command": "remember that my call sign is Maverick",
+  "latency_ms": 10.9,
+  "response": "Understood, Boss. I have recorded that your call sign is Maverick in persistent storage and verified database commit.",
+  "expected_keywords": [
+    "recorded",
+    "maverick"
+  ],
+  "keywords_observed": true,
+  "verdict": "PASS"
+}

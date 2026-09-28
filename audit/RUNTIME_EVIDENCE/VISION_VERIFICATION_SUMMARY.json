@@ -1,0 +1,84 @@
+{
+  "framework": "F.R.I.D.A.Y. 3.0 Specialist Vision Architecture Verification",
+  "date": "2026-09-25",
+  "specialist_vision_model": "qwen2.5vl:3b",
+  "primary_conversational_model": "deepseek-r1:8b",
+  "total_tests": 7,
+  "passed": 7,
+  "failed": 0,
+  "tests": [
+    {
+      "test_id": "VISION-TEST-001",
+      "description": "Initial Image Attachment -> qwen2.5vl:3b analysis -> ImageContext -> main model reply",
+      "duration_s": 94.23,
+      "vision_model_invoked": true,
+      "selected_vision_model": "qwen2.5vl:3b",
+      "image_id_created": "image_context_001",
+      "context_description": "The image is a screenshot of a diagnostic panel for a computer system. The panel displays various system metrics and options for troubleshooting.",
+      "context_visible_text": [
+        "F.R.I.D.A.Y Core Diagnostics Panel",
+        "Alert 99.4% Memory",
+        "Active Process: IronManTelemetry.exe",
+        "CPU Frequency: 4.8 GHz | RAM: 63.8 GB/64 GB",
+        "Purge Memory",
+        "Restart Service"
+      ],
+      "main_model": "deepseek-r1:8b",
+      "main_model_reply_preview": "Alright, Boss. F.R.I.D.A.Y. has rendered a detailed analysis of the provided image.\n\nBased on the verified context:\n\n1.  **Panel Identification:** This is the *F.R.I.D.A.Y Core Diagnostics Panel*. It appears to be a primary system monitoring interfac",
+      "verdict": "PASS"
+    },
+    {
+      "test_id": "VISION-TEST-002",
+      "description": "Follow-Up Memory -> zero vision re-runs -> grounded in stored ImageContext",
+      "duration_s": 56.05,
+      "vision_model_invoked": false,
+      "expected_vision_invoked": false,
+      "main_model_reply_preview": "Boss, based on the verified image context, the visible application is the **F.R.I.D.A.Y Core Diagnostics Panel**.\n\nThis panel itself is a subsystem interface, likely part of the **F.R.I.D.A.Y system** (the Boss's AI platform), which is actively monit",
+      "verdict": "PASS"
+    },
+    {
+      "test_id": "VISION-TEST-003",
+      "description": "Second Follow-Up -> zero vision re-runs -> reads from visible_text context",
+      "duration_s": 33.41,
+      "vision_model_invoked": false,
+      "main_model_reply_preview": "Boss, the visible text in the provided image was:\n\n- **Panel Title:** `F.R.I.D.A.Y Core Diagnostics Panel`\n- **Alert Message:** `Alert 99.4% Memory`\n- **Active Process:** `IronManTelemetry.exe`\n- **System Metrics:** \n  - `CPU Frequency: 4.8 GHz`\n  - ",
+      "verdict": "PASS"
+    },
+    {
+      "test_id": "VISION-TEST-004",
+      "description": "Targeted Re-Analysis -> invokes qwen2.5vl:3b with targeted query -> updates context",
+      "duration_s": 76.24,
+      "vision_model_reinvoked": true,
+      "main_model_reply_preview": "Understood, Boss. F.R.I.D.A.Y. is analyzing the top-right corner of the provided image, `audit_system_panel.png`, as per your directive.\n\nHere's the breakdown based on the fresh context:\n\n### Top-Right Corner Analysis\nFocusing on the top-right corner",
+      "verdict": "PASS"
+    },
+    {
+      "test_id": "VISION-TEST-005",
+      "description": "Multiple Images in Session -> distinct IDs (001, 002) -> positional resolution",
+      "duration_s": 74.29,
+      "total_contexts_stored": 2,
+      "context_ids": [
+        "image_context_001",
+        "image_context_002"
+      ],
+      "resolved_first": "image_context_001",
+      "resolved_second": "image_context_002",
+      "verdict": "PASS"
+    },
+    {
+      "test_id": "VISION-TEST-006",
+      "description": "Image attached but non-visual intent ('hello') -> vision model skipped",
+      "duration_s": 23.5,
+      "vision_model_invoked": false,
+      "expected_invoked": false,
+      "verdict": "PASS"
+    },
+    {
+      "test_id": "VISION-TEST-007",
+      "description": "Session Isolation -> fresh session has 0 image contexts",
+      "fresh_session_id": "fresh_audit_sess_1790358273",
+      "contexts_found": 0,
+      "verdict": "PASS"
+    }
+  ]
+}

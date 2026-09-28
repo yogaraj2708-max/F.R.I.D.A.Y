@@ -1,0 +1,128 @@
+[
+  {
+    "tool": "web_search",
+    "visible_to_main_model": "YES",
+    "main_model_can_request": "YES",
+    "python_selects": "NO",
+    "executed": "YES",
+    "result_returned_to_same_model": "YES",
+    "verified": "YES"
+  },
+  {
+    "tool": "deep_research",
+    "visible_to_main_model": "YES",
+    "main_model_can_request": "YES",
+    "python_selects": "NO",
+    "executed": "YES",
+    "result_returned_to_same_model": "YES",
+    "verified": "YES"
+  },
+  {
+    "tool": "web_fetch",
+    "visible_to_main_model": "YES",
+    "main_model_can_request": "YES",
+    "python_selects": "NO",
+    "executed": "YES",
+    "result_returned_to_same_model": "YES",
+    "verified": "YES"
+  },
+  {
+    "tool": "launch_app",
+    "visible_to_main_model": "YES",
+    "main_model_can_request": "YES",
+    "python_selects": "NO",
+    "executed": "YES",
+    "result_returned_to_same_model": "YES",
+    "verified": "YES"
+  },
+  {
+    "tool": "inspect_ui",
+    "visible_to_main_model": "YES",
+    "main_model_can_request": "YES",
+    "python_selects": "NO",
+    "executed": "YES",
+    "result_returned_to_same_model": "YES",
+    "verified": "YES"
+  },
+  {
+    "tool": "click_control",
+    "visible_to_main_model": "YES",
+    "main_model_can_request": "YES",
+    "python_selects": "NO",
+    "executed": "YES",
+    "result_returned_to_same_model": "YES",
+    "verified": "YES"
+  },
+  {
+    "tool": "type_text",
+    "visible_to_main_model": "YES",
+    "main_model_can_request": "YES",
+    "python_selects": "NO",
+    "executed": "YES",
+    "result_returned_to_same_model": "YES",
+    "verified": "YES"
+  },
+  {
+    "tool": "analyze_image",
+    "visible_to_main_model": "YES",
+    "main_model_can_request": "YES",
+    "python_selects": "NO",
+    "executed": "YES",
+    "result_returned_to_same_model": "YES",
+    "verified": "YES"
+  },
+  {
+    "tool": "read_document",
+    "visible_to_main_model": "YES",
+    "main_model_can_request": "YES",
+    "python_selects": "NO",
+    "executed": "YES",
+    "result_returned_to_same_model": "YES",
+    "verified": "YES"
+  },
+  {
+    "tool": "timer",
+    "visible_to_main_model": "YES",
+    "main_model_can_request": "YES",
+    "python_selects": "NO",
+    "executed": "YES",
+    "result_returned_to_same_model": "YES",
+    "verified": "YES"
+  },
+  {
+    "tool": "weather",
+    "visible_to_main_model": "YES",
+    "main_model_can_request": "YES",
+    "python_selects": "NO",
+    "executed": "YES",
+    "result_returned_to_same_model": "YES",
+    "verified": "YES"
+  },
+  {
+    "tool": "system_telemetry",
+    "visible_to_main_model": "YES",
+    "main_model_can_request": "YES",
+    "python_selects": "NO",
+    "executed": "YES",
+    "result_returned_to_same_model": "YES",
+    "verified": "YES"
+  },
+  {
+    "tool": "system_time_date",
+    "visible_to_main_model": "YES",
+    "main_model_can_request": "YES",
+    "python_selects": "NO",
+    "executed": "YES",
+    "result_returned_to_same_model": "YES",
+    "verified": "YES"
+  },
+  {
+    "tool": "calculate",
+    "visible_to_main_model": "YES",
+    "main_model_can_request": "YES",
+    "python_selects": "NO",
+    "executed": "YES",
+    "result_returned_to_same_model": "YES",
+    "verified": "YES"
+  }
+]

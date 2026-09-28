@@ -13,7 +13,11 @@ from friday_core.system.launcher import (
 from friday_core.system.telemetry import (
     get_battery_info,
     get_memory_info,
-    adjust_volume
+    adjust_volume,
+    get_top_cpu_processes,
+    get_top_ram_processes,
+    get_cpu_info,
+    get_disk_info
 )
 from friday_core.system.office import (
     open_blank_word,
@@ -30,6 +34,10 @@ __all__ = [
     "get_battery_info",
     "get_memory_info",
     "adjust_volume",
+    "get_top_cpu_processes",
+    "get_top_ram_processes",
+    "get_cpu_info",
+    "get_disk_info",
     "open_blank_word",
     "open_word_with_content"
 ]

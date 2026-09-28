@@ -1,0 +1,27 @@
+{
+  "trace_id": "trace-web-003-1bae5d7d",
+  "test_id": "TEST-WEB-003",
+  "user_text": "read https://httpbin.org/anything?friday_unique=nonce_32db4cdc46ef",
+  "router_result": "TIER_1_FAST_PATH_WEB",
+  "selected_skill": "web_reading",
+  "url": "https://httpbin.org/anything?friday_unique=nonce_32db4cdc46ef",
+  "method": "GET",
+  "timestamp": "2026-09-25T16:29:11Z",
+  "status_code": 200,
+  "headers": {
+    "date": "Fri, 25 Sep 2026 16:29:12 GMT",
+    "content-type": "application/json",
+    "content-length": "470",
+    "connection": "keep-alive",
+    "server": "gunicorn/19.9.0",
+    "access-control-allow-origin": "*",
+    "access-control-allow-credentials": "true"
+  },
+  "response_length": 470,
+  "raw_body_hash": "25865c12a476b13e5c6673eba685df797c43bcf70723af81404eff8a52509c6c",
+  "parser": "json.loads",
+  "parsed_result": "nonce_32db4cdc46ef",
+  "answer_source": "LIVE_HTTP_RESPONSE",
+  "final_output": "nonce_32db4cdc46ef",
+  "verdict": "PASS"
+}

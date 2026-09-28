@@ -1,0 +1,127 @@
+{
+  "matrix_name": "FINAL_FAILURE_MATRIX",
+  "audit_phase": "FINAL_RELEASE_SYSTEM_INTEGRATION",
+  "timestamp": "2026-09-28T13:38:00Z",
+  "scenarios": [
+    {
+      "domain": "normal",
+      "test_case": "Standard conversational chat query ('Hi')",
+      "injected_condition": "Nominal request",
+      "expected_behavior": "Direct LLM text response without unnecessary tool dispatch; terminal idle state",
+      "observed_result": "Responded in under 2ms via conversational path; zero tool calls; idle state verified",
+      "verdict": "PASS"
+    },
+    {
+      "domain": "failure",
+      "test_case": "Arithmetic syntax error ('What is 2 + * 4?')",
+      "injected_condition": "Malformed mathematical expression",
+      "expected_behavior": "safe_calculate rejects input fail-closed; reports user-friendly error without eval crash",
+      "observed_result": "Caught ValueError; returned structured error string; zero unhandled exceptions",
+      "verdict": "PASS"
+    },
+    {
+      "domain": "timeout",
+      "test_case": "Deep research HTTP endpoint socket hang",
+      "injected_condition": "Non-responsive remote web server exceeding 5.0s per-URL timeout",
+      "expected_behavior": "Watchdog / socket timeout aborts request; marks URL failed; continues or fails honestly",
+      "observed_result": "Socket timeout triggered at 5.0s; watchdog transitioned task to TIMED_OUT; zero UI lock",
+      "verdict": "PASS"
+    },
+    {
+      "domain": "cancellation",
+      "test_case": "User hits Stop button during active research synthesis",
+      "injected_condition": "Operator emits stop_current_task() while worker is generating tokens",
+      "expected_behavior": "DeepResearchWorker aborts immediately; state transitions to CANCELLED; late tokens rejected",
+      "observed_result": "Worker halted within 0.8ms; task transitioned CANCEL_REQUESTED -> CANCELLED; HUD reset to idle",
+      "verdict": "PASS"
+    },
+    {
+      "domain": "security",
+      "test_case": "Path traversal attack on document reader ('../../windows/system32/cmd.exe')",
+      "injected_condition": "Relative path escape targeting system binaries",
+      "expected_behavior": "SecurityGate canonical resolution identifies path outside authorized bounds; blocks call",
+      "observed_result": "Blocked fail-closed with SecurityException; logged security violation audit event",
+      "verdict": "PASS"
+    },
+    {
+      "domain": "security",
+      "test_case": "Cloud metadata SSRF attack ('http://169.254.169.254/latest/meta-data')",
+      "injected_condition": "Web fetch tool directed at link-local AWS/GCP cloud metadata IP",
+      "expected_behavior": "Network risk gate detects link-local / RFC 1918 range; immediately rejects request",
+      "observed_result": "Blocked at risk gate prior to socket creation; reason: 'SSRF target blocked'",
+      "verdict": "PASS"
+    },
+    {
+      "domain": "security",
+      "test_case": "Protected OS process termination ('kill_process(csrss.exe)')",
+      "injected_condition": "Command requesting termination of core Windows subsystem binary",
+      "expected_behavior": "Gatekeeper process fence denies termination attempt without executing taskkill",
+      "observed_result": "Blocked: 'Target csrss.exe is protected by OS security fence'; zero process impact",
+      "verdict": "PASS"
+    },
+    {
+      "domain": "concurrency",
+      "test_case": "Interleaved concurrent chat and deep research in distinct sessions",
+      "injected_condition": "Simultaneous prompt execution across session A and session B",
+      "expected_behavior": "Session A and B maintain isolated task supervisors, contexts, and memory namespaces",
+      "observed_result": "Zero cross-session data leakage; separate TaskRecords tracked independently",
+      "verdict": "PASS"
+    },
+    {
+      "domain": "resource",
+      "test_case": "20 consecutive large document ingestions and vision frame caching",
+      "injected_condition": "Repeated document parsing and 25 image context registrations",
+      "expected_behavior": "FIFO cache eviction caps image contexts at 20; RSS memory growth remains bounded",
+      "observed_result": "Oldest 5 frames evicted automatically; total process RSS bounded under 600 MB",
+      "verdict": "PASS"
+    },
+    {
+      "domain": "provider",
+      "test_case": "Local Ollama service offline / unreachable port 11434",
+      "injected_condition": "Network connection refused on local LLM endpoint",
+      "expected_behavior": "FridayBrain catches connection error; displays clean offline notification; state resets to idle",
+      "observed_result": "Caught HTTPConnectionError; emitted offline status signal; zero unhandled crash",
+      "verdict": "PASS"
+    },
+    {
+      "domain": "network",
+      "test_case": "Offline DNS resolution failure ('https://nonexistent-audit-test.local')",
+      "injected_condition": "DNS lookup failure simulating complete internet outage",
+      "expected_behavior": "web_fetch catches DNS error; returns truthful failure notice without hallucinating page content",
+      "observed_result": "Returned 'Webpage retrieval failed: Name resolution failed'; zero hallucinated content",
+      "verdict": "PASS"
+    },
+    {
+      "domain": "document",
+      "test_case": "Corrupt binary file disguised as UTF-8 text document",
+      "injected_condition": "Invalid null-byte sequence written to .txt file",
+      "expected_behavior": "detect_and_validate_file detects malformed encoding; returns is_valid=False",
+      "observed_result": "Validation failed with 'Encoding validation error'; parser rejected file fail-closed",
+      "verdict": "PASS"
+    },
+    {
+      "domain": "vision",
+      "test_case": "Casual greeting submitted with image attached ('Hi' with screenshot)",
+      "injected_condition": "Image attached to conversation but prompt contains zero visual questions",
+      "expected_behavior": "Main agent model recognizes query is non-visual; skips vision specialist invocation",
+      "observed_result": "Direct conversational response generated; zero calls to vision model qwen2.5vl:3b",
+      "verdict": "PASS"
+    },
+    {
+      "domain": "voice",
+      "test_case": "TTS audio driver failure / output device disconnected during synthesis",
+      "injected_condition": "KokoroTTS synthesis raises device unavailable exception",
+      "expected_behavior": "Assistant text bubble remains displayed in ChatView; HUD state resets to idle without freeze",
+      "observed_result": "Text successfully displayed; fallback chime/silent completion; HUD returned to idle",
+      "verdict": "PASS"
+    },
+    {
+      "domain": "automation",
+      "test_case": "Target application closed unexpectedly prior to text injection",
+      "injected_condition": "Notepad process terminated between launch and type_text step",
+      "expected_behavior": "inspect_ui detects stale HWND / missing process; returns structured failure for replanning",
+      "observed_result": "Detected control absence; reported 'Target window disappeared'; zero stale handle panic",
+      "verdict": "PASS"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "trace_id": "trace-bb-8660ae7a",
+  "category": "Telemetry",
+  "user_command": "check cpu",
+  "latency_ms": 101.21,
+  "response": "Current CPU load is 10.5% across 12 logical cores running at 2400 MHz, Boss.",
+  "expected_keywords": [
+    "cpu",
+    "%",
+    "cores"
+  ],
+  "keywords_observed": true,
+  "verdict": "PASS"
+}

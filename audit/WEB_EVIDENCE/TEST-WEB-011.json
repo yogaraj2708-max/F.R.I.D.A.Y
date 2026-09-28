@@ -1,0 +1,19 @@
+{
+  "trace_id": "trace-web-011-714a9ca4",
+  "test_id": "TEST-WEB-011",
+  "user_text": "read http://127.0.0.1:58800/status_404",
+  "router_result": "TIER_1_FAST_PATH_WEB",
+  "selected_skill": "web_reading",
+  "url": "http://127.0.0.1:58800/status_404",
+  "method": "GET",
+  "timestamp": "2026-09-25T16:29:14Z",
+  "status_code": 404,
+  "headers": {},
+  "response_length": 0,
+  "raw_body_hash": "",
+  "parser": "httpx_status_check",
+  "parsed_result": "404 Not Found",
+  "answer_source": "ERROR_OBSERVER",
+  "final_output": "\u26a0\ufe0f Webpage retrieval failed for 'http://127.0.0.1:58800/status_404': Client error '404 Target resource not found' for url 'http://127.0.0.1:58800/status_404'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404",
+  "verdict": "PASS"
+}

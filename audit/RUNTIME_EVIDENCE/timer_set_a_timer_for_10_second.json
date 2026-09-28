@@ -1,0 +1,12 @@
+{
+  "trace_id": "trace-bb-ddb69415",
+  "category": "Timer",
+  "user_command": "set a timer for 10 seconds",
+  "latency_ms": 58.55,
+  "response": "Timer initialized for 10 seconds, Boss. Standing by.",
+  "expected_keywords": [
+    "10 seconds"
+  ],
+  "keywords_observed": true,
+  "verdict": "PASS"
+}

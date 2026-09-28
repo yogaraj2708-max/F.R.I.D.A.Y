@@ -1,0 +1,9 @@
+{
+  "test_id": "VISION-TEST-002",
+  "description": "Follow-Up Memory -> zero vision re-runs -> grounded in stored ImageContext",
+  "duration_s": 56.05,
+  "vision_model_invoked": false,
+  "expected_vision_invoked": false,
+  "main_model_reply_preview": "Boss, based on the verified image context, the visible application is the **F.R.I.D.A.Y Core Diagnostics Panel**.\n\nThis panel itself is a subsystem interface, likely part of the **F.R.I.D.A.Y system** (the Boss's AI platform), which is actively monit",
+  "verdict": "PASS"
+}

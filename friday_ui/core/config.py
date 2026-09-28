@@ -59,8 +59,8 @@ PREFERRED_MODELS = [
 FAST_MODEL = settings.get("model", "llama3.2:3b")
 CODER_MODEL = "qwen2.5-coder:latest"
 REASONING_MODEL = "deepseek-r1:8b"
-VISION_MODEL = "qwen2-vl:2b"
-VISION_MODELS = ["qwen2-vl:2b", "qwen2-vl", "llava:7b", "llava", "minicpm-v"]
+VISION_MODEL = "qwen2.5vl:3b"
+VISION_MODELS = ["qwen2.5vl:3b", "qwen2.5vl", "qwen2.5", "qwen2-vl:2b", "qwen2-vl", "llava:7b", "llava", "minicpm-v"]
 
 # Storage & RAG Paths
 APP_DATA_DIR = Path(os.path.expanduser("~")) / ".friday"

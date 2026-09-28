@@ -1,0 +1,31 @@
+{
+  "trace_id": "trace-web-002-cb11fd6a",
+  "test_id": "TEST-WEB-002",
+  "user_text": "read the paragraph of https://example.com",
+  "router_result": "TIER_1_FAST_PATH_WEB",
+  "selected_skill": "web_reading",
+  "url": "https://example.com",
+  "method": "GET",
+  "timestamp": "2026-09-25T16:29:10Z",
+  "status_code": 200,
+  "headers": {
+    "date": "Fri, 25 Sep 2026 16:29:11 GMT",
+    "content-type": "text/html",
+    "transfer-encoding": "chunked",
+    "connection": "keep-alive",
+    "server": "cloudflare",
+    "last-modified": "Tue, 22 Sep 2026 20:16:57 GMT",
+    "allow": "GET, HEAD",
+    "age": "4614",
+    "cf-cache-status": "HIT",
+    "content-encoding": "gzip",
+    "cf-ray": "a40b67fff97ab108-MAA"
+  },
+  "response_length": 559,
+  "raw_body_hash": "ff67a9d764d6a2367a187734e697f6a53217db9a21c101d410a113ca871a299d",
+  "parser": "lxml.html",
+  "parsed_result": "This domain is for use in illustrative examples in documents.",
+  "answer_source": "LIVE_HTTP_RESPONSE",
+  "final_output": "Paragraph from 'https://example.com': \"This domain is for use in documentation examples without needing permission. Avoid use in operations.\", Boss.",
+  "verdict": "FAIL"
+}

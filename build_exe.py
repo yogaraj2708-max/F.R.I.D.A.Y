@@ -14,11 +14,12 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def kill_running_instances():
     try:
+        subprocess.run(["taskkill", "/F", "/IM", "FRIDAY_3.0.exe"], capture_output=True)
         subprocess.run(["taskkill", "/F", "/IM", "FRIDAY_2.0.exe"], capture_output=True)
     except Exception:
         pass
     time.sleep(1)
-    dist_dir = os.path.join(BASE_DIR, "dist", "FRIDAY_2.0")
+    dist_dir = os.path.join(BASE_DIR, "dist", "FRIDAY_3.0")
     if os.path.exists(dist_dir):
         for _ in range(5):
             try:
@@ -38,7 +39,7 @@ def build():
         "--noconfirm",
         "--clean",
         "--windowed",                 # Run as clean Windows desktop app without black console window
-        "--name", "FRIDAY_2.0",
+        "--name", "FRIDAY_3.0",
         "--icon", os.path.join(BASE_DIR, "friday_ui", "assets", "friday_icon.ico"),
         "--collect-all", "qfluentwidgets",
         "--collect-all", "qasync",
@@ -57,16 +58,27 @@ def build():
         "--hidden-import", "ollama",
         "--hidden-import", "duckduckgo_search",
         "--hidden-import", "sqlite3",
+        "--hidden-import", "pypdf",
+        "--hidden-import", "lxml",
+        "--hidden-import", "lxml.html",
+        "--hidden-import", "psutil",
+        "--hidden-import", "mss",
+        "--hidden-import", "uiautomation",
         "--hidden-import", "friday_ui",
-        "--hidden-import", "friday_ui.widgets.command_bar",
-        "--hidden-import", "friday_ui.widgets.operations_panel",
         "--hidden-import", "friday_core",
-        "--hidden-import", "friday_core.gatekeeper",
-        "--hidden-import", "friday_core.system",
-        "--hidden-import", "friday_core.web",
-        "--hidden-import", "friday_core.calc",
-        "--hidden-import", "friday_core.settings",
-        "--hidden-import", "friday_core.platform_guard",
+        "--hidden-import", "friday_core.skills",
+        "--hidden-import", "friday_core.agent",
+        "--hidden-import", "friday_core.context",
+        "--hidden-import", "friday_core.automation",
+        "--hidden-import", "friday_core.vision",
+        "--hidden-import", "friday_core.memory",
+        "--hidden-import", "friday_core.rag",
+        "--hidden-import", "friday_core.browser",
+        "--hidden-import", "friday_core.research",
+        "--hidden-import", "friday_core.scheduler",
+        "--hidden-import", "friday_core.dev_agent",
+        "--hidden-import", "friday_core.observability",
+        "--hidden-import", "friday_core.security",
         "--add-data", f"{os.path.join(BASE_DIR, 'friday_ui')};friday_ui",
         "--add-data", f"{os.path.join(BASE_DIR, 'friday_core')};friday_core",
         os.path.join(BASE_DIR, "run_friday_gui.py")
@@ -76,7 +88,7 @@ def build():
     print(" ".join(cmd))
     subprocess.run(cmd, cwd=BASE_DIR, check=True)
     print("\n[Build]: COMPILATION COMPLETE! Standalone app located in:")
-    print(os.path.join(BASE_DIR, "dist", "FRIDAY_2.0", "FRIDAY_2.0.exe"))
+    print(os.path.join(BASE_DIR, "dist", "FRIDAY_3.0", "FRIDAY_3.0.exe"))
 
 if __name__ == "__main__":
     build()

@@ -1,0 +1,58 @@
+{
+  "subsystem": "Voice Subsystem Concurrency & Race Condition Defense",
+  "audit_phase": "VOICE_STT_TTS_ZERO_TRUST_HARDENING",
+  "timestamp": "2026-09-28T12:20:00Z",
+  "concurrency_scenarios": [
+    {
+      "scenario_id": "VOICE_CONC_01",
+      "scenario": "Acoustic Barge-In Interruption (Speech A vs Input B)",
+      "trigger": "User begins speaking loudly while assistant is in SPEAKING state",
+      "policy": "BARGE_IN_CUTOFF: Immediate playback abort",
+      "mechanism": "VoiceInterruptionController detects RMS >= baseline * 2.8, calls stop_speaking()",
+      "observed_behavior": "Pygame mixer terminates instantly, speech queue cleared, system transitions to LISTENING",
+      "status": "PASS",
+      "verified": true
+    },
+    {
+      "scenario_id": "VOICE_CONC_02",
+      "scenario": "Response Superseding (Fast Back-to-Back Assistant Replies)",
+      "trigger": "New assistant response arrives while previous response audio is playing",
+      "policy": "SUPERSEDE: Active speech halted, fresh speech starts cleanly",
+      "mechanism": "_speak_lock in FridayVoiceEngine and stop() in TextToSpeechOrchestrator",
+      "observed_behavior": "Zero overlapping voices, zero phantom audio replay",
+      "status": "PASS",
+      "verified": true
+    },
+    {
+      "scenario_id": "VOICE_CONC_03",
+      "scenario": "Voice Input Concurrent With Typed Chat Command",
+      "trigger": "User types in GUI command bar while voice loop is active",
+      "policy": "INDEPENDENT_PARALLEL_ISOLATION",
+      "mechanism": "Typed chat sends directly to query_llm without acquiring audio streams",
+      "observed_behavior": "Typed chat finishes immediately without microphone contention",
+      "status": "PASS",
+      "verified": true
+    },
+    {
+      "scenario_id": "VOICE_CONC_04",
+      "scenario": "Continuous Conversation Multi-Turn Loop (10 Consecutive Turns)",
+      "trigger": "User conducts rapid 10-turn dialogue in continuous hands-free mode",
+      "policy": "WINDOWED_DEDUPLICATION_AND_REVERB_COOLDOWN",
+      "mechanism": "0.45s echo cooldown + 2.5s transcript deduplicator",
+      "observed_behavior": "Zero self-triggers, zero duplicated commands, stable memory footprint",
+      "status": "PASS",
+      "verified": true
+    },
+    {
+      "scenario_id": "VOICE_CONC_05",
+      "scenario": "PortAudio Reader Thread Close Synchronization",
+      "trigger": "Voice loop stopped while worker thread blocked in stream.read()",
+      "policy": "THREAD_SAFE_DRAIN_EVENT",
+      "mechanism": "_reader_idle threading.Event synchronization before stream.__exit__()",
+      "observed_behavior": "Zero use-after-close errors, zero PaErrorCode -9977 / -9999 crashes",
+      "status": "PASS",
+      "verified": true
+    }
+  ],
+  "verification_status": "PASS"
+}

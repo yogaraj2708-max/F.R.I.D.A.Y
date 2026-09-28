@@ -1,0 +1,20 @@
+{
+  "test_type": "PLUMBING_TEST_INJECTED_TOOL_CALL",
+  "stage_1_user_message": "who is jensen huang search web and tell",
+  "stage_2_injected_tool_call": {
+    "name": "web_search",
+    "arguments": {
+      "query": "Jensen Huang current role and background"
+    }
+  },
+  "stage_3_dispatcher_execution": {
+    "handler": "fetch_web_results",
+    "results_returned": 3,
+    "sample_snippet": "- Jensen Huang - Wikipedia: Jen-Hsun \" Jensen \" Huang[b] (born February 17, 1963) is a Taiwanese and American business executive and electrical engineer who is the co-founder, pr\n- Jensen Huang | Biog"
+  },
+  "stage_4_tool_result_appended": true,
+  "stage_5_second_llm_call_made": true,
+  "stage_6_final_grounded_response_length": 1301,
+  "stage_6_final_response_preview": "Jensen Huang is currently the CEO and President of NVIDIA, a position he has held since the company's founding in 1993. \n\nHere's a brief overview of his background and career:\n\n**Early Life and Education**\n\n* Born on February 17, 1963, in Tainan, Taiwan\n* Graduated from National Taiwan University wi",
+  "verdict": "PASS: Native tool result return path operates perfectly when messages include tool results."
+}

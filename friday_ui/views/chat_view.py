@@ -219,10 +219,12 @@ class ChatView(QWidget):
         titles_box = QVBoxLayout()
         titles_box.setSpacing(1)
         self.title_label = QLabel("F.R.I.D.A.Y.")
-        self.title_label.setFont(QFont("Plus Jakarta Sans", 11, QFont.Bold))
+        self.title_label.setObjectName("brand_title")
+        self.title_label.setFont(QFont("Inter", 11, QFont.Bold))
         self.title_label.setStyleSheet(f"color: {p['text_primary']}; letter-spacing: 0.5px; border: none; background: transparent;")
-        self.subtitle_label = QLabel("Editorial Intelligence")
-        self.subtitle_label.setFont(QFont("Plus Jakarta Sans", 8))
+        self.subtitle_label = QLabel("Desktop AI Assistant")
+        self.subtitle_label.setObjectName("brand_subtitle")
+        self.subtitle_label.setFont(QFont("Inter", 8))
         self.subtitle_label.setStyleSheet(f"color: {p['text_muted']}; border: none; background: transparent;")
         titles_box.addWidget(self.title_label)
         titles_box.addWidget(self.subtitle_label)
@@ -240,24 +242,32 @@ class ChatView(QWidget):
         quick_switcher_layout.setSpacing(8)
 
         self.session_combo = ComboBox(header_card)
+        self.session_combo.setObjectName("session_selector")
+        self.session_combo.setAccessibleName("Select conversation session")
         self.session_combo.setFixedHeight(28)
         self.session_combo.setMinimumWidth(150)
         self.session_combo.currentIndexChanged.connect(self._on_session_combo_changed)
         quick_switcher_layout.addWidget(self.session_combo)
 
         self.new_session_btn = TransparentToolButton(FluentIcon.ADD, header_card)
+        self.new_session_btn.setObjectName("new_session_button")
+        self.new_session_btn.setAccessibleName("Create new conversation session")
         self.new_session_btn.setFixedSize(28, 28)
         self.new_session_btn.setToolTip("Start New Session")
         self.new_session_btn.clicked.connect(self._on_new_session)
         quick_switcher_layout.addWidget(self.new_session_btn)
 
         self.delete_session_btn = TransparentToolButton(FluentIcon.DELETE, header_card)
+        self.delete_session_btn.setObjectName("delete_session_button")
+        self.delete_session_btn.setAccessibleName("Delete active conversation session")
         self.delete_session_btn.setFixedSize(28, 28)
         self.delete_session_btn.setToolTip("Delete Current Session")
         self.delete_session_btn.clicked.connect(self._on_delete_session)
         quick_switcher_layout.addWidget(self.delete_session_btn)
 
         self.model_combo = ComboBox(header_card)
+        self.model_combo.setObjectName("model_selector")
+        self.model_combo.setAccessibleName("Select AI model")
         self.model_combo.setFixedHeight(28)
         self.model_combo.setMinimumWidth(150)
         self._refreshing_models = False
@@ -275,12 +285,16 @@ class ChatView(QWidget):
         quick_switcher_layout.addWidget(self.model_combo)
 
         self.add_model_btn = TransparentToolButton(FluentIcon.ADD, header_card)
+        self.add_model_btn.setObjectName("add_model_button")
+        self.add_model_btn.setAccessibleName("Add or pull new AI model")
         self.add_model_btn.setFixedSize(28, 28)
         self.add_model_btn.setToolTip("Add / Pull AI Model")
         self.add_model_btn.clicked.connect(self._on_add_model_dialog)
         quick_switcher_layout.addWidget(self.add_model_btn)
 
         self.voice_combo = ComboBox(header_card)
+        self.voice_combo.setObjectName("voice_selector")
+        self.voice_combo.setAccessibleName("Select voice profile")
         self.voice_combo.setFixedHeight(28)
         self.voice_combo.addItems([
             "bf_emma (Local FRIDAY)",
@@ -303,7 +317,9 @@ class ChatView(QWidget):
 
         # Status Pill
         self.status_pill = QLabel("● STANDBY")
-        self.status_pill.setFont(QFont("Segoe UI", 8, QFont.Bold))
+        self.status_pill.setObjectName("status_indicator")
+        self.status_pill.setAccessibleName("Engine status indicator")
+        self.status_pill.setFont(QFont("Inter", 8, QFont.Bold))
         self.status_pill.setAlignment(Qt.AlignCenter)
         self.status_pill.setMinimumWidth(90)
         self.status_pill.setFixedHeight(26)
@@ -319,17 +335,21 @@ class ChatView(QWidget):
 
         # Inspector Toggle Button (Show/Hide Audit Feed)
         self.inspector_btn = TransparentToolButton(FluentIcon.HISTORY, self.header_card)
+        self.inspector_btn.setObjectName("inspector_button")
+        self.inspector_btn.setAccessibleName("Toggle telemetry inspector")
         self.inspector_btn.setFixedSize(28, 28)
         self.inspector_btn.setToolTip("Toggle System Inspector & Telemetry Feed")
         self.inspector_btn.clicked.connect(self.inspector_toggle_requested.emit)
         header_layout.addWidget(self.inspector_btn)
 
-        # Theme Mode Toggle Button (Warm Light ☀️ <-> Warm Dark 🌙)
+        # Theme Mode Toggle Button
         self.theme_btn = PushButton("🌙 Dark", self.header_card)
+        self.theme_btn.setObjectName("theme_button")
+        self.theme_btn.setAccessibleName("Toggle dark or light theme")
         self.theme_btn.setFixedHeight(28)
         self.theme_btn.setMinimumWidth(76)
         self.theme_btn.setCursor(Qt.PointingHandCursor)
-        self.theme_btn.setToolTip("Switch to Warm Dark Mode (60-30-10 Obsidian)")
+        self.theme_btn.setToolTip("Toggle Visual Theme")
         self.theme_btn.clicked.connect(self._toggle_theme)
         header_layout.addWidget(self.theme_btn)
 
@@ -403,19 +423,19 @@ class ChatView(QWidget):
         chips_layout.setSpacing(6)
 
         chip_data = [
-            ("☁️  Weather",        "weather"),
-            ("💻  VS Code",        "open vs code"),
-            ("🌐  Edge",           "open edge"),
-            ("⚡  Diagnostics",    "system status telemetry"),
-            ("📷  Screenshot",     "screenshot"),
-            ("🧮  Calculator",     "what is 250 * 18"),
-            ("📁  File Explorer",  "open file explorer"),
-            ("🎵  Spotify",        "open spotify"),
+            ("🔍  Deep Research",    "Deep research: state of the art AI agent models"),
+            ("📄  Analyze Document", "Please analyze our workspace documentation architecture"),
+            ("⚡  System Health",    "system status telemetry"),
+            ("📷  Screenshot Snip",  "screenshot"),
+            ("💻  Open VS Code",     "open vs code"),
+            ("📁  File Explorer",    "open file explorer"),
         ]
 
         self.chips_buttons = []
-        for label, query in chip_data:
+        for idx, (label, query) in enumerate(chip_data):
             btn = PushButton(label, self)
+            btn.setObjectName(f"quick_action_chip_{idx}")
+            btn.setAccessibleName(f"Quick action {label}")
             btn.setFixedHeight(28)
             btn.setCursor(Qt.PointingHandCursor)
             btn.setStyleSheet(f"""
@@ -481,6 +501,8 @@ class ChatView(QWidget):
 
         # '+' Action Button — modern rounded tool button
         self.attach_btn = ToolButton(FluentIcon.ADD, self)
+        self.attach_btn.setObjectName("attachment_button")
+        self.attach_btn.setAccessibleName("Attach files or deep research")
         self.attach_btn.setFixedSize(34, 34)
         self.attach_btn.setCursor(Qt.PointingHandCursor)
         self.attach_btn.setToolTip("Attach Code, File, or Deep Research")
@@ -500,9 +522,11 @@ class ChatView(QWidget):
         self.attach_btn.clicked.connect(self._show_attach_menu)
         input_layout.addWidget(self.attach_btn)
 
-        # Text prompt input (Standard QLineEdit without cyan bottom line)
+        # Text prompt input
         from PySide6.QtWidgets import QLineEdit as StandardQLineEdit
         self.prompt_input = StandardQLineEdit(self)
+        self.prompt_input.setObjectName("chat_input")
+        self.prompt_input.setAccessibleName("Chat input prompt")
         self.prompt_input.setPlaceholderText("Message F.R.I.D.A.Y. (or press Ctrl+Space)...")
         self.prompt_input.setClearButtonEnabled(True)
         self.prompt_input.setStyleSheet(f"""
@@ -521,6 +545,8 @@ class ChatView(QWidget):
 
         # Mic Toggle Button — modern rounded tool button
         self.mic_btn = ToolButton(FluentIcon.MICROPHONE, self)
+        self.mic_btn.setObjectName("mic_button")
+        self.mic_btn.setAccessibleName("Toggle microphone voice loop")
         self.mic_btn.setFixedSize(34, 34)
         self.mic_btn.setCursor(Qt.PointingHandCursor)
         self.mic_btn.setToolTip("Toggle Acoustic Sensor / Voice Loop (Ctrl+M)")
@@ -542,6 +568,8 @@ class ChatView(QWidget):
 
         # Send Button
         self.send_btn = PrimaryPushButton("Send", self)
+        self.send_btn.setObjectName("send_button")
+        self.send_btn.setAccessibleName("Send prompt directive")
         self.send_btn.setFixedSize(68, 34)
         self.send_btn.setCursor(Qt.PointingHandCursor)
         self.send_btn.setStyleSheet(f"""
@@ -564,8 +592,10 @@ class ChatView(QWidget):
         self.send_btn.clicked.connect(self._on_send_btn_clicked)
         input_layout.addWidget(self.send_btn)
 
-        # Dedicated Stop Voice Button — Prominent crimson button for interrupting vocal playback immediately
+        # Dedicated Stop Voice Button
         self.stop_btn = PushButton("■ Stop Voice", self)
+        self.stop_btn.setObjectName("stop_button")
+        self.stop_btn.setAccessibleName("Stop generation or speech")
         self.stop_btn.setFixedSize(102, 34)
         self.stop_btn.setCursor(Qt.PointingHandCursor)
         self.stop_btn.setToolTip("Immediately stop vocal playback and generation (Esc)")
@@ -1089,20 +1119,58 @@ class ChatView(QWidget):
             file_contexts = []
             file_names = []
             image_extensions = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif"}
-            for fpath in list(self.attached_files):
-                fname = os.path.basename(fpath)
-                file_names.append(fname)
-                ext = os.path.splitext(fname)[1].lower()
-                if ext in image_extensions:
-                    file_contexts.append(f"[Attached Image: {fname} | Path: {fpath}]")
-                else:
-                    try:
-                        with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
-                            content = f.read(50000)
-                        ext_clean = ext.lstrip(".") or "txt"
-                        file_contexts.append(f"[Attached Document: {fname}]\n```{ext_clean}\n{content}\n```")
-                    except Exception as e:
-                        file_contexts.append(f"[Attached Document: {fname} (Could not read: {e})]")
+
+            from friday_core.context.graphify_retriever import is_graphify_artifact, graphify_retriever
+            from friday_core.context.budget import context_budget_manager
+
+            # Partition into Graphify artifacts vs standard files
+            graphify_artifacts = [f for f in self.attached_files if is_graphify_artifact(f)]
+            standard_files = [f for f in self.attached_files if not is_graphify_artifact(f)]
+
+            # 1. Handle Graphify index retrieval cleanly if Graphify artifacts are attached
+            if graphify_artifacts:
+                for gf in graphify_artifacts:
+                    file_names.append(os.path.basename(gf))
+                graph_budget = context_budget_manager.available_context // (2 if standard_files else 1)
+                graph_ctx, ret_files, ret_symbols = graphify_retriever.retrieve_bounded_context(
+                    query=text,
+                    max_tokens=graph_budget
+                )
+                file_contexts.append(graph_ctx)
+
+            # 2. Handle standard attached files with dynamic per-file budget
+            if standard_files:
+                budget_per_file = max(800, int((context_budget_manager.available_context * 3.5) / max(1, len(standard_files) * (2 if graphify_artifacts else 1))))
+                for fpath in standard_files:
+                    fname = os.path.basename(fpath)
+                    file_names.append(fname)
+                    ext = os.path.splitext(fname)[1].lower()
+                    if ext in image_extensions:
+                        file_contexts.append(f"[Attached Image: {fname} | Path: {fpath}]")
+                    elif ext == ".pdf":
+                        file_contexts.append(f"[Attached PDF: {fname} | Path: {fpath}]")
+                    elif ext in [".docx", ".doc"]:
+                        try:
+                            from friday_core.document.parser import DocxStructuralParser
+                            doc_map = DocxStructuralParser.parse(fpath)
+                            summary = doc_map.summary_metadata()
+                            sample_snippets = [f"Heading: {h.text}" for h in doc_map.headings[:3]]
+                            sample_preview = "\n".join(sample_snippets) if sample_snippets else "Standard Document Layout"
+                            file_contexts.append(
+                                f"[Attached DOCX: {fname} | Path: {fpath}]\n"
+                                f"{summary}\n"
+                                f"Sample Overview:\n{sample_preview}"
+                            )
+                        except Exception as de:
+                            file_contexts.append(f"[Attached DOCX: {fname} | Path: {fpath} (DOCX structure ready)]")
+                    else:
+                        try:
+                            with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
+                                content = f.read(budget_per_file)
+                            ext_clean = ext.lstrip(".") or "txt"
+                            file_contexts.append(f"[Attached Document: {fname} | Path: {fpath}]\n```{ext_clean}\n{content}\n```")
+                        except Exception as e:
+                            file_contexts.append(f"[Attached Document: {fname} (Could not read: {e})]")
 
             self.attached_files.clear()
             self._refresh_attachments_ui()
@@ -1293,7 +1361,7 @@ class ChatView(QWidget):
 
         messages = self.session_store.get_messages(session_id)
         if not messages:
-            self.add_message("friday", "F.R.I.D.A.Y. 2.0 online. Neural subsystems operational. Ready for your directive, Boss.", persist=False)
+            self.add_message("friday", "F.R.I.D.A.Y. 3.0 online. Subsystems operational. How may I assist you today, Boss?", persist=False)
         else:
             for msg in messages:
                 bubble = ChatBubble(msg["role"], msg["content"], self.chat_container)
@@ -1318,6 +1386,23 @@ class ChatView(QWidget):
             if self.current_session_id and self._streaming_session_id == self.current_session_id and full_persisted:
                 self.session_store.add_message(self.current_session_id, "friday", full_persisted)
             self._current_streaming_bubble = None
+        elif final_text and final_text.strip():
+            # Fallback safeguard: If bubble reference was lost, ensure text is never dropped
+            last_bubble = None
+            for idx in reversed(range(self.chat_layout.count())):
+                item = self.chat_layout.itemAt(idx)
+                w = item.widget() if item else None
+                if isinstance(w, ChatBubble) and getattr(w, 'role', '') == "friday":
+                    last_bubble = w
+                    break
+            if last_bubble and not getattr(last_bubble, 'raw_text', '').strip():
+                last_bubble.finish_stream(final_text)
+                self._last_streamed_text = last_bubble.raw_text.strip()
+                if self.current_session_id:
+                    self.session_store.add_message(self.current_session_id, "friday", self._last_streamed_text)
+            else:
+                self.add_message("friday", final_text, persist=True)
+
         self._streaming_session_id = None
         QTimer.singleShot(60, self._scroll_to_bottom)
 
@@ -1350,6 +1435,30 @@ class ChatView(QWidget):
                             break
 
         QTimer.singleShot(60, self._scroll_to_bottom)
+
+    def clear_chat(self):
+        """Clears all chat bubbles from view."""
+        while self.chat_layout.count() > 1:
+            item = self.chat_layout.takeAt(0)
+            w = item.widget()
+            if w:
+                w.deleteLater()
+
+    def append_user_message(self, text: str) -> ChatBubble:
+        """Appends a user message bubble and returns the bubble instance."""
+        bubble = ChatBubble("user", text, self.chat_container)
+        insert_idx = max(0, self.chat_layout.count() - 1)
+        self.chat_layout.insertWidget(insert_idx, bubble)
+        QTimer.singleShot(50, self._scroll_to_bottom)
+        return bubble
+
+    def append_assistant_message(self, text: str = "") -> ChatBubble:
+        """Appends an assistant message bubble and returns the bubble instance."""
+        bubble = ChatBubble("friday", text, self.chat_container)
+        insert_idx = max(0, self.chat_layout.count() - 1)
+        self.chat_layout.insertWidget(insert_idx, bubble)
+        QTimer.singleShot(50, self._scroll_to_bottom)
+        return bubble
 
     def _scroll_to_bottom(self):
         vsb = self.scroll_area.verticalScrollBar()
@@ -1424,14 +1533,27 @@ class ChatView(QWidget):
                 border: 1px solid {p['accent_border']};
                 {base_style}
             """)
-        elif st == "IDLE":
-            if not self._current_streaming_bubble:
-                self._set_generating_state(False)
-            self.status_pill.setText("● MIC MUTED")
+        elif st in ["FAILED", "TIMED_OUT", "CANCELLED"]:
+            if self._current_streaming_bubble:
+                self.finish_stream("[Cancelled / Interrupted]")
+            self._set_generating_state(False)
+            self.status_pill.setText(f"● {st}")
             self.status_pill.setStyleSheet(f"""
                 color: {p['danger_red']};
                 background-color: {p['danger_red_bg']};
                 border: 1px solid {p['danger_red_border']};
+                {base_style}
+            """)
+            self.typing_indicator.hide_indicator()
+        elif st in ["IDLE", "MUTED", "COMPLETED", "RECOVERED"]:
+            if not self._current_streaming_bubble:
+                self._set_generating_state(False)
+            pill_text = "● MIC MUTED" if st in ["IDLE", "MUTED"] else f"● {st}"
+            self.status_pill.setText(pill_text)
+            self.status_pill.setStyleSheet(f"""
+                color: {p['text_secondary'] if st in ['STANDBY', 'COMPLETED', 'RECOVERED'] else p['danger_red']};
+                background-color: {p['danger_red_bg'] if st not in ['COMPLETED', 'RECOVERED'] else p['chip_bg']};
+                border: 1px solid {p['danger_red_border'] if st not in ['COMPLETED', 'RECOVERED'] else p['border_card']};
                 {base_style}
             """)
             self.typing_indicator.hide_indicator()

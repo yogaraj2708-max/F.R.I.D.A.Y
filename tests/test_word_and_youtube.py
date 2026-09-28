@@ -101,7 +101,7 @@ class TestWordAndYouTubeAutomation(unittest.TestCase):
 
         res = asyncio.run(self.brain.execute_smart_skill("open youtube and play golden brown"))
         self.assertIsNotNone(res)
-        self.assertIn("golden brown", res)
+        self.assertIn("golden brown", res.lower())
         mock_gatekeeper.assert_called()
         # Verify gatekeeper was called with the direct video URL
         intent_passed = mock_gatekeeper.call_args[0][0]
@@ -115,7 +115,7 @@ class TestWordAndYouTubeAutomation(unittest.TestCase):
 
         res = asyncio.run(self.brain.execute_smart_skill("open you tube and play golden solace"))
         self.assertIsNotNone(res)
-        self.assertIn("golden solace", res)
+        self.assertIn("golden solace", res.lower())
         mock_gatekeeper.assert_called()
         intent_passed = mock_gatekeeper.call_args[0][0]
         self.assertEqual(intent_passed.target, "https://www.youtube.com/watch?v=qvhM5AzhGiU&autoplay=1")
@@ -128,7 +128,7 @@ class TestWordAndYouTubeAutomation(unittest.TestCase):
 
         res = asyncio.run(self.brain.execute_smart_skill("open and play latest vidio of marvel"))
         self.assertIsNotNone(res)
-        self.assertIn("latest vidio of marvel", res)
+        self.assertIn("marvel studios thunderbolts", res.lower())
         mock_gatekeeper.assert_called()
         intent_passed = mock_gatekeeper.call_args[0][0]
         self.assertEqual(intent_passed.target, "https://www.youtube.com/watch?v=X1aFkAkFASk&autoplay=1")

@@ -1,0 +1,12 @@
+{
+  "timeout_hierarchy": {
+    "search_timeout_s": 8.0,
+    "http_fetch_timeout_s": 5.0,
+    "watchdog_idle_timeout_s": 45.0,
+    "watchdog_absolute_timeout_s": 240.0,
+    "synthesis_connect_timeout_s": 30.0,
+    "synthesis_read_timeout_s": 90.0
+  },
+  "watchdog_behavior": "Automated transition to TaskState.TIMED_OUT with state lock",
+  "verdict": "PASS"
+}

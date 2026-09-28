@@ -1,0 +1,13 @@
+{
+  "trace_id": "trace-bb-41a1e850",
+  "category": "Time",
+  "user_command": "what time is it",
+  "latency_ms": 0.3,
+  "response": "The current time is 10:02 PM, Boss.",
+  "expected_keywords": [
+    "current time is",
+    "m"
+  ],
+  "keywords_observed": true,
+  "verdict": "PASS"
+}

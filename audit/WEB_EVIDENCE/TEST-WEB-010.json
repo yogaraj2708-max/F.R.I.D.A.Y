@@ -1,0 +1,28 @@
+{
+  "trace_id": "trace-web-010-faaf67af",
+  "test_id": "TEST-WEB-010",
+  "user_text": "read http://127.0.0.1:58800/unique_json",
+  "router_result": "TIER_1_FAST_PATH_WEB",
+  "selected_skill": "web_reading",
+  "url": "http://127.0.0.1:58800/unique_json",
+  "method": "GET",
+  "timestamp": "2026-09-25T16:29:13Z",
+  "status_code": 200,
+  "headers": {
+    "server": "BaseHTTP/0.6 Python/3.11.9",
+    "date": "Fri, 25 Sep 2026 16:29:13 GMT",
+    "content-type": "application/json",
+    "content-length": "90"
+  },
+  "response_length": 90,
+  "raw_body_hash": "ee76be5766bc1930d6baa3b1865724c054583deb9377f2edd21ccc51c3ee4e89",
+  "parser": "json.loads",
+  "parsed_result": {
+    "tactical_id": "a53d7da6",
+    "quantum_state": "entangled_active",
+    "arbitrary_seed": 987654
+  },
+  "answer_source": "LIVE_HTTP_RESPONSE",
+  "final_output": "{'tactical_id': 'a53d7da6', 'quantum_state': 'entangled_active', 'arbitrary_seed': 987654}",
+  "verdict": "PASS"
+}

@@ -1,0 +1,61 @@
+{
+  "metadata": {
+    "title": "F.R.I.D.A.Y. 3.0 Security & Policy Boundary Matrix",
+    "version": "3.0.0"
+  },
+  "gates": [
+    {
+      "tier": "Tier 0",
+      "actions": [
+        "telemetry",
+        "weather",
+        "time",
+        "date",
+        "calculate",
+        "memory_recall"
+      ],
+      "auth": "Autonomous / Zero Risk"
+    },
+    {
+      "tier": "Tier 1",
+      "actions": [
+        "open_app",
+        "close_app",
+        "open_url",
+        "screenshot",
+        "adjust_volume",
+        "ui_type"
+      ],
+      "auth": "Gatekeeper Verified / Low Risk"
+    },
+    {
+      "tier": "Tier 2",
+      "actions": [
+        "delete_file",
+        "move_file",
+        "kill_process",
+        "write_file",
+        "docx_edit"
+      ],
+      "auth": "Explicit Confirmation / Single-Use Token Required"
+    },
+    {
+      "tier": "Tier 3",
+      "actions": [
+        "format_drive",
+        "shell_exec",
+        "shutdown",
+        "registry_write"
+      ],
+      "auth": "Allowlist Fenced / High Risk"
+    }
+  ],
+  "protections": {
+    "ssrf_protection": "Active (blocks loopback, RFC 1918, link-local, cloud metadata)",
+    "process_fence": "Active (protects 15 Windows kernel/core binaries)",
+    "path_fence": "Active (restricts file mutations to user profile roots and AppData)",
+    "rate_limiting": "Active (max 3 destructive operations / 60 seconds)",
+    "replay_protection": "Active (single-use cryptographic clearance nonces)",
+    "panic_mode": "Active (locks system mutations into observe-only mode)"
+  }
+}

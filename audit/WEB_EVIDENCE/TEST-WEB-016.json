@@ -1,0 +1,24 @@
+{
+  "trace_id": "trace-web-016-4e22a0d0",
+  "test_id": "TEST-WEB-016",
+  "user_text": "read http://127.0.0.1:58800/slow_response",
+  "router_result": "TIER_1_FAST_PATH_WEB",
+  "selected_skill": "web_reading",
+  "url": "http://127.0.0.1:58800/slow_response",
+  "method": "GET",
+  "timestamp": "2026-09-25T16:29:15Z",
+  "status_code": 200,
+  "headers": {
+    "server": "BaseHTTP/0.6 Python/3.11.9",
+    "date": "Fri, 25 Sep 2026 16:29:15 GMT",
+    "content-type": "text/plain",
+    "content-length": "37"
+  },
+  "response_length": 37,
+  "raw_body_hash": "3ebef6eef50b64e77e28a560462701024543ac928aa939daf27ec069aac79f10",
+  "parser": "timeout_monitored",
+  "parsed_result": "Completed within timeout threshold (1.01s)",
+  "answer_source": "LIVE_HTTP_RESPONSE",
+  "final_output": "Slow response successfully delivered.",
+  "verdict": "PASS"
+}

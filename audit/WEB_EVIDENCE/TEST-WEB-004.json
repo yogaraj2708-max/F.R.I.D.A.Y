@@ -1,0 +1,27 @@
+{
+  "trace_id": "trace-web-004-77df7747",
+  "test_id": "TEST-WEB-004",
+  "user_text": "read https://httpbin.org/uuid",
+  "router_result": "TIER_1_FAST_PATH_WEB",
+  "selected_skill": "web_reading",
+  "url": "https://httpbin.org/uuid",
+  "method": "GET",
+  "timestamp": "2026-09-25T16:29:11Z",
+  "status_code": 200,
+  "headers": {
+    "date": "Fri, 25 Sep 2026 16:29:13 GMT",
+    "content-type": "application/json",
+    "content-length": "53",
+    "connection": "keep-alive",
+    "server": "gunicorn/19.9.0",
+    "access-control-allow-origin": "*",
+    "access-control-allow-credentials": "true"
+  },
+  "response_length": 53,
+  "raw_body_hash": "3eacd69d3f67534691f9330f46e8ffc6112f1c26e0371e0ecab7af4f6ecdd051",
+  "parser": "json.loads",
+  "parsed_result": "f1997311-77f8-4fea-a69d-78c96cdd6ee5",
+  "answer_source": "LIVE_HTTP_RESPONSE",
+  "final_output": "f1997311-77f8-4fea-a69d-78c96cdd6ee5",
+  "verdict": "PASS"
+}

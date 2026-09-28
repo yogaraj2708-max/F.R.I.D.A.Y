@@ -1,0 +1,76 @@
+{
+  "subsystem": "Speech-to-Text Audio Device Management",
+  "audit_phase": "VOICE_STT_TTS_ZERO_TRUST_HARDENING",
+  "timestamp": "2026-09-28T12:20:00Z",
+  "device_enumeration": {
+    "engine": "sounddevice / PortAudio",
+    "total_devices_detected": 4,
+    "input_devices": [
+      {
+        "index": 0,
+        "name": "Microphone Array (Intel Smart Sound Technology for Digital Microphones)",
+        "hostapi": "MME",
+        "max_input_channels": 2,
+        "default_samplerate": 48000,
+        "tested_samplerates": {
+          "16000": "SUPPORTED_DIRECT",
+          "44100": "SUPPORTED_DIRECT",
+          "48000": "SUPPORTED_NATIVE"
+        },
+        "status": "READY",
+        "default_device": true
+      },
+      {
+        "index": 1,
+        "name": "Microphone Array (Intel Smart Sound Technology for Digital Microphones)",
+        "hostapi": "Windows WASAPI",
+        "max_input_channels": 4,
+        "default_samplerate": 48000,
+        "tested_samplerates": {
+          "16000": "SUPPORTED_DIRECT",
+          "48000": "SUPPORTED_NATIVE"
+        },
+        "status": "READY",
+        "default_device": false
+      }
+    ]
+  },
+  "runtime_scenarios": [
+    {
+      "scenario": "A. Valid configured microphone index",
+      "configured_device": 0,
+      "resolved_device": 0,
+      "sample_rate_negotiated": 16000,
+      "result": "PASS",
+      "notes": "Stream opens cleanly in synchronous blocking mode (0 PaErrorCode)"
+    },
+    {
+      "scenario": "B. No microphone present on host",
+      "configured_device": null,
+      "resolved_device": null,
+      "result": "PASS",
+      "notes": "Returns honest NO_INPUT_DEVICE_AVAILABLE, recovers to IDLE, text chat unaffected"
+    },
+    {
+      "scenario": "C. Disconnected microphone during runtime",
+      "injected_error": "PortAudio host error (-9999)",
+      "recovery_action": "Stream closes cleanly, consecutive_failures incremented, resets to default device",
+      "result": "PASS",
+      "notes": "Voice loop retries with backoff and stops after 5 attempts without crashing UI"
+    },
+    {
+      "scenario": "D. Invalid configured device ID (e.g. 99999)",
+      "configured_device": 99999,
+      "resolved_device": 0,
+      "result": "PASS",
+      "notes": "Automatically falls back to system default input device (Dev 0)"
+    },
+    {
+      "scenario": "E. Device changes during runtime (Ctrl+M / Settings switch)",
+      "action": "User changes audio_input_device setting dynamically",
+      "result": "PASS",
+      "notes": "Next recording cycle re-evaluates settings.get('audio_input_device') cleanly"
+    }
+  ],
+  "verification_status": "PASS"
+}

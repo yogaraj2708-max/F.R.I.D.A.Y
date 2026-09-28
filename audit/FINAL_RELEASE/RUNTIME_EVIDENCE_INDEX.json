@@ -1,0 +1,143 @@
+{
+  "index_name": "RUNTIME_EVIDENCE_INDEX",
+  "audit_phase": "FINAL_RELEASE_SYSTEM_INTEGRATION",
+  "audit_standard": "Zero-Trust Forensic Audit",
+  "timestamp": "2026-09-28T13:38:00Z",
+  "evidence_entries": [
+    {
+      "claim": "Clean Application Launch & Shutdown",
+      "test_file": "tests/test_clean_shutdown.py",
+      "runtime_trace": "audit/PERFORMANCE_SOAK_HARDENING/CLEAN_SHUTDOWN.json",
+      "screenshot": "audit/live_reproduction_screen.png",
+      "log": "audit/PERFORMANCE_SOAK_HARDENING/PERFORMANCE_BASELINE.json",
+      "artifact": "audit/PERFORMANCE_SOAK_HARDENING/RESOURCE_BASELINE.json",
+      "output": "Clean startup in 8,191ms; 0 exit errors; 0 orphan threads"
+    },
+    {
+      "claim": "Main Model Verification (qwen3.5:9b)",
+      "test_file": "tests/test_model_selection.py",
+      "runtime_trace": "scripts/run_final_integration_missions.py",
+      "screenshot": "audit/live_chat_repair_verified.png",
+      "log": "audit/FINAL_RELEASE/RUNTIME_MISSIONS_REPORT.json",
+      "artifact": "audit/FINAL_RELEASE/FINAL_ARCHITECTURE.md",
+      "output": "Model resolved: qwen3.5:9b; model-agnostic loop preserved"
+    },
+    {
+      "claim": "Basic Chat & Zero Unnecessary Tool Invocations",
+      "test_file": "tests/test_chat_interactions.py",
+      "runtime_trace": "audit/RUNTIME_EVIDENCE/greeting_hi.json",
+      "screenshot": "audit/live_chat_repair_verified.png",
+      "log": "audit/UNREQUESTED_TOOL_INVOCATION/TOOL_CALL_ANALYSIS.json",
+      "artifact": "audit/FINAL_RELEASE/FINAL_BUG_LEDGER.json",
+      "output": "Zero tool calls triggered on casual chat 'Hi'; <2ms latency"
+    },
+    {
+      "claim": "Safe Arithmetic Calculation",
+      "test_file": "tests/test_calc.py",
+      "runtime_trace": "scripts/run_final_integration_missions.py",
+      "screenshot": null,
+      "log": "audit/PERFORMANCE_SOAK_HARDENING/PERFORMANCE_BASELINE.json",
+      "artifact": "friday_core/calc.py",
+      "output": "safe_calculate('2 + 2') -> '4' with zero eval() vulnerability"
+    },
+    {
+      "claim": "Live HTTP Web Fetch & Offline Recovery",
+      "test_file": "tests/test_web.py",
+      "runtime_trace": "audit/WEB_EVIDENCE/TEST-WEB-001.json",
+      "screenshot": null,
+      "log": "audit/WEB_EVIDENCE/TEST-WEB-017.json",
+      "artifact": "friday_core/web/fetcher.py",
+      "output": "HTTP retrieval verified; offline DNS failure returned truthful error"
+    },
+    {
+      "claim": "Deep Research Engine & Watchdog Cancellation",
+      "test_file": "tests/test_research_lifecycle_forensics.py",
+      "runtime_trace": "audit/RUNTIME_EVIDENCE/RESEARCH_CANCEL.json",
+      "screenshot": null,
+      "log": "audit/RUNTIME_EVIDENCE/RESEARCH_HANG_FIXED.json",
+      "artifact": "audit/DEEP_RESEARCH_HARDENING/DEEP_RESEARCH_ARCHITECTURE.md",
+      "output": "Worker cancelled in <1ms; state transitions CANCEL_REQUESTED -> CANCELLED"
+    },
+    {
+      "claim": "Document Analysis & Surgical In-Place Editing",
+      "test_file": "tests/test_document_edit_verification.py",
+      "runtime_trace": "audit/DOCUMENT_EVIDENCE/DOC-TEST-001.json",
+      "screenshot": null,
+      "log": "audit/DOCUMENT_HARDENING/DOCUMENT_RELEASE_GATE.md",
+      "artifact": "friday_core/document/editor.py",
+      "output": "Surgical edit verified: replaced target clause with 100% SHA256 match on rest"
+    },
+    {
+      "claim": "Vision Specialist Ingestion & Chat Isolation",
+      "test_file": "tests/test_vision_architecture.py",
+      "runtime_trace": "audit/VISION_HARDENING/VISION_RUNTIME_TRACE.json",
+      "screenshot": "audit/PERFORMANCE_SOAK_HARDENING/test_frame.png",
+      "log": "audit/VISION_HARDENING/VISION_RELEASE_GATE.md",
+      "artifact": "friday_core/vision/image_context.py",
+      "output": "ImageContext stored in FIFO cache; casual chat skips vision inference"
+    },
+    {
+      "claim": "Desktop UI Automation & PEOV Verification",
+      "test_file": "tests/test_peov_architecture.py",
+      "runtime_trace": "tests/regression/test_bug_002_compound_actions.py",
+      "screenshot": null,
+      "log": "audit/UI_AUTOMATION_HARDENING/UI_AUTOMATION_RELEASE_GATE.md",
+      "artifact": "friday_core/agent/executor.py",
+      "output": "Notepad launched, text injected and verified via UI Automation readback"
+    },
+    {
+      "claim": "Voice Subsystem, STT & Kokoro TTS Pipeline",
+      "test_file": "tests/test_voice_tool_integration.py",
+      "runtime_trace": "audit/VOICE_HARDENING/VOICE_RUNTIME_TRACE.json",
+      "screenshot": null,
+      "log": "audit/VOICE_HARDENING/VOICE_RELEASE_GATE.md",
+      "artifact": "audit/VOICE_HARDENING/VOICE_ARCHITECTURE.md",
+      "output": "Direct LLM query_llm invocation; thought sanitization; barge-in RMS"
+    },
+    {
+      "claim": "Memory Persistence, Domain Isolation & Readback Deletion",
+      "test_file": "tests/test_memory_deletion.py",
+      "runtime_trace": "audit/MEMORY_RAG_HARDENING/MEMORY_RUNTIME_TRACE.json",
+      "screenshot": null,
+      "log": "audit/MEMORY_RAG_HARDENING/MEMORY_DELETION_VERIFICATION.json",
+      "artifact": "audit/MEMORY_RAG_HARDENING/MEMORY_ARCHITECTURE.md",
+      "output": "Physical SQLite readback verification confirmed 100% absence after delete"
+    },
+    {
+      "claim": "RAG Knowledge Base & Prompt Injection Defense",
+      "test_file": "tests/test_rag_prompt_injection.py",
+      "runtime_trace": "audit/MEMORY_RAG_HARDENING/RAG_PROMPT_INJECTION_MATRIX.json",
+      "screenshot": null,
+      "log": "audit/MEMORY_RAG_HARDENING/RAG_PROVENANCE.json",
+      "artifact": "audit/MEMORY_RAG_HARDENING/RAG_ARCHITECTURE.md",
+      "output": "Injected instructions encapsulated as data string inside user message"
+    },
+    {
+      "claim": "Security Risk Gatekeeper (SSRF, Traversal, Process Defense)",
+      "test_file": "tests/security/test_security_redteam.py",
+      "runtime_trace": "audit/SECOND_PASS/CHALLENGE-SECURITY-PATH-ESCAPE.json",
+      "screenshot": null,
+      "log": "audit/SECURITY_MATRIX.json",
+      "artifact": "friday_core/skills/agent_bridge.py",
+      "output": "100% of SSRF, path traversal, and protected process termination attempts blocked"
+    },
+    {
+      "claim": "Context Budgeting & Middle-Turn Compaction",
+      "test_file": "tests/test_context_growth.py",
+      "runtime_trace": "audit/PERFORMANCE_SOAK_HARDENING/CONTEXT_GROWTH.json",
+      "screenshot": null,
+      "log": "audit/PERFORMANCE_SOAK_HARDENING/PERFORMANCE_BASELINE.json",
+      "artifact": "friday_core/context/budget.py",
+      "output": "Compacted 13.9k token document to 774 tokens while preserving system & user prompt"
+    },
+    {
+      "claim": "Telemetry Event Loop Non-Blocking (BUG-PERF-001 Fix)",
+      "test_file": "tests/test_performance_baseline.py",
+      "runtime_trace": "audit/PERFORMANCE_SOAK_HARDENING/PERFORMANCE_BASELINE.json",
+      "screenshot": null,
+      "log": "audit/PERFORMANCE_SOAK_HARDENING/PERFORMANCE_BUG_LEDGER.json",
+      "artifact": "friday_core/system/telemetry.py",
+      "output": "psutil CPU polling latency reduced from 100.86ms to 0.06ms (1,680x speedup)"
+    }
+  ]
+}

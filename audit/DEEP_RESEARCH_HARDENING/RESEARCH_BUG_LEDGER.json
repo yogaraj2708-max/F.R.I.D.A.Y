@@ -1,0 +1,45 @@
+{
+  "audited_subsystem": "DEEP_RESEARCH",
+  "bugs_discovered_and_resolved": [
+    {
+      "id": "DR-BUG-001",
+      "component": "friday_ui.core.engine:dispatch_agent_tool",
+      "severity": "CRITICAL",
+      "description": "Snippet-Only False Research: Native tool deep_research returned raw DuckDuckGo snippet bodies without reading actual pages.",
+      "repair": "Routed tool call through DeepResearchEngine with fetch_page_content_detailed, requiring >=50 chars for verification.",
+      "verification": "test_deep_research_forensics.py, test_phase11_deep_research.py"
+    },
+    {
+      "id": "DR-BUG-002",
+      "component": "friday_ui.core.engine:web_fetch",
+      "severity": "HIGH",
+      "description": "SSRF vulnerability: native tool web_fetch used raw httpx without IP/subnet filtering.",
+      "repair": "Replaced with guarded web_fetch using is_safe_url, _NO_REDIRECT_OPENER, and prompt delimiters.",
+      "verification": "test_research_ssrf.py"
+    },
+    {
+      "id": "DR-BUG-003",
+      "component": "friday_core.research.worker:DeepResearchWorker",
+      "severity": "HIGH",
+      "description": "Model Architecture: Silent fallback to hard-coded llama3.2:1b during synthesis errors.",
+      "repair": "Dynamically resolved user-selected model from settings (qwen3.5:9b); compile honest fallback report from verified citations without model switching.",
+      "verification": "test_phase11_deep_research.py"
+    },
+    {
+      "id": "DR-BUG-004",
+      "component": "friday_core.research.worker:DeepResearchWorker",
+      "severity": "MEDIUM",
+      "description": "Prompt Injection: Web snippet text was placed unshielded in synthesis user prompt.",
+      "repair": "Wrapped source context in PROMPT_DELIMITER_START / PROMPT_DELIMITER_END and appended explicit security directives.",
+      "verification": "test_research_prompt_injection.py"
+    },
+    {
+      "id": "DR-BUG-005",
+      "component": "friday_core.research.worker:DeepResearchWorker",
+      "severity": "HIGH",
+      "description": "False Success on 100% Unverified Pages: If all pages failed to load, worker attempted to synthesize claims from snippets.",
+      "repair": "Enforced zero-source fail-closed check halting with TaskState.FAILED and honest inconclusive report.",
+      "verification": "test_research_false_success.py"
+    }
+  ]
+}

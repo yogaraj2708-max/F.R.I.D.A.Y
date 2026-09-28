@@ -1,0 +1,15 @@
+{
+  "benchmark": "24-Page Transformer PDF Analysis",
+  "pdf_path": "C:\\Users\\Admin\\Downloads\\Single_Phase_3_Phase_Transformer_Centum_Visual_Guide.pdf",
+  "model_name": "deepseek-r1:8b",
+  "total_pages": 24,
+  "total_chars_extracted": 14434,
+  "visual_pages_inspected": 0,
+  "duration_s": 816.47,
+  "tokens_streamed": 1900,
+  "tokens_per_second": 2.34,
+  "ram_peak_mb": 212.81,
+  "ram_retained_mb": 188.39,
+  "gui_max_latency_ms": 278.059,
+  "status": "PASS"
+}

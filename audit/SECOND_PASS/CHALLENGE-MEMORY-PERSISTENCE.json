@@ -1,0 +1,12 @@
+{
+  "challenge_id": "CHALLENGE-MEMORY-PERSISTENCE",
+  "disproof_hypothesis": "Stored preference facts exist only in ephemeral process memory and are lost across instances.",
+  "execution_details": {
+    "key": "quantum_key_acb3af",
+    "expected": "val_5a3ed1",
+    "reloaded": "val_5a3ed1"
+  },
+  "pass_claim_disproven": false,
+  "final_verdict": "PASS",
+  "timestamp": "2026-09-25T16:33:18Z"
+}

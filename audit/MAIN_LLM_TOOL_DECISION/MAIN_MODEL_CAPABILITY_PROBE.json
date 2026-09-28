@@ -1,0 +1,65 @@
+{
+  "qwen2.5vl:3b": {
+    "model_name": "qwen2.5vl:3b",
+    "provider": "ollama",
+    "capability_status": "BLOCKED",
+    "native_tool_capable": false,
+    "probed_at": "2026-09-27T11:35:59.949174+00:00"
+  },
+  "friday-decider:latest": {
+    "model_name": "friday-decider:latest",
+    "provider": "ollama",
+    "capability_status": "UNAVAILABLE",
+    "native_tool_capable": false,
+    "probed_at": "2026-09-27T11:36:03.350889+00:00"
+  },
+  "llama3.2:1b": {
+    "model_name": "llama3.2:1b",
+    "provider": "ollama",
+    "capability_status": "VERIFIED",
+    "native_tool_capable": true,
+    "probed_at": "2026-09-27T11:36:05.947983+00:00"
+  },
+  "qwen2.5:0.5b": {
+    "model_name": "qwen2.5:0.5b",
+    "provider": "ollama",
+    "capability_status": "VERIFIED",
+    "native_tool_capable": true,
+    "probed_at": "2026-09-27T11:36:06.076774+00:00"
+  },
+  "qwen3.5:9b": {
+    "model_name": "qwen3.5:9b",
+    "provider": "ollama",
+    "capability_status": "VERIFIED",
+    "native_tool_capable": true,
+    "probed_at": "2026-09-27T11:36:29.511895+00:00"
+  },
+  "jarvis:latest": {
+    "model_name": "jarvis:latest",
+    "provider": "ollama",
+    "capability_status": "UNAVAILABLE",
+    "native_tool_capable": false,
+    "probed_at": "2026-09-27T11:36:55.348306+00:00"
+  },
+  "deepseek-r1:8b": {
+    "model_name": "deepseek-r1:8b",
+    "provider": "ollama",
+    "capability_status": "UNAVAILABLE",
+    "native_tool_capable": false,
+    "probed_at": "2026-09-27T11:37:04.915832+00:00"
+  },
+  "friday-model:latest": {
+    "model_name": "friday-model:latest",
+    "provider": "ollama",
+    "capability_status": "UNAVAILABLE",
+    "native_tool_capable": false,
+    "probed_at": "2026-09-27T11:37:13.891275+00:00"
+  },
+  "qwen2.5-coder:latest": {
+    "model_name": "qwen2.5-coder:latest",
+    "provider": "ollama",
+    "capability_status": "UNAVAILABLE",
+    "native_tool_capable": false,
+    "probed_at": "2026-09-27T11:37:14.626403+00:00"
+  }
+}

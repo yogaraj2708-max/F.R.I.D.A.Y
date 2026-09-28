@@ -1,0 +1,13 @@
+{
+  "trace_id": "trace-bb-ffe8cc00",
+  "category": "Identity",
+  "user_command": "who are you",
+  "latency_ms": 0.14,
+  "response": "I am F.R.I.D.A.Y. 3.0, Boss's designated tactical assistant, local system copilot, and engineering agent. Running on Windows 11.",
+  "expected_keywords": [
+    "f.r.i.d.a.y.",
+    "tactical"
+  ],
+  "keywords_observed": true,
+  "verdict": "PASS"
+}

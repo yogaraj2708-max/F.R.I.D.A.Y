@@ -1,0 +1,30 @@
+{
+  "trace_id": "trace-web-005-66b822c4",
+  "test_id": "TEST-WEB-005",
+  "user_text": "read https://api.ipify.org?format=json",
+  "router_result": "TIER_1_FAST_PATH_WEB",
+  "selected_skill": "web_reading",
+  "url": "https://api.ipify.org?format=json",
+  "method": "GET",
+  "timestamp": "2026-09-25T16:29:12Z",
+  "status_code": 200,
+  "headers": {
+    "date": "Fri, 25 Sep 2026 16:29:13 GMT",
+    "content-type": "application/json",
+    "content-length": "22",
+    "connection": "keep-alive",
+    "server": "cloudflare",
+    "vary": "Origin",
+    "cf-cache-status": "DYNAMIC",
+    "cf-ray": "a40b680e09c29f61-MAA"
+  },
+  "response_length": 22,
+  "raw_body_hash": "e7b3355de32cc8ae605d761686d0766b3156f44b955737dfa7804db28c932811",
+  "parser": "json.loads",
+  "parsed_result": {
+    "ip": "106.192.70.36"
+  },
+  "answer_source": "LIVE_HTTP_RESPONSE",
+  "final_output": "{'ip': '106.192.70.36'}",
+  "verdict": "PASS"
+}

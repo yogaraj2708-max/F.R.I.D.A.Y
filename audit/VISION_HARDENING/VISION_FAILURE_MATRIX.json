@@ -1,0 +1,48 @@
+{
+  "title": "F.R.I.D.A.Y. 3.0 Vision Failure & Fault Injection Matrix",
+  "generated_at": "2026-09-27T21:23:00Z",
+  "scenarios": [
+    {
+      "fault_scenario": "Ollama service offline / port unreachable",
+      "simulation": "Endpoint http://localhost:99999",
+      "reported_status": "OFFLINE",
+      "system_behavior": "Honest failure returned: 'Ollama service is offline or unreachable'. UI notifies user without hallucinating.",
+      "status": "PASS"
+    },
+    {
+      "fault_scenario": "Configured vision model not pulled / missing",
+      "simulation": "Ollama tags contain only text models",
+      "reported_status": "UNAVAILABLE",
+      "system_behavior": "Honest failure returned: 'Specialist vision model is not available in Ollama (UNAVAILABLE)'. No silent substitution.",
+      "status": "PASS"
+    },
+    {
+      "fault_scenario": "Ollama HTTP 500 / internal error",
+      "simulation": "HTTP 500 status returned from /api/generate",
+      "reported_status": "ERROR",
+      "system_behavior": "Honest error returned indicating HTTP 500 status; conversational brain receives failure cleanly.",
+      "status": "PASS"
+    },
+    {
+      "fault_scenario": "Vision model returns empty response",
+      "simulation": "Response field empty string",
+      "reported_status": "FAILED_EMPTY_RESPONSE",
+      "system_behavior": "System refuses to fabricate results; reports empty response failure.",
+      "status": "PASS"
+    },
+    {
+      "fault_scenario": "Vision model returns malformed JSON",
+      "simulation": "Response is unformatted natural language text",
+      "reported_status": "RECOVERED_DEGRADED",
+      "system_behavior": "Robust fallback extracts description and sets uncertainty to UNCERTAIN; no unhandled exception.",
+      "status": "PASS"
+    },
+    {
+      "fault_scenario": "Inference read timeout (> 75s)",
+      "simulation": "httpx.TimeoutException raised",
+      "reported_status": "TIMEOUT",
+      "system_behavior": "Operation aborted, resources cleaned up, returns 'Vision model request timed out'.",
+      "status": "PASS"
+    }
+  ]
+}

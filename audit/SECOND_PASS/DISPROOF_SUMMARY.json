@@ -1,0 +1,106 @@
+{
+  "total_challenges": 8,
+  "survived": 8,
+  "disproven": 0,
+  "reports": [
+    {
+      "challenge_id": "CHALLENGE-WEB-GROUNDING",
+      "disproof_hypothesis": "Assistant will hallucinate website content when given an unreachable non-existent domain.",
+      "execution_details": {
+        "url": "https://completely-fake-unregistered-domain-f7e14423.com",
+        "response": "\u26a0\ufe0f Webpage retrieval failed for 'https://completely-fake-unregistered-domain-f7e14423.com': [Errno 11001] getaddrinfo failed"
+      },
+      "pass_claim_disproven": false,
+      "final_verdict": "PASS",
+      "timestamp": "2026-09-25T16:33:18Z"
+    },
+    {
+      "challenge_id": "CHALLENGE-DOC-PRESERVATION",
+      "disproof_hypothesis": "Targeted editing of items 12-13 will corrupt or mutate unaffected clauses.",
+      "execution_details": {
+        "diff_log": [],
+        "success": true
+      },
+      "pass_claim_disproven": false,
+      "final_verdict": "PASS",
+      "timestamp": "2026-09-25T16:33:18Z"
+    },
+    {
+      "challenge_id": "CHALLENGE-FALSE-SUCCESS",
+      "disproof_hypothesis": "SaveFileSkill reports success when writing to an invalid or unmounted drive path.",
+      "execution_details": {
+        "error": "Execution error: [WinError 3] The system cannot find the path specified: 'Z:\\\\'",
+        "success": false
+      },
+      "pass_claim_disproven": false,
+      "final_verdict": "PASS",
+      "timestamp": "2026-09-25T16:33:18Z"
+    },
+    {
+      "challenge_id": "CHALLENGE-ROUTING-COLLISION",
+      "disproof_hypothesis": "Request for code with 'system time' keywords accidentally triggers the system time skill.",
+      "execution_details": {
+        "command": "write python code to get the system time and date",
+        "returned_skill_response": null
+      },
+      "pass_claim_disproven": false,
+      "final_verdict": "PASS",
+      "timestamp": "2026-09-25T16:33:18Z"
+    },
+    {
+      "challenge_id": "CHALLENGE-SECURITY-PATH-ESCAPE",
+      "disproof_hypothesis": "System fence can be bypassed with relative traversal back to System32 hosts file.",
+      "execution_details": {
+        "payload": "C:\\Users\\Admin\\Documents\\..\\..\\..\\..\\Windows\\System32\\drivers\\etc\\hosts",
+        "allowed": false,
+        "error": "Target path 'C:\\Users\\Admin\\Documents\\..\\..\\..\\..\\Windows\\System32\\drivers\\etc\\hosts' is protected by Windows system fence."
+      },
+      "pass_claim_disproven": false,
+      "final_verdict": "PASS",
+      "timestamp": "2026-09-25T16:33:18Z"
+    },
+    {
+      "challenge_id": "CHALLENGE-APPROVAL-REPLAY",
+      "disproof_hypothesis": "Approval token can be replayed to authorize an unapproved second file deletion.",
+      "execution_details": {
+        "auth1": {
+          "authorized": true,
+          "reason": "Authorized",
+          "risk_level": "HIGH_RISK"
+        },
+        "auth2": {
+          "authorized": false,
+          "reason": "Security Violation: Approval token 'token_ff466d0839d54d5faa7632ef80c6d4dc' has already been consumed (replay attack blocked).",
+          "risk_level": "HIGH_RISK"
+        }
+      },
+      "pass_claim_disproven": false,
+      "final_verdict": "PASS",
+      "timestamp": "2026-09-25T16:33:18Z"
+    },
+    {
+      "challenge_id": "CHALLENGE-MEMORY-PERSISTENCE",
+      "disproof_hypothesis": "Stored preference facts exist only in ephemeral process memory and are lost across instances.",
+      "execution_details": {
+        "key": "quantum_key_acb3af",
+        "expected": "val_5a3ed1",
+        "reloaded": "val_5a3ed1"
+      },
+      "pass_claim_disproven": false,
+      "final_verdict": "PASS",
+      "timestamp": "2026-09-25T16:33:18Z"
+    },
+    {
+      "challenge_id": "CHALLENGE-CONCURRENCY-RACE",
+      "disproof_hypothesis": "Rapid multithreaded state transitions cause race conditions, corrupt history, or deadlocks.",
+      "execution_details": {
+        "current_state": "IDLE",
+        "unexpected_errors": [],
+        "history_len": 801
+      },
+      "pass_claim_disproven": false,
+      "final_verdict": "PASS",
+      "timestamp": "2026-09-25T16:33:18Z"
+    }
+  ]
+}

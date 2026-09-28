@@ -1,0 +1,13 @@
+{
+  "trace_id": "trace-bb-5a5c34f7",
+  "category": "Volume",
+  "user_command": "volume down",
+  "latency_ms": 3.81,
+  "response": "Master volume decreased.",
+  "expected_keywords": [
+    "volume decreased",
+    "decreased"
+  ],
+  "keywords_observed": true,
+  "verdict": "PASS"
+}

@@ -1,0 +1,8 @@
+{
+  "test_id": "VISION-TEST-003",
+  "description": "Second Follow-Up -> zero vision re-runs -> reads from visible_text context",
+  "duration_s": 33.41,
+  "vision_model_invoked": false,
+  "main_model_reply_preview": "Boss, the visible text in the provided image was:\n\n- **Panel Title:** `F.R.I.D.A.Y Core Diagnostics Panel`\n- **Alert Message:** `Alert 99.4% Memory`\n- **Active Process:** `IronManTelemetry.exe`\n- **System Metrics:** \n  - `CPU Frequency: 4.8 GHz`\n  - ",
+  "verdict": "PASS"
+}

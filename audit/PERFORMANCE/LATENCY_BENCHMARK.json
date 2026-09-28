@@ -1,0 +1,148 @@
+{
+  "benchmark_timestamp": "2026-09-25T16:32:23Z",
+  "total_commands_benchmarked": 27,
+  "latencies_ms": {
+    "p50": 0.78,
+    "p95": 335.74,
+    "p99": 2793.09,
+    "min": 0.04,
+    "max": 2793.09
+  },
+  "breakdown": [
+    {
+      "category": "Greeting",
+      "command": "hi",
+      "latency_ms": 2.5624999980209395
+    },
+    {
+      "category": "Greeting",
+      "command": "hello",
+      "latency_ms": 0.0636000040685758
+    },
+    {
+      "category": "Greeting",
+      "command": "hey friday",
+      "latency_ms": 0.04489999992074445
+    },
+    {
+      "category": "Greeting",
+      "command": "good morning",
+      "latency_ms": 0.07689999620197341
+    },
+    {
+      "category": "Greeting",
+      "command": "yo",
+      "latency_ms": 0.09000000136438757
+    },
+    {
+      "category": "Greeting",
+      "command": "hello friday",
+      "latency_ms": 0.05819999933009967
+    },
+    {
+      "category": "Identity",
+      "command": "who are you",
+      "latency_ms": 0.14180000289343297
+    },
+    {
+      "category": "Capabilities",
+      "command": "what can you do",
+      "latency_ms": 0.06289999873843044
+    },
+    {
+      "category": "Telemetry",
+      "command": "what's the battery level",
+      "latency_ms": 7.986500000697561
+    },
+    {
+      "category": "Telemetry",
+      "command": "check cpu",
+      "latency_ms": 101.21179999987362
+    },
+    {
+      "category": "Telemetry",
+      "command": "ram usage",
+      "latency_ms": 0.7752000019536354
+    },
+    {
+      "category": "Telemetry",
+      "command": "system diagnostics",
+      "latency_ms": 0.556399994820822
+    },
+    {
+      "category": "Time",
+      "command": "what time is it",
+      "latency_ms": 0.3023999961442314
+    },
+    {
+      "category": "Date",
+      "command": "what is today's date",
+      "latency_ms": 0.26339999749325216
+    },
+    {
+      "category": "Volume",
+      "command": "volume up",
+      "latency_ms": 8.720199999515899
+    },
+    {
+      "category": "Volume",
+      "command": "volume down",
+      "latency_ms": 3.8138000018079765
+    },
+    {
+      "category": "Volume",
+      "command": "myute the volume",
+      "latency_ms": 2793.092100000649
+    },
+    {
+      "category": "Volume",
+      "command": "unmute",
+      "latency_ms": 57.79650000476977
+    },
+    {
+      "category": "Calculator",
+      "command": "calculate 25 * 4",
+      "latency_ms": 0.4411999980220571
+    },
+    {
+      "category": "Calculator",
+      "command": "what is sqrt(144)",
+      "latency_ms": 0.40699999954085797
+    },
+    {
+      "category": "Timer",
+      "command": "set a timer for 10 seconds",
+      "latency_ms": 58.552700000291225
+    },
+    {
+      "category": "Timer",
+      "command": "check timer status",
+      "latency_ms": 0.08800000068731606
+    },
+    {
+      "category": "Timer",
+      "command": "cancel timer",
+      "latency_ms": 0.9207999974023551
+    },
+    {
+      "category": "Memory",
+      "command": "remember that my call sign is Maverick",
+      "latency_ms": 10.898799999267794
+    },
+    {
+      "category": "Memory",
+      "command": "what is my call sign",
+      "latency_ms": 3.4630000009201467
+    },
+    {
+      "category": "Memory",
+      "command": "forget my call sign",
+      "latency_ms": 10.65799999923911
+    },
+    {
+      "category": "Web",
+      "command": "read the heading of https://example.com",
+      "latency_ms": 335.7410000025993
+    }
+  ]
+}

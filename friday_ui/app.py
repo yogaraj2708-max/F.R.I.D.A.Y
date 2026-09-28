@@ -173,12 +173,7 @@ def main():
                 else:
                     command_bar.set_state("idle")
             else:
-                kb_results = await window.vector_store.query_async(command, top_k=1)
-                kb_context = ""
-                if kb_results and kb_results[0]["score"] > 0.12:
-                    kb_context = f"\n[Relevant Local Knowledge: {kb_results[0]['content'][:300]}]"
-                prompt_text = command + kb_context if kb_context else command
-                reply = await window.brain.query_llm(prompt_text, stream_to_ui=True, stream_to_speech=True)
+                reply = await window.brain.query_llm(command, stream_to_ui=True, stream_to_speech=True)
                 command_bar.show_response(reply)
                 command_bar.set_state("idle")
         except Exception as ex:

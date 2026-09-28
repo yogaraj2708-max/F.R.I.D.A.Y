@@ -1,0 +1,48 @@
+{
+  "audit_target": "Task Supervisor Watchdog Timeout Handling",
+  "timestamp": "2026-09-27T14:05:08.367639+00:00",
+  "task_id": "task_1790517906166_0b2a27",
+  "expected_timeout_s": 2.0,
+  "actual_detection_s": 2.201,
+  "terminal_state": "TIMED_OUT",
+  "verification_status": "PASS",
+  "lifecycle_events": [
+    {
+      "timestamp_offset_s": 0.0,
+      "stage": "TASK_LIFECYCLE",
+      "status": "CREATED",
+      "details": {
+        "task_id": "task_1790517906166_0b2a27",
+        "timeout_seconds": 2.0
+      }
+    },
+    {
+      "timestamp_offset_s": 0.0,
+      "stage": "TASK_LIFECYCLE",
+      "status": "RUNNING",
+      "details": {
+        "task_id": "task_1790517906166_0b2a27"
+      }
+    },
+    {
+      "timestamp_offset_s": 2.201,
+      "stage": "SIMULATION",
+      "status": "HEARTBEAT_EXPIRED",
+      "details": {
+        "elapsed_s": 2.201
+      }
+    },
+    {
+      "timestamp_offset_s": 2.201,
+      "stage": "SUPERVISOR_WATCHDOG",
+      "status": "INSPECTION_RUN",
+      "details": {
+        "expired_tasks": [
+          "task_1790517906166_0b2a27"
+        ],
+        "state_after_check": "TIMED_OUT"
+      }
+    }
+  ],
+  "verdict": "SUPERVISOR_ENFORCED_HARD_DEADLINE_AND_TRANSITIONED_TO_TIMED_OUT"
+}

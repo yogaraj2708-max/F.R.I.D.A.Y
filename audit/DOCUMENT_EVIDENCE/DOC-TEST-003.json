@@ -1,0 +1,12 @@
+{
+  "trace_id": "trace-doc-003-a3bd457e",
+  "test_id": "DOC-TEST-003",
+  "headings_preserved": [
+    "Master Defense Procurement Agreement",
+    "Section 1: Technical & Operational Directives",
+    "Section 2: Sign-Off Matrix"
+  ],
+  "table_count": 1,
+  "table_content_verified": true,
+  "verdict": "PASS"
+}

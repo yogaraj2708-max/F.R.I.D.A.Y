@@ -1,0 +1,27 @@
+{
+  "audit_phase": "MEMORY_RAG_ZERO_TRUST_HARDENING",
+  "test_suite": "tests/test_memory_session_isolation.py",
+  "session_isolation_verification": {
+    "test_case_1": {
+      "name": "Session A vs Session B Strict Partitioning",
+      "session_A_action": "store secret_token = TOKEN_ALPHA_SECRET with scope='session'",
+      "session_B_action": "store secret_token = TOKEN_BRAVO_SECRET with scope='session'",
+      "session_B_query_A": "Returned TOKEN_BRAVO_SECRET (did not leak TOKEN_ALPHA_SECRET)",
+      "session_C_query": "Returned None (strict isolation for unassociated sessions)",
+      "result": "PASS"
+    },
+    "test_case_2": {
+      "name": "Cross-Restart Session Isolation",
+      "action": "Close SQLite connection, open new MemoryStore instance, query session_A and session_B",
+      "verification": "Session A recovered 'Focus Alpha'; Session B recovered 'Focus Beta'; foreign session returned None",
+      "result": "PASS"
+    },
+    "test_case_3": {
+      "name": "Explicit Global Sharing",
+      "action": "Store system_name = 'FRIDAY_MAIN' with scope='global'",
+      "verification": "Both session_X and session_Y successfully retrieve 'FRIDAY_MAIN'",
+      "result": "PASS"
+    }
+  },
+  "overall_verdict": "PASS"
+}

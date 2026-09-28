@@ -1,0 +1,67 @@
+{
+  "trace_id": "trace-nvidia-live-001",
+  "session_id": "test_session",
+  "main_model": "llama3.2:1b",
+  "provider": "ollama",
+  "prompt": "What's happening with NVIDIA right now?",
+  "available_tools": [
+    "web_search",
+    "calculate",
+    "system_telemetry",
+    "read_document",
+    "analyze_image",
+    "launch_app",
+    "type_text",
+    "weather",
+    "system_time_date",
+    "web_fetch",
+    "inspect_ui",
+    "click_control",
+    "timer",
+    "deep_research",
+    "audio_volume",
+    "app_launcher",
+    "file_organizer",
+    "word_drafter",
+    "ui_type_text",
+    "app_search",
+    "app_navigate",
+    "ui_key_press",
+    "save_file",
+    "ui_focus",
+    "ui_verify_content",
+    "content_generation",
+    "browser_navigate",
+    "browser_download",
+    "screenshot",
+    "clipboard",
+    "file_search",
+    "file_select",
+    "create_file",
+    "memory"
+  ],
+  "native_tool_call_detected": true,
+  "tool_calls": [
+    {
+      "tool_call_id": "call_nvidia_web_001",
+      "tool_name": "web_search",
+      "tool_arguments": {
+        "query": "NVIDIA latest news and financial results"
+      },
+      "risk_status": "AUTHORIZED",
+      "execution_status": "SUCCESS",
+      "verification_status": "VERIFIED",
+      "tool_result_returned": true,
+      "loop_iteration": 1
+    }
+  ],
+  "second_turn_request": {
+    "model": "llama3.2:1b",
+    "messages_count": 4,
+    "tool_result_present": true
+  },
+  "loop_iteration": 2,
+  "final_status": "COMPLETED",
+  "final_answer": "NVIDIA reports strong data center revenue driven by accelerated demand for Blackwell GPUs.",
+  "executed_at": "2026-09-27T11:37:14.652331+00:00"
+}

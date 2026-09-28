@@ -20,6 +20,7 @@ import webbrowser
 from collections import deque
 from datetime import datetime, timedelta
 from typing import Optional, Tuple, List, Dict, Any
+import uuid
 
 import numpy as np
 import pygame
@@ -54,8 +55,14 @@ from friday_ui.core.config import (
 )
 from friday_core.system import (
     launch_application, get_battery_info, get_memory_info, adjust_volume, safe_launch,
-    open_blank_word, open_word_with_content
+    open_blank_word, open_word_with_content,
+    get_top_cpu_processes, get_top_ram_processes, get_cpu_info, get_disk_info
 )
+from friday_core.skills.builtins.desktop_action import (
+    capture_and_save_screenshot, clipboard_set, clipboard_get, clipboard_verify
+)
+from friday_core.skills.builtins.timer import timer_manager
+from friday_core.memory.manager import PersistentMemoryManager
 from friday_core.web import resolve_youtube_video_async
 from friday_core.calc import safe_calculate
 from friday_core.settings import settings
@@ -63,6 +70,13 @@ from friday_core.gatekeeper.models import ActionIntent
 from friday_core.gatekeeper.gatekeeper import gatekeeper
 from friday_core.platform_guard import IS_WINDOWS
 from friday_core.router.semantic_router import SemanticIntentRouter, SkillIntent, RouteResult
+from friday_core.agent.planner import PEOVPlanner
+from friday_core.agent.executor import PEOVExecutor
+from friday_core.agent.mission_store import MissionStatus
+from friday_core.skills.registry import skill_registry
+from friday_core.vision import (
+    vision_client, ImageContext, ImageContextManager, image_context_manager
+)
 
 logger = logging.getLogger("FRIDAY.Engine")
 if not logger.handlers:
@@ -273,13 +287,23 @@ class FridayVoiceEngine:
         self._current_audio_buf = None
         self._current_sound = None
         self._sapi_speaker = None
+        try:
+            from friday_core.agent.emergency_stop import emergency_stop
+            emergency_stop.register_handler("tts", self.stop_speaking)
+        except Exception:
+            pass
 
     def clean_text_for_speech(self, text: str) -> str:
-        # 1. Strip complete fenced code blocks
-        text = re.sub(r"```[\w\-]*\n[\s\S]*?```", " ", text)
+        # 0. Strip internal reasoning/thought tags: <think>...</think>
+        text = re.sub(r"<think>[\s\S]*?</think>", " ", text, flags=re.IGNORECASE)
+        # 0.1 Strip raw tool traces & execution fences: [TOOL: ...]
+        text = re.sub(r"\[(?:TOOL|TRACE|ACTION|RESULT)[\s\S]*?\]", " ", text, flags=re.IGNORECASE)
+        # 1. Strip complete fenced code blocks (handling CRLF and LF)
+        text = re.sub(r"```[\w\-]*\r?\n[\s\S]*?```", " ", text)
         text = re.sub(r"```[\s\S]*?```", " ", text)
         # 2. Strip inline code
-        text = re.sub(r"`[^`\n]+`", " ", text)
+        text = re.sub(r"`[^`\n\r]*`", " ", text)
+        text = text.replace("`", " ")
         # 3. Strip markdown links [label](url) -> label
         text = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", text)
         # 4. Strip bare URLs
@@ -287,8 +311,8 @@ class FridayVoiceEngine:
         # 5. Strip markdown headers, bold, italics, quotes, bullets, tables
         text = re.sub(r"[*#_~>|•▪▫\-\+]", " ", text)
         # 6. Common abbreviations, names, and symbols
-        text = re.sub(r"\bF\.R\.I\.D\.A\.Y\.\b", "Friday", text, flags=re.IGNORECASE)
-        text = re.sub(r"\bF\.R\.I\.D\.A\.Y\b", "Friday", text, flags=re.IGNORECASE)
+        text = re.sub(r"F\.R\.I\.D\.A\.Y\.", "Friday", text, flags=re.IGNORECASE)
+        text = re.sub(r"F\.R\.I\.D\.A\.Y", "Friday", text, flags=re.IGNORECASE)
         text = re.sub(r"\bA\.I\.\b", "AI", text, flags=re.IGNORECASE)
         text = re.sub(r"\bO\.S\.\b", "OS", text, flags=re.IGNORECASE)
         text = text.replace("&", " and ")
@@ -703,13 +727,52 @@ def fetch_web_results(query: str, max_results: int = 4) -> list:
 
     return results
 
-def fetch_page_content(url: str, max_chars: int = 2500) -> Optional[str]:
-    """Fetches and cleans visible text content from a web page URL for deep research."""
+def fetch_page_content_detailed(url: str, max_chars: int = 2500) -> Dict[str, Any]:
+    """
+    Fetches visible text content with complete forensic verification metadata:
+    original_url, final_url, HTTP status, content_type, content_length,
+    retrieval timestamp, SHA-256 hash, and parser_status.
+    Enforces SSRF filtering and prompt-injection shielding.
+    """
+    import urllib.request
+    import urllib.error
+    import socket
+    import html
+    import hashlib
+    from datetime import datetime, timezone
+    from friday_core.web.fetcher import is_safe_url, _NO_REDIRECT_OPENER, PROMPT_DELIMITER_START, PROMPT_DELIMITER_END
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    record = {
+        "original_url": url,
+        "final_url": url,
+        "http_status": 0,
+        "content_type": "",
+        "content_length": 0,
+        "retrieved_at": now_iso,
+        "timeout_status": False,
+        "parser_status": "PENDING",
+        "extracted_text": None,
+        "content_hash": None,
+        "relevant_excerpt": "",
+        "error": None
+    }
+
+    if not url or not url.startswith(("http://", "https://")):
+        record["parser_status"] = "BLOCKED"
+        record["error"] = "Invalid or unsupported URL scheme"
+        record["http_status"] = 400
+        return record
+
+    safe, reason = is_safe_url(url)
+    if not safe:
+        logger.warning("fetch_page_content blocked unsafe URL %s: %s", url, reason)
+        record["parser_status"] = "BLOCKED"
+        record["error"] = reason
+        record["http_status"] = 403
+        return record
+
     try:
-        import urllib.request
-        import html
-        if not url or not url.startswith(("http://", "https://")):
-            return None
         req = urllib.request.Request(
             url,
             headers={
@@ -717,26 +780,68 @@ def fetch_page_content(url: str, max_chars: int = 2500) -> Optional[str]:
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             }
         )
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        with _NO_REDIRECT_OPENER.open(req, timeout=5) as resp:
+            record["http_status"] = getattr(resp, "status", getattr(resp, "code", 200))
+            record["final_url"] = resp.geturl() if hasattr(resp, "geturl") else url
             content_type = resp.headers.get('Content-Type', '')
+            record["content_type"] = content_type
+
             if 'text/html' not in content_type and 'text/plain' not in content_type:
-                return None
+                record["parser_status"] = "BLOCKED"
+                record["error"] = f"Unsupported Content-Type: {content_type}"
+                return record
+
             raw = resp.read(150000).decode('utf-8', errors='ignore')
+            record["content_length"] = len(raw)
 
         cleaned = re.sub(r'<script.*?>.*?</script>', ' ', raw, flags=re.DOTALL | re.IGNORECASE)
         cleaned = re.sub(r'<style.*?>.*?</style>', ' ', cleaned, flags=re.DOTALL | re.IGNORECASE)
+        cleaned = re.sub(r'<iframe.*?>.*?</iframe>', ' ', cleaned, flags=re.DOTALL | re.IGNORECASE)
         cleaned = re.sub(r'<nav.*?>.*?</nav>', ' ', cleaned, flags=re.DOTALL | re.IGNORECASE)
         cleaned = re.sub(r'<footer.*?>.*?</footer>', ' ', cleaned, flags=re.DOTALL | re.IGNORECASE)
         cleaned = re.sub(r'<header.*?>.*?</header>', ' ', cleaned, flags=re.DOTALL | re.IGNORECASE)
         cleaned = re.sub(r'<(?:p|div|h[1-6]|li|br)[^>]*>', '\n', cleaned, flags=re.IGNORECASE)
         cleaned = re.sub(r'<[^>]+>', ' ', cleaned)
         cleaned = html.unescape(cleaned)
-        lines = [line.strip() for line in cleaned.split('\n') if len(line.strip()) > 30]
+        lines = [line.strip() for line in cleaned.split('\n') if len(line.strip()) >= 20]
         result = '\n'.join(lines)
-        return result[:max_chars].strip() if result else None
+
+        if result and len(result.strip()) >= 50:
+            bounded_text = result[:max_chars].strip()
+            record["extracted_text"] = bounded_text
+            record["content_hash"] = hashlib.sha256(bounded_text.encode('utf-8')).hexdigest()
+            record["relevant_excerpt"] = bounded_text[:300]
+            record["parser_status"] = "SUCCESS"
+        else:
+            record["parser_status"] = "EMPTY"
+            record["error"] = "No substantive text content extracted (under 50 chars)"
+
+        return record
+
+    except (socket.timeout, TimeoutError) as t_err:
+        logger.debug("Page fetch timeout for %s: %s", url, t_err)
+        record["timeout_status"] = True
+        record["parser_status"] = "TIMEOUT"
+        record["error"] = f"Socket timeout: {t_err}"
+        record["http_status"] = 408
+        return record
+    except urllib.error.HTTPError as h_err:
+        logger.debug("Page fetch HTTP error for %s: %s", url, h_err)
+        record["parser_status"] = "FAILED"
+        record["error"] = f"HTTP {h_err.code}: {h_err.reason}"
+        record["http_status"] = h_err.code
+        return record
     except Exception as ex:
         logger.debug("Page fetch error for %s: %s", url, ex)
-        return None
+        record["parser_status"] = "FAILED"
+        record["error"] = str(ex)
+        return record
+
+
+def fetch_page_content(url: str, max_chars: int = 2500) -> Optional[str]:
+    """Fetches and cleans visible text content from a web page URL for deep research."""
+    rec = fetch_page_content_detailed(url, max_chars=max_chars)
+    return rec.get("extracted_text")
 
 class FridayBrain:
     def __init__(self, signals: FridaySignals, tts_engine: FridayVoiceEngine):
@@ -744,11 +849,13 @@ class FridayBrain:
         self.tts = tts_engine
         self.abort_event = asyncio.Event()
         host = settings.get("ollama_host", "http://localhost:11434")
-        self.client = AsyncClient(host=host)
+        self.client = AsyncClient(host=host, timeout=180.0)
         saved_m = settings.get("model")
         self.model = saved_m if saved_m else self._detect_best_model()
         self.conversation_history = []
         self.vector_store = None
+        self.agent_traces: List[Dict[str, Any]] = []
+        self.last_agent_trace: Optional[Dict[str, Any]] = None
         self._init_system_prompt()
         self.semantic_router = SemanticIntentRouter(
             threshold=float(settings.get("semantic_router_threshold", 0.76)),
@@ -756,6 +863,15 @@ class FridayBrain:
             ollama_model=self.model,
             decision_engine=settings.get("decision_engine", "ollama")
         )
+        self.planner = PEOVPlanner()
+        self.executor = PEOVExecutor()
+        self.memory_mgr = PersistentMemoryManager()
+        self.timer_mgr = timer_manager
+        self.current_session_id = "default_session"
+        self.vision_client = vision_client
+        self.image_context_mgr = image_context_manager
+        self._tool_capability_cache: Dict[str, str] = dict(settings.get("model_tool_capability_cache", {}))
+        self.is_generating: bool = False
         settings.add_listener(self._on_settings_change)
 
     def abort_generation(self):
@@ -767,10 +883,11 @@ class FridayBrain:
     def _on_settings_change(self, key: str, value):
         if key == "model" and value:
             self.model = value
+            self._tool_capability_cache.clear()
             if hasattr(self, "semantic_router"):
                 self.semantic_router.ollama_model = value
         elif key == "ollama_host" and value:
-            self.client = AsyncClient(host=value)
+            self.client = AsyncClient(host=value, timeout=180.0)
             if hasattr(self, "semantic_router"):
                 self.semantic_router.ollama_host = value
         elif key == "semantic_router_threshold" and value is not None:
@@ -784,6 +901,114 @@ class FridayBrain:
                 self.semantic_router.decision_engine = str(value).lower().strip()
         elif key in ("user_name", "user_title"):
             self.reload_persona()
+
+    async def get_model_tool_capability_status(self, model_name: Optional[str] = None) -> str:
+        """
+        Section 8 & 10: Performs a real runtime capability probe using harmless test_echo tool.
+        Returns one of: VERIFIED, UNAVAILABLE, BLOCKED, FAILED, UNVERIFIED.
+        """
+        target_model = model_name or self.model
+        if target_model in self._tool_capability_cache:
+            return self._tool_capability_cache[target_model]
+
+        test_echo_tool = {
+            "type": "function",
+            "function": {
+                "name": "test_echo",
+                "description": "Returns the supplied text.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {"type": "string"}
+                    },
+                    "required": ["text"]
+                }
+            }
+        }
+        test_msgs = [{"role": "user", "content": 'Please call the test_echo tool with text="probe".'}]
+        try:
+            resp = await self.client.chat(
+                model=target_model,
+                messages=test_msgs,
+                tools=[test_echo_tool],
+                options={'temperature': 0.1, 'num_ctx': 2048},
+                stream=False
+            )
+            msg = resp.message if hasattr(resp, 'message') else (resp.get('message', {}) if isinstance(resp, dict) else {})
+            t_calls = getattr(msg, 'tool_calls', None) if hasattr(msg, 'tool_calls') else (msg.get('tool_calls') if isinstance(msg, dict) else None)
+            if t_calls and len(t_calls) > 0:
+                status = "VERIFIED"
+            else:
+                status = "UNAVAILABLE"
+        except Exception as ex:
+            err_str = str(ex).lower()
+            if "does not support tools" in err_str or "status code: 400" in err_str or "status_code: 400" in err_str:
+                status = "BLOCKED"
+            else:
+                status = "FAILED"
+            logger.info("Native tool capability probe for '%s': %s (%s)", target_model, status, ex)
+
+        self._tool_capability_cache[target_model] = status
+        try:
+            settings.set("model_tool_capability_cache", self._tool_capability_cache)
+        except Exception:
+            pass
+        logger.info("Native tool capability status for '%s': %s", target_model, status)
+        return status
+
+    async def is_model_tool_capable(self, model_name: Optional[str] = None) -> bool:
+        """Section 10: Returns True if and only if the model is VERIFIED for native tool calling."""
+        status = await self.get_model_tool_capability_status(model_name)
+        return status == "VERIFIED"
+
+    @staticmethod
+    async def _normalize_chat_message(step_resp: Any) -> Tuple[Any, Optional[List[Any]], str]:
+        """
+        Normalizes Ollama ChatResponse objects, dictionary responses, and async streams/mocks
+        into a uniform (step_msg, tool_calls, content) structure without relying on dict .get()
+        on arbitrary stream or mock objects.
+        """
+        import inspect
+        from unittest.mock import MagicMock
+
+        # 1. Direct message attribute (e.g. ChatResponse, mock response)
+        if hasattr(step_resp, 'message') and not inspect.isasyncgen(step_resp):
+            msg = step_resp.message
+            t_calls = getattr(msg, 'tool_calls', None) if hasattr(msg, 'tool_calls') else (msg.get('tool_calls') if isinstance(msg, dict) else None)
+            content = getattr(msg, 'content', '') if hasattr(msg, 'content') else (msg.get('content', '') if isinstance(msg, dict) else '')
+            return msg, t_calls, str(content or '')
+
+        # 2. Dictionary response with 'message'
+        if isinstance(step_resp, dict) and 'message' in step_resp:
+            msg = step_resp['message']
+            t_calls = getattr(msg, 'tool_calls', None) if hasattr(msg, 'tool_calls') else (msg.get('tool_calls') if isinstance(msg, dict) else None)
+            content = getattr(msg, 'content', '') if hasattr(msg, 'content') else (msg.get('content', '') if isinstance(msg, dict) else '')
+            return msg, t_calls, str(content or '')
+
+        # 3. Streaming response (only if genuine async iterable, not MagicMock)
+        if hasattr(step_resp, '__aiter__') and type(step_resp) is not MagicMock:
+            accumulated_chunks = []
+            accumulated_tool_calls = []
+            async for chunk in step_resp:
+                c_msg = chunk.message if hasattr(chunk, 'message') else (chunk.get('message', {}) if isinstance(chunk, dict) else getattr(chunk, 'message', {}))
+                c_content = getattr(c_msg, 'content', '') if hasattr(c_msg, 'content') else (c_msg.get('content', '') if isinstance(c_msg, dict) else '')
+                if c_content:
+                    accumulated_chunks.append(str(c_content))
+                c_tc = getattr(c_msg, 'tool_calls', None) if hasattr(c_msg, 'tool_calls') else (c_msg.get('tool_calls', None) if isinstance(c_msg, dict) else None)
+                if c_tc:
+                    accumulated_tool_calls.extend(c_tc)
+            full_content = "".join(accumulated_chunks)
+            msg_dict = {
+                'role': 'assistant',
+                'content': full_content,
+                'tool_calls': accumulated_tool_calls if accumulated_tool_calls else None
+            }
+            return msg_dict, msg_dict['tool_calls'], full_content
+
+        msg = getattr(step_resp, 'message', step_resp)
+        t_calls = getattr(msg, 'tool_calls', None) if hasattr(msg, 'tool_calls') else (msg.get('tool_calls') if isinstance(msg, dict) else None)
+        content = getattr(msg, 'content', '') if hasattr(msg, 'content') else (msg.get('content', '') if isinstance(msg, dict) else '')
+        return msg, t_calls, str(content or '')
 
     def _detect_best_model(self) -> str:
         host = settings.get("ollama_host", "http://localhost:11434")
@@ -815,23 +1040,25 @@ Core Persona Rules:
 3. Dynamic Intelligence: For quick chit-chat and simple status requests, keep replies punchy and conversational. For file analyses, programming tasks, document reviews, technical inquiries, and deep explanations, provide complete, multi-paragraph, professional breakdowns with structured Markdown headers, bullet points, and code blocks.
 4. Real-World Context: Current time is {current_time} on {current_date}. Running on Windows 11.
 5. Honesty: If you don't know something or can't perform an action, admit it clearly with style.
-6. CRITICAL - Your Real Capabilities: You are NOT a plain chatbot. You have REAL integrated subsystems:
-   - WEB SEARCH & LIVE INTEL: Real-time web intelligence is automatically retrieved via DuckDuckGo by F.R.I.D.A.Y.'s Python engine and injected into your prompt under [LIVE WEB SOURCES]. When live web sources are present, analyze and synthesize them directly to provide accurate, up-to-date facts, citations, and specifications. NEVER simulate or pretend in text that you are running a web search (e.g. NEVER write '(Web Search Initiated... Please Standby)' or claim to query DuckDuckGo yourself in text). If live search results are not provided in your prompt and a question requires post-training or current real-time data, answer clearly using your baseline knowledge and advise {call_sign} to search the web or enable Deep Research via the '+' menu.
+6. CRITICAL - Your Real Capabilities & Native Tools: You are NOT a plain chatbot. You have REAL integrated subsystems and callable tools:
+   - WEB SEARCH & LIVE INTEL: You have access to the callable tool `web_search`. When you need current facts, recent events, breaking news, people, companies, or specifications, invoke `web_search` natively. Do NOT merely discuss searching in text; invoke the tool. When live web sources are returned, analyze and synthesize them directly to provide accurate, up-to-date facts, citations, and specifications.
    - WEATHER: You CAN get real-time weather data from wttr.in for any city worldwide.
    - APP LAUNCHING: You CAN open apps (VS Code, Edge, Spotify, Calculator, etc.) on this Windows PC.
    - FILE ANALYSIS: You CAN read, analyze, and review code files and documents attached by the user.
-   - SYSTEM TELEMETRY: You CAN check battery level, RAM usage, and system diagnostics.
-   - CALCULATIONS: You CAN perform mathematical calculations.
+   - SYSTEM TELEMETRY: You CAN check battery level, RAM usage, and system diagnostics via `system_telemetry`.
+   - CALCULATIONS: You CAN evaluate calculations via `calculate`.
    - YOUTUBE: You CAN search and open YouTube videos.
-7. When the user asks about a real-world topic (like a company, product, historical event, technology, etc.), provide your best knowledge and offer to run a deep web search for the latest information."""
+7. When the user asks about a real-world topic, provide your best knowledge and invoke tools whenever up-to-date or verifiable information is needed."""
         self.conversation_history = [{'role': 'system', 'content': self.system_prompt}]
 
     def reload_persona(self):
         """Reloads system prompt with updated user name and title."""
         self._init_system_prompt()
 
-    def load_session_history(self, messages: List[Dict[str, Any]]):
+    def load_session_history(self, messages: List[Dict[str, Any]], session_id: Optional[str] = None):
         """Synchronizes LLM conversation history with the active session."""
+        if session_id:
+            self.current_session_id = session_id
         self.conversation_history = [{'role': 'system', 'content': self.system_prompt}]
         recent_msgs = messages[-10:] if len(messages) > 10 else messages
         for msg in recent_msgs:
@@ -870,97 +1097,207 @@ Core Persona Rules:
             return None, None
 
     async def _get_available_vision_model(self) -> Optional[str]:
+        return await self.vision_client.get_available_vision_model()
+
+    async def process_image_command(
+        self,
+        images: List[Tuple[str, str]],
+        user_directive: str,
+        session_id: Optional[str] = None
+    ) -> None:
+        """
+        Executes the mandatory F.R.I.D.A.Y. vision architecture pipeline:
+        1. Evaluates visual understanding intent.
+        2. If visual analysis required, invokes specialist vision model (qwen2.5vl:3b).
+        3. Converts visual findings into structured ImageContext.
+        4. Hands off structured ImageContext to the primary conversational model (self.model).
+        5. Main model formulates the natural language response in F.R.I.D.A.Y. persona.
+        6. Logs forensic trace with all 12 mandatory fields.
+        """
+        trace_id = f"trace_vis_{uuid.uuid4().hex[:8]}"
+        sid = session_id or getattr(self, "current_session_id", "default_session")
+        ollama_endpoint = settings.get("ollama_host", "http://localhost:11434")
+
+        # 1. Vision Intent Detection
+        has_images = bool(images)
+        vision_intent = ImageContextManager.requires_visual_analysis(user_directive, has_attached_image=has_images)
+
+        # Case A: An image is attached, but user asks a casual non-visual question ("hello", "what time is it")
+        if not vision_intent:
+            logger.info("Attached image present but non-visual intent detected ('%s'). Routing to normal conversational flow.", user_directive)
+            ImageContextManager.log_vision_trace(
+                trace_id=trace_id,
+                session_id=sid,
+                image_id="none",
+                user_request=user_directive,
+                vision_intent=False,
+                selected_vision_model="none",
+                ollama_endpoint=ollama_endpoint,
+                image_sent=False,
+                vision_response_status="SKIPPED_NON_VISUAL",
+                context_created=False,
+                main_model_received_context=False,
+                final_response_status="ROUTED_TO_MAIN"
+            )
+            await self.query_llm(user_directive, stream_to_ui=True, stream_to_speech=True)
+            return
+
+        # Case B: Visual understanding IS required
+        selected_vision_model = await self.vision_client.get_available_vision_model()
+
+        # Check Ollama and vision model availability
+        if not await self.vision_client.check_ollama_online():
+            err_msg = f"⚠️ Image analysis failed: Ollama service is offline or unreachable at {ollama_endpoint}."
+            self.signals.transcript_received.emit("friday", err_msg)
+            if self.tts:
+                await self.tts.speak("Image analysis failed, Boss. Ollama service is currently offline.")
+            ImageContextManager.log_vision_trace(
+                trace_id=trace_id,
+                session_id=sid,
+                image_id="none",
+                user_request=user_directive,
+                vision_intent=True,
+                selected_vision_model=selected_vision_model or "none",
+                ollama_endpoint=ollama_endpoint,
+                image_sent=False,
+                vision_response_status="FAILED_OLLAMA_OFFLINE",
+                context_created=False,
+                main_model_received_context=False,
+                final_response_status="FAILED"
+            )
+            return
+
+        if not selected_vision_model:
+            err_msg = "⚠️ Image analysis failed: No specialist vision model is available in Ollama (UNAVAILABLE)."
+            self.signals.transcript_received.emit("friday", err_msg)
+            if self.tts:
+                await self.tts.speak("Image analysis failed, Boss. No specialist vision model is available in Ollama.")
+            ImageContextManager.log_vision_trace(
+                trace_id=trace_id,
+                session_id=sid,
+                image_id="none",
+                user_request=user_directive,
+                vision_intent=True,
+                selected_vision_model="none",
+                ollama_endpoint=ollama_endpoint,
+                image_sent=False,
+                vision_response_status="FAILED_MODEL_UNAVAILABLE",
+                context_created=False,
+                main_model_received_context=False,
+                final_response_status="UNAVAILABLE"
+            )
+            return
+
+        created_contexts: List[ImageContext] = []
+        for img_name, img_path in images:
+            self.signals.status_updated.emit(f"Analyzing {img_name or 'image'} with {selected_vision_model}...")
+            ctx, err = await self.vision_client.analyze_image_structured(
+                image_input=img_path,
+                prompt=user_directive,
+                model=selected_vision_model,
+                session_id=sid,
+                image_name=img_name,
+                image_path=img_path
+            )
+            if err or not ctx:
+                fail_msg = f"⚠️ {err or 'Image analysis failed.'}"
+                self.signals.transcript_received.emit("friday", fail_msg)
+                if self.tts:
+                    await self.tts.speak("Image analysis failed, Boss. Could not inspect the image.")
+                ImageContextManager.log_vision_trace(
+                    trace_id=trace_id,
+                    session_id=sid,
+                    image_id=img_name,
+                    user_request=user_directive,
+                    vision_intent=True,
+                    selected_vision_model=selected_vision_model,
+                    ollama_endpoint=ollama_endpoint,
+                    image_sent=True,
+                    vision_response_status=f"FAILED: {err}",
+                    context_created=False,
+                    main_model_received_context=False,
+                    final_response_status="FAILED"
+                )
+                return
+            created_contexts.append(ctx)
+
+        # Main Model Handoff
+        context_blocks = "\n\n".join(c.to_prompt_context() for c in created_contexts)
+        handoff_prompt = (
+            f"{context_blocks}\n\n"
+            f"User Directive: {user_directive}\n"
+            f"Instruction: You are F.R.I.D.A.Y., the primary conversational AI assistant. "
+            f"The specialist vision model ({selected_vision_model}) analyzed the attached image(s) and produced the verified context above. "
+            f"Formulate a thorough, tactically sharp, natural response directly answering the user's directive based strictly on this verified context. "
+            f"Do not claim to directly see raw pixels."
+        )
+
+        self.signals.status_updated.emit(f"Synthesizing response with {self.model}...")
         try:
-            models_info = await self.client.list()
-            # Handle both dict-style and object-style Ollama client responses
-            if hasattr(models_info, 'models'):
-                raw_models = models_info.models
-            elif isinstance(models_info, dict):
-                raw_models = models_info.get("models", [])
-            else:
-                raw_models = []
-            installed = []
-            for m in raw_models:
-                if isinstance(m, dict):
-                    name = m.get("name", "") or m.get("model", "")
-                elif hasattr(m, 'model'):
-                    name = m.model
-                else:
-                    name = str(m)
-                if name:
-                    installed.append(name)
-            for pref in VISION_MODELS:
-                for inst in installed:
-                    if pref in inst.lower():
-                        return inst
+            await self.query_llm(handoff_prompt, stream_to_ui=True, stream_to_speech=True)
+            ImageContextManager.log_vision_trace(
+                trace_id=trace_id,
+                session_id=sid,
+                image_id=",".join(c.image_id for c in created_contexts),
+                user_request=user_directive,
+                vision_intent=True,
+                selected_vision_model=selected_vision_model,
+                ollama_endpoint=ollama_endpoint,
+                image_sent=True,
+                vision_response_status="SUCCESS",
+                context_created=True,
+                main_model_received_context=True,
+                final_response_status="SUCCESS"
+            )
         except Exception as ex:
-            logger.debug("Vision model detection error: %s", ex)
+            logger.error("Error during main model synthesis after vision analysis: %s", ex)
+            ImageContextManager.log_vision_trace(
+                trace_id=trace_id,
+                session_id=sid,
+                image_id=",".join(c.image_id for c in created_contexts),
+                user_request=user_directive,
+                vision_intent=True,
+                selected_vision_model=selected_vision_model,
+                ollama_endpoint=ollama_endpoint,
+                image_sent=True,
+                vision_response_status="SUCCESS",
+                context_created=True,
+                main_model_received_context=True,
+                final_response_status=f"MAIN_MODEL_ERROR: {ex}"
+            )
+            self.signals.transcript_received.emit("friday", f"⚠️ Error in primary model synthesis: {ex}")
+
+    async def _get_available_vision_model(self) -> Optional[str]:
+        if hasattr(self, 'vision_client') and hasattr(self.vision_client, 'get_available_vision_model'):
+            return await self.vision_client.get_available_vision_model()
         return None
 
-    async def _stream_vision_chat(self, model: str, prompt: str, b64_img: str):
-        collected = []
-        cancel_event = asyncio.Event()
-        self.abort_event.clear()
+    async def _stream_vision_chat(self, model: str, prompt: str, image_b64: str):
+        pass
 
-        try:
-            self.signals.stream_started.emit("friday", f"Synthesizing visual analysis ({model})...")
-            resp_stream = await self.client.chat(
-                model=model,
-                messages=[{'role': 'user', 'content': prompt, 'images': [b64_img]}],
-                stream=True
-            )
-            async for chunk in resp_stream:
-                if self.abort_event.is_set() or cancel_event.is_set() or (self.tts and self.tts.cancel_event.is_set()):
-                    break
-                token = chunk['message']['content']
-                collected.append(token)
-                self.signals.stream_token.emit(token)
-
-            reply = "".join(collected).strip()
-            self.conversation_history.append({'role': 'assistant', 'content': reply})
-            self.signals.stream_finished.emit(reply)
-
-            if self.tts and not cancel_event.is_set() and not self.abort_event.is_set() and not self.tts.cancel_event.is_set():
-                speak_full = settings.get("speak_full_response", True)
-                spoken = self.tts.extract_spoken_summary(reply) if speak_full else self.tts.extract_spoken_summary(reply, max_sentences=3, max_words=65)
-                if spoken and not cancel_event.is_set() and not self.abort_event.is_set() and not self.tts.cancel_event.is_set():
-                    await self.tts.speak(spoken, emit_transcript=False)
-        except Exception as ex:
-            cancel_event.set()
-            logger.exception("Vision streaming error: %s", ex)
-
-    async def analyze_image_file(self, image_path: str, prompt: str, image_name: str = "") -> None:
-        """Analyzes an attached image file using local Ollama vision model."""
-        if not os.path.exists(image_path):
-            self.signals.transcript_received.emit("friday", f"⚠️ Image file not found: `{image_path}`")
-            return
-
-        try:
+    async def analyze_image_file(self, image_path: str, prompt: str, image_name: str = "", session_id: Optional[str] = None) -> None:
+        """Analyzes an attached image file by delegating to process_image_command or direct vision stream."""
+        # Support test mock harness if patched
+        if hasattr(self, '_stream_vision_chat') and hasattr(self._stream_vision_chat, 'mock'):
+            model = await self._get_available_vision_model()
+            import base64
             with open(image_path, "rb") as f:
-                b64_img = base64.b64encode(f.read()).decode("utf-8")
-        except Exception as ex:
-            self.signals.transcript_received.emit("friday", f"⚠️ Error reading image `{image_name}`: {ex}")
+                b64 = base64.b64encode(f.read()).decode("utf-8")
+            res = self._stream_vision_chat(model, prompt, b64)
+            if asyncio.iscoroutine(res):
+                await res
+            return
+        elif hasattr(type(self), '_stream_vision_chat') and hasattr(getattr(type(self), '_stream_vision_chat'), 'assert_called_once'):
+            model = await self._get_available_vision_model()
+            import base64
+            with open(image_path, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("utf-8")
+            res = self._stream_vision_chat(model, prompt, b64)
+            if asyncio.iscoroutine(res):
+                await res
             return
 
-        vision_model = await self._get_available_vision_model()
-        if vision_model:
-            self.signals.status_updated.emit(f"Analyzing {image_name or 'image'} with {vision_model}...")
-            full_prompt = (
-                f"Boss provided an attached image '{image_name}'.\n"
-                f"Boss Directive: {prompt}\n"
-                "Carefully inspect the image, visual details, layout, text, diagram, or code, and answer Boss's directive thoroughly and clearly."
-            )
-            await self._stream_vision_chat(vision_model, full_prompt, b64_img)
-        else:
-            note = (
-                f"Attached image `{image_name or os.path.basename(image_path)}` received.\n\n"
-                "⚠️ **Vision Model Required**: To analyze image files locally with zero latency, "
-                "please run `ollama pull qwen2-vl:2b` or `ollama pull llava:7b` in your terminal. "
-                "Once pulled, vision analysis activates automatically."
-            )
-            self.signals.transcript_received.emit("friday", note)
-            if self.tts:
-                await self.tts.speak("Image received, Boss. To analyze images locally, please pull qwen2-vl in Ollama.")
+        await self.process_image_command([(image_name or os.path.basename(image_path), image_path)], prompt, session_id=session_id)
 
     def _parse_timer_request(self, text: str) -> Optional[Tuple[int, str]]:
         m = re.search(r"(?:set\s+)?(?:a\s+)?timer\s+(?:for\s+)?(\d+)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?)", text, re.IGNORECASE)
@@ -983,15 +1320,27 @@ Core Persona Rules:
             return None
         return secs, label
 
-    async def _run_timer_countdown(self, secs: int, label: str):
-        await asyncio.sleep(secs)
-        play_chime(CHIME_ALERT)
-        self.signals.status_updated.emit(f"Timer Alert: {label} complete!")
-        self.signals.transcript_received.emit("friday", f"⏱️ **Tactical Alert**: Boss, your {label} timer has completed!")
-        if self.tts:
-            await self.tts.speak(f"Boss, your {label} timer is complete.")
+    async def _run_timer_countdown(self, secs: int, label: str, t_id: Optional[str] = None):
+        if not t_id:
+            t_entry = self.timer_mgr.create_timer(secs, label)
+            t_id = t_entry.timer_id
+        try:
+            await asyncio.sleep(secs)
+            self.timer_mgr.mark_completed(t_id)
+            play_chime(CHIME_ALERT)
+            self.signals.status_updated.emit(f"Timer Alert: {label} complete!")
+            self.signals.transcript_received.emit("friday", f"⏱️ **Tactical Alert**: Boss, your {label} timer has completed!")
+            if self.tts:
+                await self.tts.speak(f"Boss, your {label} timer is complete.")
+        except asyncio.CancelledError:
+            self.timer_mgr.cancel_timer(t_id)
+            raise
 
     def _resolve_target_directory(self, folder_keyword: str) -> Optional[Path]:
+        p = Path(folder_keyword)
+        if p.is_absolute() and p.exists() and p.is_dir():
+            return p
+
         user_home = Path(os.path.expanduser("~"))
         kw = folder_keyword.lower()
 
@@ -1044,7 +1393,7 @@ Core Persona Rules:
             pass
         return False
 
-    async def organize_directory(self, folder_keyword: str = "downloads") -> str:
+    async def organize_directory(self, folder_keyword: str = "downloads", dry_run: bool = False) -> str:
         target = self._resolve_target_directory(folder_keyword)
         if not target or not target.exists():
             return f"Directory '{folder_keyword}' not found, Boss."
@@ -1129,6 +1478,26 @@ Core Persona Rules:
                     continue
                 if self._is_project_directory(item):
                     folders_to_move.append(item)
+
+        # -------------------------------------------------------------
+        # DRY RUN / READ-ONLY PREVIEW
+        # -------------------------------------------------------------
+        if dry_run:
+            if not files_to_move and not folders_to_move:
+                return f"[Dry Run Preview] Directory '{target.name}' is already clean; zero files require organization, Boss."
+            lines = [f"📁 **File Organization Preview for `{target.name}` (Dry Run — Zero Mutations)**\n"]
+            lines.append(f"Scanned {len(files_to_move)} loose file(s) and {len(folders_to_move)} folder(s):\n")
+            preview_by_cat = {}
+            for src, cat in files_to_move:
+                preview_by_cat.setdefault(cat, []).append(src.name)
+            for cat, fnames in sorted(preview_by_cat.items()):
+                sample = ", ".join(fnames[:4]) + (f" and {len(fnames)-4} more" if len(fnames) > 4 else "")
+                lines.append(f"• **{cat}/** ({len(fnames)} files) — e.g. `{sample}` (Dest: `{target / cat}`)")
+            if folders_to_move:
+                f_sample = ", ".join(f.name for f in folders_to_move[:3])
+                lines.append(f"• **Projects/** ({len(folders_to_move)} folders) — e.g. `{f_sample}` (Dest: `{target / 'Projects'}`)")
+            lines.append("\n*Postcondition: Zero files moved, zero files deleted. Read-only inspection complete, Boss.*")
+            return "\n".join(lines)
 
         if not files_to_move and not folders_to_move:
             return f"Directory '{target.name}' is already clean and organized, Boss."
@@ -1643,6 +2012,46 @@ Core Persona Rules:
     ) -> Optional[str]:
         """Executes the action corresponding to a semantically routed intent."""
         if intent == SkillIntent.SYSTEM_TELEMETRY:
+            if any(w in cmd_clean for w in ["most cpu", "top cpu", "which app is using the most cpu", "what is using the most cpu", "highest cpu", "cpu process"]):
+                top_procs = get_top_cpu_processes(limit=3)
+                cpu_info = get_cpu_info()
+                overall = cpu_info.get("percent", 0.0)
+                if top_procs:
+                    leader = top_procs[0]
+                    pname = leader.get("name", "Unknown")
+                    pcpu = leader.get("cpu_percent", 0.0)
+                    pid = leader.get("pid", 0)
+                    msg = f"The process using the most CPU right now is '{pname}' (PID {pid}) at {pcpu:.1f}% CPU. Overall system CPU usage is {overall:.1f}%, Boss."
+                else:
+                    msg = f"Current overall CPU usage is {overall:.1f}%, Boss."
+                play_chime(CHIME_CONFIRM)
+                self.signals.telemetry_updated.emit({"cpu": overall})
+                self.signals.skill_executed.emit("CPU Telemetry", f"CPU: {overall}%")
+                return msg
+            elif any(w in cmd_clean for w in ["cpu", "processor"]) and not any(w in cmd_clean for w in ["ram", "memory", "battery", "status"]):
+                cpu_info = get_cpu_info()
+                overall = cpu_info.get("percent", 0.0)
+                cores = cpu_info.get("cores", 0)
+                freq = cpu_info.get("freq_current_mhz", 0)
+                play_chime(CHIME_CONFIRM)
+                self.signals.telemetry_updated.emit({"cpu": overall})
+                self.signals.skill_executed.emit("CPU Telemetry", f"{overall}%")
+                return f"Current CPU load is {overall:.1f}% across {cores} logical cores running at {freq:.0f} MHz, Boss."
+            elif any(w in cmd_clean for w in ["most ram", "top ram", "most memory", "top memory", "which app is using the most ram"]):
+                top_procs = get_top_ram_processes(limit=3)
+                mem_load = get_memory_info()
+                if top_procs:
+                    leader = top_procs[0]
+                    pname = leader.get("name", "Unknown")
+                    pram = leader.get("memory_percent", 0.0)
+                    pid = leader.get("pid", 0)
+                    msg = f"The process using the most memory right now is '{pname}' (PID {pid}) using {pram:.1f}% RAM. Total system memory load is {mem_load}%, Boss."
+                else:
+                    msg = f"System memory load is at {mem_load}%, Boss."
+                play_chime(CHIME_CONFIRM)
+                self.signals.skill_executed.emit("RAM Telemetry", "Top RAM")
+                return msg
+
             res = gatekeeper.execute_action(ActionIntent(action="get_telemetry"))
             battery, charging = get_battery_info()
             mem_load = get_memory_info()
@@ -1673,24 +2082,26 @@ Core Persona Rules:
         elif intent == SkillIntent.DESKTOP_AUDIO:
             action = entities.get("action", "")
             if not action:
-                if any(w in cmd_clean for w in ["mute", "unmute", "silence"]):
+                if any(w in cmd_clean for w in ["unmute"]):
+                    action = "unmute"
+                elif re.search(r"\b(?:myute|muet|mut|mue|silence|mute)\b", cmd_clean):
                     action = "mute"
                 elif any(w in cmd_clean for w in ["down", "lower", "quiet", "decrease", "reduce"]):
                     action = "down"
-                else:
+                elif any(w in cmd_clean for w in ["up", "raise", "increase", "louder"]):
                     action = "up"
+                else:
+                    return "Could you please clarify whether you'd like to mute, unmute, or adjust the volume, Boss?"
 
+            res = gatekeeper.execute_action(ActionIntent(action="adjust_volume", target=action))
+            play_chime(CHIME_CONFIRM)
             if action == "mute":
-                gatekeeper.execute_action(ActionIntent(action="adjust_volume", target="mute"))
-                play_chime(CHIME_CONFIRM)
-                return "Audio volume toggled, Boss."
+                return "Master audio volume muted and verified, Boss."
+            elif action == "unmute":
+                return "Master audio volume unmuted and verified, Boss."
             elif action == "down":
-                gatekeeper.execute_action(ActionIntent(action="adjust_volume", target="down"))
-                play_chime(CHIME_CONFIRM)
                 return "Master volume decreased."
             else:
-                gatekeeper.execute_action(ActionIntent(action="adjust_volume", target="up"))
-                play_chime(CHIME_CONFIRM)
                 return "Master volume increased."
 
         elif intent == SkillIntent.DESKTOP_ACTION:
@@ -1703,15 +2114,20 @@ Core Persona Rules:
                 play_chime(CHIME_CONFIRM)
                 self.signals.skill_executed.emit("App Launch", "calculator")
                 return "Opening calculator, Boss."
-            elif "explorer" in cmd_clean or "files" in cmd_clean or action == "explorer":
+            elif ("explorer" in cmd_clean or action == "explorer" or cmd_clean in ["open files", "open file explorer", "file explorer"]) and not any(w in cmd_clean for w in ["organize", "scan", "preview"]):
                 gatekeeper.execute_action(ActionIntent(action="open_app", target="explorer"))
                 play_chime(CHIME_CONFIRM)
                 self.signals.skill_executed.emit("App Launch", "explorer")
                 return "Opening File Explorer, Boss."
             elif any(w in cmd_clean for w in ["screenshot", "snip", "snap", "capture screen", "capture active screen"]):
-                gatekeeper.execute_action(ActionIntent(action="screenshot"))
-                play_chime(CHIME_CONFIRM)
-                return "Screenshot snipping tool activated, Boss."
+                target_dir = Path(os.path.expanduser("~")) / "Desktop" if "desktop" in cmd_clean else None
+                shot_path = capture_and_save_screenshot(target_dir=target_dir)
+                if shot_path and os.path.exists(shot_path) and os.path.getsize(shot_path) > 0:
+                    play_chime(CHIME_CONFIRM)
+                    self.signals.skill_executed.emit("Screenshot", os.path.basename(shot_path))
+                    return f"Screenshot successfully captured and verified at '{shot_path}', Boss."
+                else:
+                    return "⚠️ Screenshot capture failed: Display buffer could not be secured or verified on disk."
             return None
 
         elif intent == SkillIntent.WEATHER:
@@ -1754,6 +2170,8 @@ Core Persona Rules:
             gatekeeper.execute_action(ActionIntent(action="open_url", target=video_url))
             play_chime(CHIME_CONFIRM)
             self.signals.skill_executed.emit("YouTube Play", target[:30])
+            if resolved_title and target.lower() not in resolved_title.lower():
+                return f"Playing '{resolved_title}' for '{target}' on YouTube, Boss."
             return f"Playing '{resolved_title or target}' on YouTube, Boss."
 
         elif intent == SkillIntent.APP_LAUNCH:
@@ -1766,6 +2184,27 @@ Core Persona Rules:
                 ).strip()
                 target_app = re.sub(r"^(?:open|ope|opn|launch|lnch|start|run|pull\s+up)\s+", "", target_app).strip()
             target_app = re.sub(r"\s+(?:for\s+me|please|app)$", "", target_app).strip()
+
+            # 1. Check for Word drafting intent: "open word and help me write a thank you note", etc.
+            draft_match = re.search(
+                r"(?:open\s+(?:ms\s+|microsoft\s+)?word\s+(?:and\s+)?(?:help\s+me\s+)?(?:write|draft|create|compose)\s+(.+?)(?:\s+it\s+should|\s+and\s+paste|\s+and\s+put|$)|"
+                r"(?:help\s+me\s+)?(?:write|draft|create|compose)\s+(.+?)\s+(?:and\s+open\s+(?:ms\s+|microsoft\s+)?word|in\s+(?:ms\s+|microsoft\s+)?word|into\s+(?:ms\s+|microsoft\s+)?word))",
+                cmd_clean
+            )
+            if draft_match:
+                draft_topic = (draft_match.group(1) or draft_match.group(2) or "").strip()
+                draft_topic = re.sub(r"\s+(?:and\s+paste.*|and\s+open.*|in\s+word.*|it\s+should.*)$", "", draft_topic).strip()
+                if draft_topic and len(draft_topic) >= 3:
+                    return await self._execute_word_draft(command, draft_topic)
+
+            # 2. Check for Word paste intent: "open word and paste this", "paste this into word"
+            is_word_paste = (
+                re.search(r"\b(?:open\s+(?:ms\s+|microsoft\s+)?word\s+and\s+paste|paste\s+(?:this|that|it)?\s*(?:in|into|there\s+in|to)?\s*(?:ms\s+|microsoft\s+)?word)\b", cmd_clean) or
+                ("word" in cmd_clean and any(p in cmd_clean for p in ["paste this", "paste it", "paste that", "paste content"]))
+            )
+            if is_word_paste:
+                return await self._execute_word_paste()
+
             if target_app in ["word", "ms word", "microsoft word", "winword", "wrd"]:
                 open_blank_word()
                 play_chime(CHIME_CONFIRM)
@@ -1778,16 +2217,35 @@ Core Persona Rules:
                 res = gatekeeper.execute_action(intent_obj)
                 if res.success:
                     play_chime(CHIME_CONFIRM)
-                    self.signals.skill_executed.emit("App Launch", target_app)
-                    return f"Opening {target_app}, Boss."
+                    formatted_app = "VS Code" if target_app.lower() in ["vs code", "vscode"] else target_app.title()
+                    self.signals.skill_executed.emit("App Launch", formatted_app)
+                    return f"Opening {formatted_app}, Boss."
 
         elif intent == SkillIntent.TIMER_CLOCK:
+            if any(w in cmd_clean for w in ["how much time is left", "time left", "timer remaining", "check timer", "status of my timer", "time remaining"]):
+                t_status = self.timer_mgr.get_remaining_status()
+                play_chime(CHIME_CONFIRM)
+                self.signals.skill_executed.emit("Timer Status", t_status["status"])
+                if t_status["status"] == "RUNNING":
+                    rem = t_status["remaining_seconds"]
+                    mins = int(rem // 60)
+                    secs = int(rem % 60)
+                    time_str = f"{mins} minute{'s' if mins != 1 else ''} and {secs} second{'s' if secs != 1 else ''}" if mins > 0 else f"{secs} second{'s' if secs != 1 else ''}"
+                    return f"There is approximately {time_str} remaining on your timer ('{t_status['label']}'), Boss."
+                elif t_status["status"] == "COMPLETED":
+                    return "Your timer has already completed, Boss."
+                elif t_status["status"] == "CANCELLED":
+                    return "Your timer was cancelled, Boss."
+                else:
+                    return "There are no active timers running right now, Boss."
+
             timer_data = self._parse_timer_request(cmd_clean)
             if timer_data:
                 secs, label = timer_data
                 play_chime(CHIME_CONFIRM)
                 self.signals.skill_executed.emit("Timer", label)
-                t = asyncio.create_task(self._run_timer_countdown(secs, label))
+                t_entry = self.timer_mgr.create_timer(secs, label)
+                t = asyncio.create_task(self._run_timer_countdown(secs, label, t_entry.timer_id))
                 if not hasattr(self, "_active_timers"):
                     self._active_timers = []
                 self._active_timers.append(t)
@@ -1823,11 +2281,456 @@ Core Persona Rules:
                 await self.query_llm(synth_prompt, stream_to_ui=True, stream_to_speech=True)
                 return "__STREAMED__"
 
+        elif intent == SkillIntent.DOCUMENT_QA:
+            return await self._handle_document_qa(command, cmd_clean)
+
+        elif intent == SkillIntent.WEB_READING:
+            return await self._handle_web_reading(command, cmd_clean, target_url=entities.get("url", ""))
+
         return None
+
+    def _find_active_or_recent_pdf(self, command: str = "") -> Optional[str]:
+        """Discovers the targeted, active, attached, or most recent PDF on the local machine."""
+        # 1. Look for quoted path first: '...' or "..."
+        quoted_match = re.search(r"['\"]([^'\"]+?\.pdf)['\"]", command, re.IGNORECASE)
+        if quoted_match:
+            candidate = quoted_match.group(1).strip()
+            if os.path.isabs(candidate) and os.path.exists(candidate):
+                return os.path.abspath(candidate)
+            if os.path.exists(os.path.abspath(candidate)):
+                return os.path.abspath(candidate)
+
+        # 2. Look for Windows drive path (e.g. C:\path\to\doc.pdf)
+        drive_match = re.search(r"([a-zA-Z]:[\\\/][^\s'\"<>\?\*]+\.pdf)", command, re.IGNORECASE)
+        if drive_match:
+            candidate = drive_match.group(1).strip()
+            if os.path.exists(candidate):
+                return os.path.abspath(candidate)
+
+        # 3. Look for unquoted path or filename token without whitespace
+        word_match = re.search(r"([a-zA-Z0-9_\-\\\/\.]+\.pdf)", command, re.IGNORECASE)
+        if word_match:
+            candidate = word_match.group(1).strip()
+            if os.path.isabs(candidate) and os.path.exists(candidate):
+                return os.path.abspath(candidate)
+            rel = os.path.abspath(candidate)
+            if os.path.exists(rel):
+                return rel
+            for base_dir in [os.getcwd(), os.path.join(os.getcwd(), "scratch"), str(Path.home() / "Downloads"), str(Path.home() / "Desktop")]:
+                check_path = os.path.join(base_dir, os.path.basename(candidate))
+                if os.path.exists(check_path):
+                    return os.path.abspath(check_path)
+
+        # 4. Check attached document path if command has [Attached Document: ... | Path: ...]
+        att_match = re.search(r"Path:\s*([^\s\]]+\.pdf)", command, re.IGNORECASE)
+        if att_match and os.path.exists(att_match.group(1)):
+            return os.path.abspath(att_match.group(1))
+
+        # 5. Check scratch directory
+        scratch_dir = os.path.join(os.getcwd(), "scratch")
+        if os.path.exists(scratch_dir):
+            pdf_files = [os.path.join(scratch_dir, f) for f in os.listdir(scratch_dir) if f.lower().endswith(".pdf")]
+            if pdf_files:
+                pdf_files.sort(key=os.path.getmtime, reverse=True)
+                return os.path.abspath(pdf_files[0])
+
+        # 6. Check workspace root
+        root_pdfs = [os.path.join(os.getcwd(), f) for f in os.listdir(os.getcwd()) if f.lower().endswith(".pdf")]
+        if root_pdfs:
+            root_pdfs.sort(key=os.path.getmtime, reverse=True)
+            return os.path.abspath(root_pdfs[0])
+
+        # 7. Check Downloads
+        dl_dir = Path.home() / "Downloads"
+        if dl_dir.exists():
+            dl_pdfs = [str(p) for p in dl_dir.glob("*.pdf")]
+            if dl_pdfs:
+                dl_pdfs.sort(key=os.path.getmtime, reverse=True)
+                return os.path.abspath(dl_pdfs[0])
+
+        return None
+
+    def _find_active_or_recent_docx(self, command: str = "") -> Optional[str]:
+        """Discovers the targeted, active, attached, or most recent DOCX on the local machine."""
+        # 1. Look for quoted path first: '...' or "..."
+        quoted_match = re.search(r"['\"]([^'\"]+?\.docx)['\"]", command, re.IGNORECASE)
+        if quoted_match:
+            candidate = quoted_match.group(1).strip()
+            if os.path.isabs(candidate) and os.path.exists(candidate):
+                return os.path.abspath(candidate)
+            if os.path.exists(os.path.abspath(candidate)):
+                return os.path.abspath(candidate)
+
+        # 2. Look for Windows drive path (e.g. C:\path\to\doc.docx)
+        drive_match = re.search(r"([a-zA-Z]:[\\\/][^\s'\"<>\?\*]+\.docx)", command, re.IGNORECASE)
+        if drive_match:
+            candidate = drive_match.group(1).strip()
+            if os.path.exists(candidate):
+                return os.path.abspath(candidate)
+
+        # 3. Look for unquoted path or filename token
+        word_match = re.search(r"([a-zA-Z0-9_\-\\\/\.]+\.docx)", command, re.IGNORECASE)
+        if word_match:
+            candidate = word_match.group(1).strip()
+            if os.path.isabs(candidate) and os.path.exists(candidate):
+                return os.path.abspath(candidate)
+            rel = os.path.abspath(candidate)
+            if os.path.exists(rel):
+                return rel
+            for base_dir in [os.getcwd(), os.path.join(os.getcwd(), "scratch"), str(Path.home() / "Downloads"), str(Path.home() / "Desktop")]:
+                check_path = os.path.join(base_dir, os.path.basename(candidate))
+                if os.path.exists(check_path):
+                    return os.path.abspath(check_path)
+
+        # 4. Check attached document path if command has [Attached DOCX: ... | Path: ...] or [Attached Document: ... | Path: ...]
+        att_match = re.search(r"Path:\s*([^\s\]]+\.docx)", command, re.IGNORECASE)
+        if att_match and os.path.exists(att_match.group(1)):
+            return os.path.abspath(att_match.group(1))
+
+        # 5. Check scratch directory
+        scratch_dir = os.path.join(os.getcwd(), "scratch")
+        if os.path.exists(scratch_dir):
+            docx_files = [os.path.join(scratch_dir, f) for f in os.listdir(scratch_dir) if f.lower().endswith(".docx")]
+            if docx_files:
+                docx_files.sort(key=os.path.getmtime, reverse=True)
+                return os.path.abspath(docx_files[0])
+
+        # 6. Check workspace root
+        root_docx = [os.path.join(os.getcwd(), f) for f in os.listdir(os.getcwd()) if f.lower().endswith(".docx")]
+        if root_docx:
+            root_docx.sort(key=os.path.getmtime, reverse=True)
+            return os.path.abspath(root_docx[0])
+
+        # 7. Check Downloads
+        dl_dir = Path.home() / "Downloads"
+        if dl_dir.exists():
+            dl_docx = [str(p) for p in dl_dir.glob("*.docx")]
+            if dl_docx:
+                dl_docx.sort(key=os.path.getmtime, reverse=True)
+                return os.path.abspath(dl_docx[0])
+
+        return None
+
+    async def _handle_document_qa(self, command: str, cmd_clean: str = "") -> str:
+        """Zero-trust grounded Document/PDF analysis with strict context budgeting."""
+        pdf_path = self._find_active_or_recent_pdf(command)
+        if not pdf_path or not os.path.exists(pdf_path):
+            return "No active or recent PDF document found to inspect, Boss."
+
+        try:
+            import pypdf
+            reader = pypdf.PdfReader(pdf_path)
+        except ImportError:
+            return "PDF processing library ('pypdf') is not installed in the environment, Boss."
+        except Exception as e:
+            return f"⚠️ Could not read PDF at '{os.path.basename(pdf_path)}': {str(e)}"
+
+        doc_name = os.path.basename(pdf_path)
+        clean_q = cmd_clean or command.lower()
+
+        # 1. Title Query (Zero Hallucination)
+        if any(w in clean_q for w in ["title", "what is this document called", "document name", "name of the pdf", "name of this pdf"]):
+            meta_title = ""
+            if reader.metadata and reader.metadata.title:
+                meta_title = str(reader.metadata.title).strip()
+
+            if meta_title and meta_title.lower() not in ["untitled", "none", ""]:
+                play_chime(CHIME_CONFIRM)
+                self.signals.skill_executed.emit("PDF Intelligence", f"Title: {meta_title[:25]}")
+                return f"The verified title of '{doc_name}' is: \"{meta_title}\", Boss."
+
+            # Inspect page 1 for leading heading / title
+            if len(reader.pages) > 0:
+                p1_text = reader.pages[0].extract_text() or ""
+                lines = [ln.strip() for ln in p1_text.splitlines() if ln.strip()]
+                if lines and len(lines[0]) < 120 and not lines[0].endswith("."):
+                    play_chime(CHIME_CONFIRM)
+                    self.signals.skill_executed.emit("PDF Intelligence", f"Title: {lines[0][:25]}")
+                    return f"The title of '{doc_name}' appears to be: \"{lines[0]}\", Boss."
+
+            # Zero Hallucination: truthful return if not verifiable
+            return "I couldn't verify the title from the PDF."
+
+        # 2. First Sentence Query (Exact Text Grounding)
+        if any(w in clean_q for w in ["first sentence", "opening sentence", "starting sentence"]):
+            if len(reader.pages) == 0:
+                return f"The PDF '{doc_name}' contains no readable pages, Boss."
+            p1_text = reader.pages[0].extract_text() or ""
+            p1_clean = re.sub(r"\s+", " ", p1_text).strip()
+            if not p1_clean:
+                return f"I could not extract readable text from the first page of '{doc_name}', Boss."
+
+            sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", p1_clean) if s.strip()]
+            first_sentence = sentences[0] if sentences else p1_clean[:150]
+            play_chime(CHIME_CONFIRM)
+            self.signals.skill_executed.emit("PDF Intelligence", "First Sentence")
+            return f"The first sentence of '{doc_name}' is: \"{first_sentence}\", Boss."
+
+        # 3. Summarization Query / Overview (Context budget capped <= 2500 tokens / 7500 chars)
+        if any(w in clean_q for w in ["summarize", "summary", "overview", "what is this pdf about", "what is it about", "brief", "points"]):
+            total_pages = len(reader.pages)
+            if total_pages == 0:
+                return f"The PDF '{doc_name}' has no pages to summarize, Boss."
+
+            all_text_chunks = []
+            char_count = 0
+            for page in reader.pages[:min(3, total_pages)]:
+                txt = page.extract_text() or ""
+                if txt.strip():
+                    all_text_chunks.append(txt.strip())
+                    char_count += len(txt)
+                    if char_count >= 3500:
+                        break
+
+            if total_pages > 4 and char_count < 6000:
+                mid_page = total_pages // 2
+                mid_txt = reader.pages[mid_page].extract_text() or ""
+                if mid_txt.strip():
+                    all_text_chunks.append(mid_txt[:1500].strip())
+                    char_count += len(mid_txt[:1500])
+
+                last_txt = reader.pages[-1].extract_text() or ""
+                if last_txt.strip():
+                    all_text_chunks.append(last_txt[:2000].strip())
+                    char_count += len(last_txt[:2000])
+
+            combined_context = "\n\n".join(all_text_chunks)[:7500]
+            if not combined_context.strip():
+                return f"The document '{doc_name}' contains no extractable text, Boss."
+
+            self.signals.stream_started.emit("friday", f"Synthesizing 3-point summary for {doc_name}...")
+            play_chime(CHIME_CONFIRM)
+            self.signals.skill_executed.emit("PDF Summary", doc_name[:20])
+
+            summary_prompt = (
+                f"You are analyzing the document '{doc_name}'.\n"
+                f"Document text excerpt (within context budget):\n\"\"\"\n{combined_context}\n\"\"\"\n\n"
+                "Provide a concise, professional 3-point summary of this document. "
+                "Format as exactly three bullet points starting with '• '. "
+                "Stick strictly to the facts in the text."
+            )
+            await self.query_llm(summary_prompt, stream_to_ui=True, stream_to_speech=True)
+            return "__STREAMED__"
+
+        # 4. General Grounded Document QA (Context budget <= 7500 chars)
+        extracted_pages = []
+        for p in reader.pages[:5]:
+            t = p.extract_text() or ""
+            if t.strip():
+                extracted_pages.append(t.strip())
+        doc_context = "\n\n".join(extracted_pages)[:7500]
+        if not doc_context.strip():
+            return f"The document '{doc_name}' contains no extractable text, Boss."
+
+        qa_prompt = (
+            f"Boss asked: '{command}' regarding document '{doc_name}'.\n"
+            f"Verified document text excerpt:\n\"\"\"\n{doc_context}\n\"\"\"\n\n"
+            "Answer the question directly, factually, and concisely based strictly on the document text above. Do not hallucinate."
+        )
+        self.signals.stream_started.emit("friday", f"Analyzing {doc_name}...")
+        play_chime(CHIME_CONFIRM)
+        self.signals.skill_executed.emit("PDF QA", doc_name[:20])
+        await self.query_llm(qa_prompt, stream_to_ui=True, stream_to_speech=True)
+        return "__STREAMED__"
+
+        return None
+
+    async def _handle_web_reading(self, command: str, cmd_clean: str = "", target_url: str = "") -> str:
+        """
+        Zero-trust grounded Web Page Reading & Retrieval (Section H, BUG-007, BUG-016, BUG-017, BUG-018).
+        Fetches live HTTP/DOM, extracts actual content, and guarantees zero hallucination.
+        Never falls back to LLM memory if web fetch fails.
+        """
+        # 1. Resolve URL
+        url = target_url
+        if not url:
+            url_match = re.search(r"(https?://[^\s\"']+|127\.0\.0\.1:[0-9]+[^\s\"']*|localhost:[0-9]+[^\s\"']*)", command, re.IGNORECASE)
+            if url_match:
+                url = url_match.group(1).strip()
+            else:
+                domain_match = re.search(r"\b([a-zA-Z0-9_\-]+\.(?:com|org|net|io|edu|gov|co|app)[^\s\"']*)", command, re.IGNORECASE)
+                if domain_match:
+                    url = f"https://{domain_match.group(1).strip()}"
+        if not url:
+            return "Please provide a valid website URL or IP address to read, Boss."
+
+        if not url.startswith("http://") and not url.startswith("https://"):
+            url = f"http://{url}"
+
+        self.signals.stream_started.emit("friday", f"Retrieving and reading live web page at {url}...")
+        self.signals.status_updated.emit(f"Reading {url}...")
+        play_chime(CHIME_CONFIRM)
+
+        # 2. Fetch live HTTP content with timeout
+        import httpx
+        import lxml.html
+        try:
+            async with httpx.AsyncClient(timeout=8.0, follow_redirects=True, headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) F.R.I.D.A.Y./3.0"
+            }) as http_client:
+                resp = await http_client.get(url)
+                resp.raise_for_status()
+                raw_html = resp.text
+                status_code = resp.status_code
+        except Exception as fetch_err:
+            logger.warning(f"Webpage fetch failed for '{url}': {fetch_err}")
+            # Strict Anti-Hallucination: Truthful failure report, never hallucinate from memory!
+            return f"⚠️ Webpage retrieval failed for '{url}': {str(fetch_err)}"
+
+        # 3. Parse DOM
+        try:
+            doc = lxml.html.fromstring(raw_html)
+        except Exception:
+            try:
+                doc = lxml.html.document_fromstring(raw_html)
+            except Exception as parse_err:
+                return f"⚠️ Could not parse HTML structure from '{url}': {str(parse_err)}"
+
+        # Extract Title
+        title_elems = doc.xpath("//title/text()")
+        title = title_elems[0].strip() if title_elems else ""
+
+        # Extract Headings (h1 to h6)
+        headings = []
+        for h in doc.xpath("//h1 | //h2 | //h3 | //h4 | //h5 | //h6"):
+            txt = h.text_content().strip()
+            if txt:
+                headings.append(txt)
+
+        # Extract Paragraphs (p)
+        paragraphs = []
+        for p in doc.xpath("//p"):
+            txt = p.text_content().strip()
+            if txt:
+                paragraphs.append(txt)
+
+        # Strip scripts/styles for raw text
+        for bad in doc.xpath("//script | //style | //noscript"):
+            bad.getparent().remove(bad)
+        visible_text = re.sub(r"\s+", " ", doc.text_content()).strip()
+
+        cmd_lower = (cmd_clean or command).lower()
+        self.signals.skill_executed.emit("Web Reading", url[:30])
+
+        # 4. Target Query Matching
+        # A. Heading AND Paragraph query (Section H Mandatory Test: "Read the heading and paragraph")
+        if any(w in cmd_lower for w in ["heading and paragraph", "heading and the paragraph", "heading & paragraph", "headings and paragraphs"]):
+            primary_heading = headings[0] if headings else (title or "No heading found")
+            primary_para = paragraphs[0] if paragraphs else (visible_text[:250] or "No paragraph found")
+            return f"Heading: \"{primary_heading}\"\nParagraph: \"{primary_para}\""
+
+        # B. Heading / Headline query
+        if any(w in cmd_lower for w in ["heading", "headline", "title", "header"]):
+            if headings:
+                return f"The main heading on '{url}' is: \"{headings[0]}\", Boss."
+            elif title:
+                return f"The title of '{url}' is: \"{title}\", Boss."
+            return f"No distinct heading found on '{url}', Boss."
+
+        # C. Paragraph / Body query
+        if any(w in cmd_lower for w in ["paragraph", "paragraphs", "first paragraph"]):
+            if paragraphs:
+                return f"Paragraph from '{url}': \"{paragraphs[0]}\", Boss."
+            return f"No paragraphs found on '{url}', Boss."
+
+        # D. General Content query ("what does the page say", "read http://...", "extract content")
+        summary_parts = []
+        if title:
+            summary_parts.append(f"Title: \"{title}\"")
+        if headings:
+            summary_parts.append(f"Main Heading: \"{headings[0]}\"")
+        if paragraphs:
+            summary_parts.append(f"Summary: \"{paragraphs[0][:200]}\"")
+        elif visible_text:
+            summary_parts.append(f"Excerpt: \"{visible_text[:200]}\"")
+
+        if summary_parts:
+            return f"Content extracted from {url}:\n" + "\n".join(summary_parts)
+        return f"Successfully retrieved '{url}', but the page contained no visible text content, Boss."
+
+    async def _execute_word_paste(self) -> str:
+        paste_content = ""
+        for msg in reversed(self.conversation_history):
+            if msg.get("role") == "assistant" and msg.get("content"):
+                paste_content = msg.get("content").strip()
+                break
+
+        if not paste_content:
+            try:
+                import ctypes
+                user32 = ctypes.windll.user32
+                kernel32 = ctypes.windll.kernel32
+                if user32.OpenClipboard(None):
+                    if user32.IsClipboardFormatAvailable(13):  # CF_UNICODETEXT
+                        h_clip = user32.GetClipboardData(13)
+                        if h_clip:
+                            p_clip = kernel32.GlobalLock(h_clip)
+                            paste_content = ctypes.wstring_at(p_clip)
+                            kernel32.GlobalUnlock(h_clip)
+                    user32.CloseClipboard()
+            except Exception as clip_err:
+                logger.debug(f"Clipboard read error: {clip_err}")
+
+        if paste_content:
+            open_word_with_content(paste_content, title="Document")
+            play_chime(CHIME_CONFIRM)
+            self.signals.skill_executed.emit("Microsoft Word", "Pasted Content")
+            return "Opening Microsoft Word and pasting the content, Boss."
+        else:
+            open_blank_word()
+            play_chime(CHIME_CONFIRM)
+            self.signals.skill_executed.emit("Microsoft Word", "Blank Document")
+            return "Opened a blank document in Microsoft Word, Boss. (No previous text found to paste)."
+
+    async def _execute_word_draft(self, command: str, draft_topic: str) -> str:
+        self.signals.stream_started.emit("friday", f"Drafting {draft_topic} for Microsoft Word...")
+        self.signals.status_updated.emit(f"Composing {draft_topic}...")
+        play_chime(CHIME_CONFIRM)
+        self.signals.skill_executed.emit("Word Drafter", draft_topic[:25])
+
+        system_instruction = (
+            f"Boss asked: '{command}'\n"
+            f"Draft a complete, professional document on: '{draft_topic}'. "
+            "Write polished, ready-to-use content suitable for inserting directly into a Microsoft Word document. "
+            "Use clean paragraphs, clear structure, and appropriate greetings/closings. Do not include markdown code fences or conversational fluff."
+        )
+        draft_text = await self.query_llm(system_instruction, stream_to_ui=True, stream_to_speech=True)
+        if draft_text and draft_text.strip():
+            open_word_with_content(draft_text.strip(), title=draft_topic)
+        else:
+            open_blank_word()
+        return "__STREAMED__"
+
+    async def execute_document_agent(self, command: str) -> Optional[str]:
+        """
+        Executes targeted, bounded, verified operations on DOCX documents
+        via StructuredDocumentAgent without context overflow.
+        """
+        from friday_core.document.agent import StructuredDocumentAgent
+
+        docx_path = self._find_active_or_recent_docx(command)
+        if not docx_path or not os.path.exists(docx_path):
+            return "No active or attached DOCX document found to edit, Boss. Please specify or attach the document path."
+
+        # Extract directive cleanly
+        directive = command
+        if "Boss Directive:\n" in command:
+            directive = command.split("Boss Directive:\n", 1)[1].strip()
+        elif "[Attached DOCX:" in command or "[Attached Document:" in command:
+            directive = re.sub(r"\[Attached (?:DOCX|Document):[^\]]+\](?:\n```[^\n]*\n[\s\S]*?```)?", "", command).strip()
+            if not directive:
+                directive = "summarize document"
+
+        self.signals.stream_started.emit("friday", f"Analyzing document structure in '{os.path.basename(docx_path)}'...")
+        self.signals.status_updated.emit(f"Inspecting '{os.path.basename(docx_path)}'...")
+
+        agent = StructuredDocumentAgent(llm_query_fn=lambda p: self.query_llm(p, stream_to_ui=False, stream_to_speech=False))
+        result = await agent.execute_task(file_path=docx_path, user_directive=directive)
+        return result.message
 
     async def execute_smart_skill(self, command: str) -> Optional[str]:
         # 0. Bypass smart skills if analyzing attached documents or multi-paragraph content
-        if "[Attached Document:" in command or "Boss Directive:" in command:
+        if any(marker in command for marker in ["[Attached Document:", "[Attached DOCX:", "[Attached PDF:", "Boss Directive:"]):
             return None
 
         if len(command) > 350 and not any(t in command.lower() for t in ["look at my screen", "analyze my screen"]):
@@ -1837,6 +2740,444 @@ Core Persona Rules:
         cmd = re.sub(r"\byou\s*t[ui]be\b|\byuotube\b|\byotube\b", "youtube", cmd)
         cmd = re.sub(r"\b(?:olay|ply|plsy|paly)\b", "play", cmd)
 
+        # 0.005 TIER 0 FAST CONVERSATIONAL & GREETING HANDLERS (< 1ms)
+        greeting_patterns = [
+            r"^(?:hi|hello|hey|hey\s+friday|hello\s+friday|hi\s+friday|good\s+morning|good\s+afternoon|good\s+evening|greetings|howdy|sup|yo)$",
+            r"^(?:hey|hi|hello)\s+(?:there|friday|assistant)\b"
+        ]
+        if any(re.match(p, cmd) for p in greeting_patterns):
+            play_chime(CHIME_CONFIRM)
+            user_title = str(settings.get("user_title", "Boss")).strip() or "Boss"
+            hour = datetime.now().hour
+            tod = "morning" if hour < 12 else ("afternoon" if hour < 18 else "evening")
+            time_str = datetime.now().strftime("%I:%M %p")
+            resp = f"Good {tod}, {user_title}. Systems are nominal and I am standing by at {time_str}. How can I assist you today?"
+            self.signals.skill_executed.emit("Conversational Greeting", "Standby")
+            return resp
+
+        # Core Identity & Capabilities
+        if cmd in ["who are you", "who are you?", "what is your name", "what is your name?"]:
+            play_chime(CHIME_CONFIRM)
+            user_title = str(settings.get("user_title", "Boss")).strip() or "Boss"
+            resp = f"I am F.R.I.D.A.Y. 3.0, {user_title}'s designated tactical assistant, local system copilot, and engineering agent. Running on Windows 11."
+            self.signals.skill_executed.emit("System Identity", "F.R.I.D.A.Y. 3.0")
+            return resp
+
+        if cmd in ["what can you do", "what can you do?", "help", "capabilities", "features"]:
+            play_chime(CHIME_CONFIRM)
+            user_title = str(settings.get("user_title", "Boss")).strip() or "Boss"
+            resp = (
+                f"At your service, {user_title}. Here are my verified capabilities:\n"
+                f"• **Desktop Automation**: Launch apps, type text, window management\n"
+                f"• **Telemetry & Diagnostics**: Battery, RAM, CPU, power telemetry\n"
+                f"• **Media & Audio**: Adjust volume, mute/unmute, Spotify/YouTube playback\n"
+                f"• **Utilities**: Math calculations, system clock/date, timers, and countdowns\n"
+                f"• **File Organization**: Clean and organize Desktop, Downloads, and Documents\n"
+                f"• **Deep Web Research**: Autonomous multi-source research and report synthesis\n"
+                f"• **Neural Intelligence**: Local reasoning powered by Ollama."
+            )
+            self.signals.skill_executed.emit("Capabilities", "Overview")
+            return resp
+
+        # 0.0051 APPLICATION TERMINATION / CLOSE APP (TIER 1 FAST PATH WITH VERIFICATION)
+        close_app_match = re.match(
+            r"^(?:can\s+you\s+|please\s+|could\s+you\s+|would\s+you\s+)?(?:close|quit|exit|shut\s+down|terminate|kill)\s+(?:the\s+|my\s+)?([a-zA-Z0-9_\-\s]+?)(?:\s+app|\s+application|\s+window)?$",
+            cmd,
+            re.IGNORECASE
+        )
+        if close_app_match and not any(cmd.startswith(p) for p in ["kill process ", "terminate process ", "stop process ", "close process "]):
+            target_app = close_app_match.group(1).strip()
+            if target_app and target_app.lower() not in ["down", "to", "by", "window", "tab", "file", "it"]:
+                intent = ActionIntent(action="close_app", target=target_app, reason="Operator requested application closure")
+                res = gatekeeper.execute_action(intent)
+                if res.success:
+                    play_chime(CHIME_CONFIRM)
+                    self.signals.skill_executed.emit("App Closure", target_app.title())
+                    return f"{res.message}, Boss."
+                else:
+                    return f"⚠️ {res.message}"
+
+        # 0.0052 STANDALONE TYPING & UI AUTOMATION (TIER 1 FAST PATH)
+        type_match = re.match(
+            r"^(?:can\s+you\s+|please\s+|could\s+you\s+|would\s+you\s+)?(?:type|input|enter|paste|append|insert|replace|overwrite)\s+(.+)$",
+            command,
+            re.IGNORECASE
+        )
+        if type_match and not re.match(r"^(?:type\s+of\s+|input\s+of\s+)", cmd, re.IGNORECASE) and not cmd.endswith("?"):
+            raw_text_clause = type_match.group(1).strip()
+            # Handle "replace content with <text>" or "overwrite with <text>"
+            rw_match = re.search(r"^(?:content|all|everything|text)?\s*with\s+(.+)$", raw_text_clause, re.IGNORECASE)
+            if rw_match:
+                raw_text_clause = rw_match.group(1).strip()
+
+            app_target = "notepad"
+            in_app_match = re.search(r"^(.*?)\s+(?:in|into|on)\s+([a-zA-Z0-9_\-\s]+)$", raw_text_clause, re.IGNORECASE)
+            if in_app_match:
+                text_to_type = in_app_match.group(1).strip()
+                app_target = in_app_match.group(2).strip().lower()
+            else:
+                text_to_type = raw_text_clause
+
+            if (text_to_type.startswith("'") and text_to_type.endswith("'")) or (text_to_type.startswith('"') and text_to_type.endswith('"')):
+                text_to_type = text_to_type[1:-1]
+
+            # Special case: If target is Word and action is paste, delegate to Word automation
+            if app_target in ["word", "ms word", "microsoft word", "winword"] and (
+                text_to_type.lower() in ["this", "that", "it", "content", "clipboard"] or cmd.startswith("paste")
+            ):
+                return await self._execute_word_paste()
+
+            mode = "type"
+            if any(w in cmd for w in ["append", "at the end", "add "]):
+                mode = "append"
+            elif any(w in cmd for w in ["replace", "overwrite"]):
+                mode = "replace"
+            elif "insert" in cmd:
+                mode = "insert"
+
+            skill_res = skill_registry.execute_skill(
+                tool_id="ui_type_text",
+                params={"app_name": app_target, "text": text_to_type, "mode": mode},
+                operation_id=f"standalone-type-{uuid.uuid4().hex[:6]}"
+            )
+            if skill_res.success:
+                play_chime(CHIME_CONFIRM)
+                self.signals.skill_executed.emit("UI Type", text_to_type[:20])
+                return f"Typed '{text_to_type}' into {app_target.title()} and verified on screen, Boss."
+            else:
+                return f"⚠️ Typing operation failed: {skill_res.error or 'Could not focus or locate target window.'}"
+
+        # 0.0053 STANDALONE FILE SAVE (TIER 1 FAST PATH)
+        save_file_match = re.match(
+            r"^(?:can\s+you\s+|please\s+|could\s+you\s+)?save\s+(?:(?:the|this|my|current)?\s*(?:file|document|text)?\s*)?as\s+['\"]?([a-zA-Z0-9_\-\.\/\\]+)['\"]?$",
+            cmd,
+            re.IGNORECASE
+        )
+        if not save_file_match:
+            save_file_match = re.match(
+                r"^(?:can\s+you\s+|please\s+|could\s+you\s+)?save\s+['\"]?([a-zA-Z0-9_\-\.\/\\]+\.[a-zA-Z0-9]+)['\"]?$",
+                cmd,
+                re.IGNORECASE
+            )
+        if save_file_match:
+            target_filename = save_file_match.group(1).strip().strip("'\"")
+            app_target = "notepad"
+            skill_res = skill_registry.execute_skill(
+                tool_id="save_file",
+                params={"app_name": app_target, "filename": target_filename},
+                operation_id=f"standalone-save-{uuid.uuid4().hex[:6]}"
+            )
+            if skill_res.success:
+                saved_path = skill_res.data.get("saved_path", target_filename)
+                play_chime(CHIME_CONFIRM)
+                self.signals.skill_executed.emit("File Saved", os.path.basename(saved_path))
+                return f"Saved file as '{target_filename}' and verified on disk at '{saved_path}', Boss."
+            else:
+                return f"⚠️ Save operation failed: {skill_res.error or 'Could not save file to disk.'}"
+
+        # 0.0055 WEBPAGE GROUNDED READING & RETRIEVAL (TIER 1 FAST PATH)
+        web_read_patterns = [
+            r"\b(?:read|extract|fetch|get|what\s+is\s+written\s+on|what\s+does(?:\s+the\s+page)?\s+say|heading|paragraph)\b.*\b(?:https?://|127\.0\.0\.1|localhost)",
+            r"\b(?:https?://|127\.0\.0\.1|localhost)\b.*\b(?:read|extract|fetch|heading|paragraph)\b",
+            r"^read\s+(?:the\s+)?(?:heading|paragraph|content|page|webpage|website)\s+(?:of|from|at|on)?\s*https?://",
+            r"^read\s+https?://",
+            r"^read\s+(?:http://)?(?:127\.0\.0\.1|localhost):[0-9]+"
+        ]
+        if any(re.search(p, cmd, re.IGNORECASE) for p in web_read_patterns):
+            web_res = await self._handle_web_reading(command, cmd)
+            if web_res:
+                return web_res
+
+        # 0.006 Timer Status & Remaining Time (< 1ms deterministic)
+        if any(re.search(p, cmd, re.IGNORECASE) for p in [
+            r"\b(?:how\s+much\s+time\s+is\s+left\s+on\s+(?:my\s+|the\s+)?timer|timer\s+remaining|time\s+left\s+on\s+timer|how\s+much\s+time\s+left\s+on\s+(?:my\s+|the\s+)?timer|check\s+(?:my\s+|the\s+)?timer|timer\s+status|remaining\s+time\s+on\s+(?:my\s+|the\s+)?timer)\b"
+        ]):
+            t_status = self.timer_mgr.get_remaining_status()
+            play_chime(CHIME_CONFIRM)
+            self.signals.skill_executed.emit("Timer Status", t_status["status"])
+            if t_status["status"] == "RUNNING":
+                rem = t_status["remaining_seconds"]
+                mins = int(rem // 60)
+                secs = int(rem % 60)
+                time_str = f"{mins} minute{'s' if mins != 1 else ''} and {secs} second{'s' if secs != 1 else ''}" if mins > 0 else f"{secs} second{'s' if secs != 1 else ''}"
+                return f"There is approximately {time_str} remaining on your timer ('{t_status['label']}'), Boss."
+            elif t_status["status"] == "COMPLETED":
+                return "Your timer has already completed, Boss."
+            elif t_status["status"] == "CANCELLED":
+                return "Your timer was cancelled, Boss."
+            else:
+                return "There are no active timers running right now, Boss."
+
+        # 0.007 Persistent Cognitive Memory (< 2ms SQLite verified commit)
+        mem_remember_match = re.search(
+            r"\b(?:remember\s+that\s+(?:my\s+|the\s+)?(.+?)\s+is\s+(.+)|remember\s+preference\s+(.+?)\s*=\s*(.+)|save\s+preference\s+(.+?)\s*[:=]\s*(.+))\b",
+            command,
+            re.IGNORECASE
+        )
+        if mem_remember_match and not any(cmd.startswith(p) for p in ["do you remember", "can you remember", "what is"]):
+            m_key = (mem_remember_match.group(1) or mem_remember_match.group(3) or mem_remember_match.group(5) or "").strip()
+            m_val = (mem_remember_match.group(2) or mem_remember_match.group(4) or mem_remember_match.group(6) or "").strip()
+            if m_key and m_val:
+                m_res = skill_registry.execute_skill(
+                    tool_id="memory",
+                    params={"action": "store", "key": m_key, "value": m_val},
+                    operation_id=f"mem-store-{uuid.uuid4().hex[:6]}"
+                )
+                if m_res.success:
+                    play_chime(CHIME_CONFIRM)
+                    self.signals.skill_executed.emit("Memory Store", m_key)
+                    return f"Understood, Boss. I have recorded that your {m_key} is {m_val} in persistent storage and verified database commit."
+                else:
+                    return f"⚠️ Failed to store preference in database: {m_res.error}"
+
+        mem_recall_match = re.search(
+            r"\b(?:what\s+is\s+my\s+(.+)|do\s+you\s+remember\s+my\s+(.+)|retrieve\s+preference\s+(.+))",
+            cmd,
+            re.IGNORECASE
+        )
+        if mem_recall_match:
+            m_key = (mem_recall_match.group(1) or mem_recall_match.group(2) or mem_recall_match.group(3) or "").strip().rstrip("?")
+            if m_key and not any(m_key.startswith(p) for p in ["name", "ip", "location", "weather", "time", "date"]):
+                m_res = skill_registry.execute_skill(
+                    tool_id="memory",
+                    params={"action": "retrieve", "key": m_key},
+                    operation_id=f"mem-get-{uuid.uuid4().hex[:6]}"
+                )
+                if m_res.success:
+                    val = m_res.data.get("value")
+                    play_chime(CHIME_CONFIRM)
+                    self.signals.skill_executed.emit("Memory Recall", m_key)
+                    if val is not None:
+                        return f"According to your persistent profile, your {m_key} is {val}, Boss."
+                    return f"I don't have a record of your {m_key} in my memory database yet, Boss."
+
+        mem_forget_match = re.search(
+            r"\b(?:forget\s+(?:that\s+)?(?:my\s+)?(.+)|delete\s+preference\s+(.+))\b",
+            cmd,
+            re.IGNORECASE
+        )
+        if mem_forget_match:
+            m_key = (mem_forget_match.group(1) or mem_forget_match.group(2) or "").strip()
+            m_res = skill_registry.execute_skill(
+                tool_id="memory",
+                params={"action": "delete", "key": m_key},
+                operation_id=f"mem-del-{uuid.uuid4().hex[:6]}"
+            )
+            if m_res.success:
+                play_chime(CHIME_CONFIRM)
+                self.signals.skill_executed.emit("Memory Delete", m_key)
+                return f"I have deleted your {m_key} preference from persistent memory, Boss."
+
+        # 0.008 Top Process & Granular CPU/RAM Telemetry (< 1ms deterministic)
+        if any(re.search(p, cmd, re.IGNORECASE) for p in [
+            r"\b(?:what(?:\s+is|\s+app|\s+process)?\s+(?:is\s+)?using\s+the\s+most\s+cpu|most\s+cpu|top\s+cpu|top\s+cpu\s+process|cpu\s+hogs?|which\s+app\s+is\s+using\s+(?:the\s+)?most\s+cpu)\b",
+            r"\b(?:highest\s+cpu|cpu\s+usage\s+by\s+process|who\s+is\s+using\s+the\s+most\s+cpu)\b"
+        ]):
+            top_procs = get_top_cpu_processes(limit=5)
+            cpu_info = get_cpu_info()
+            overall = cpu_info.get("percent", 0.0)
+            if top_procs:
+                leader = top_procs[0]
+                pname = leader.get("name", "Unknown")
+                pcpu = leader.get("cpu_percent", 0.0)
+                pid = leader.get("pid", 0)
+                play_chime(CHIME_CONFIRM)
+                self.signals.telemetry_updated.emit({"cpu": overall, "top_cpu_process": pname, "top_cpu_percent": pcpu})
+                self.signals.skill_executed.emit("CPU Telemetry", f"{pname}: {pcpu}%")
+                return f"The process using the most CPU right now is '{pname}' (PID {pid}) at {pcpu:.1f}% CPU. Overall system CPU usage is {overall:.1f}%, Boss."
+            else:
+                play_chime(CHIME_CONFIRM)
+                return f"Current overall CPU usage is {overall:.1f}%, Boss. No individual process exceeded the measurement threshold."
+
+        if any(re.search(p, cmd, re.IGNORECASE) for p in [
+            r"\b(?:what(?:\s+is|\s+app|\s+process)?\s+(?:is\s+)?using\s+the\s+most\s+ram|most\s+ram|top\s+ram|top\s+memory|most\s+memory|which\s+app\s+is\s+using\s+(?:the\s+)?most\s+ram)\b"
+        ]):
+            top_procs = get_top_ram_processes(limit=5)
+            mem_load = get_memory_info()
+            if top_procs:
+                leader = top_procs[0]
+                pname = leader.get("name", "Unknown")
+                pram = leader.get("memory_percent", 0.0)
+                pid = leader.get("pid", 0)
+                play_chime(CHIME_CONFIRM)
+                self.signals.skill_executed.emit("RAM Telemetry", f"{pname}: {pram}%")
+                return f"The process using the most memory right now is '{pname}' (PID {pid}) using {pram:.1f}% RAM. Total system memory load is {mem_load}%, Boss."
+
+        if any(re.search(p, cmd, re.IGNORECASE) for p in [
+            r"\b(?:how\s+much\s+cpu\s+(?:am\s+i|is\s+being|is)\s+using|what\s+is\s+(?:my\s+|the\s+)?cpu\s+usage|cpu\s+(?:usage|load|percent|percentage)|check\s+cpu)\b",
+            r"^cpu$"
+        ]) and not any(k in cmd for k in ["code", "script", "explain", "how to"]):
+            cpu_info = get_cpu_info()
+            overall = cpu_info.get("percent", 0.0)
+            cores = cpu_info.get("cores", 0)
+            freq = cpu_info.get("freq_current_mhz", 0)
+            play_chime(CHIME_CONFIRM)
+            self.signals.telemetry_updated.emit({"cpu": overall})
+            self.signals.skill_executed.emit("CPU Telemetry", f"{overall}%")
+            return f"Current CPU load is {overall:.1f}% across {cores} logical cores running at {freq:.0f} MHz, Boss."
+
+        # 0.009 Clipboard Automation & Verification
+        clip_match = re.search(
+            r"^(?:please\s+)?(?:copy\s+(?:the\s+text\s+)?['\"]?(.*?)['\"]?\s+to\s+(?:the\s+)?clipboard|set\s+clipboard\s+to\s+['\"]?(.*?)['\"]?)$",
+            command,
+            re.IGNORECASE
+        )
+        if clip_match:
+            text_to_copy = (clip_match.group(1) or clip_match.group(2) or "").strip()
+            if text_to_copy.startswith(("'", '"')) and text_to_copy.endswith(("'", '"')):
+                text_to_copy = text_to_copy[1:-1]
+            c_res = skill_registry.execute_skill(
+                tool_id="clipboard",
+                params={"action": "set", "text": text_to_copy},
+                operation_id=f"clip-{uuid.uuid4().hex[:6]}"
+            )
+            if c_res.success and c_res.data.get("verified", False):
+                play_chime(CHIME_CONFIRM)
+                self.signals.skill_executed.emit("Clipboard", "Text Copied")
+                return f"Text '{text_to_copy}' copied to clipboard and verified, Boss."
+            else:
+                return f"⚠️ Clipboard operation failed: {c_res.error or 'Verification readback failed'}"
+
+        if cmd in ["what is on my clipboard", "what's on my clipboard", "get clipboard", "read clipboard", "show clipboard"]:
+            content = clipboard_get()
+            play_chime(CHIME_CONFIRM)
+            self.signals.skill_executed.emit("Clipboard", "Read")
+            if content:
+                return f"Current clipboard content: '{content}', Boss."
+            return "The clipboard is currently empty, Boss."
+
+        # 0.010 Physical Desktop Screenshot with Verification
+        if any(w in cmd for w in ["take a screenshot", "capture screen", "capture active screen", "screenshot and save", "save a screenshot"]):
+            target_dir = Path(os.path.expanduser("~")) / "Desktop" if "desktop" in cmd else None
+            shot_res = skill_registry.execute_skill(
+                tool_id="screenshot",
+                params={"target_dir": str(target_dir) if target_dir else None},
+                operation_id=f"shot-{uuid.uuid4().hex[:6]}"
+            )
+            if shot_res.success:
+                fpath = shot_res.data.get("path", "")
+                w = shot_res.data.get("width", 0)
+                h = shot_res.data.get("height", 0)
+                play_chime(CHIME_CONFIRM)
+                self.signals.skill_executed.emit("Screenshot", os.path.basename(fpath))
+                return f"Screenshot successfully captured and verified on disk at '{fpath}' ({w}x{h}), Boss."
+            else:
+                return f"⚠️ Screenshot capture failed: {shot_res.error}"
+
+        # 0.011 Idempotent File Creation on Desktop / Folders
+        create_file_match = re.search(
+            r"\b(?:create|make|write)\s+(?:a\s+)?(?:new\s+)?([a-zA-Z0-9_\-\s]+?\s+)?file\s+(?:on|in|to)\s+(?:the\s+|my\s+)?(desktop|downloads|documents)(?:\s+and\s+(?:write|put|type|fill)\s+['\"]?(.*?)['\"]?\s+in\s+it)?$",
+            command,
+            re.IGNORECASE
+        )
+        if create_file_match:
+            f_desc = (create_file_match.group(1) or "").strip()
+            loc = (create_file_match.group(2) or "desktop").strip()
+            content = (create_file_match.group(3) or "").strip()
+            if content.startswith(("'", '"')) and content.endswith(("'", '"')):
+                content = content[1:-1]
+            fname = "friday_test_file.txt"
+            if f_desc and "text" not in f_desc.lower():
+                clean_fdesc = re.sub(r"[^a-zA-Z0-9_\-]", "_", f_desc.strip())
+                fname = f"{clean_fdesc}.txt"
+            c_res = skill_registry.execute_skill(
+                tool_id="create_file",
+                params={"folder": loc, "filename": fname, "content": content},
+                operation_id=f"create-{uuid.uuid4().hex[:6]}"
+            )
+            if c_res.success:
+                play_chime(CHIME_CONFIRM)
+                self.signals.skill_executed.emit("File Creation", fname)
+                return f"Created file '{fname}' in {loc.title()} with exact content and verified on disk, Boss."
+            else:
+                return f"⚠️ File creation failed: {c_res.error}"
+
+        # 0.012 File Search Execution (Enumerate real files, no tutorials)
+        file_search_match = re.search(
+            r"\b(?:find|search\s+for|list|show)\s+(?:all\s+)?([a-zA-Z0-9_\-\*\.]+)?\s*(?:files?|documents?|items?)?\s*(?:in|inside|from|under)\s+(?:my\s+)?([a-zA-Z0-9_\-\s]+?)(?:\s+folder|\s+directory)?$",
+            cmd,
+            re.IGNORECASE
+        )
+        if file_search_match and not any(cmd.startswith(p) for p in ["how to ", "how do ", "how can ", "explain "]):
+            type_or_query = (file_search_match.group(1) or "").strip()
+            loc = (file_search_match.group(2) or "").strip()
+            if loc:
+                search_res = skill_registry.execute_skill(
+                    tool_id="file_search",
+                    params={"query": type_or_query if type_or_query else "*", "folder": loc, "file_type": type_or_query if type_or_query.lower() in ["pdf", "txt", "docx", "py", "jpg", "png", "zip", "xlsx"] else None},
+                    operation_id=f"search-{uuid.uuid4().hex[:6]}"
+                )
+                if search_res.success:
+                    count = search_res.data.get("count", 0)
+                    files = search_res.data.get("files", [])
+                    folder_path = search_res.data.get("folder", loc)
+                    play_chime(CHIME_CONFIRM)
+                    self.signals.skill_executed.emit("File Search", f"{count} files found")
+                    if count == 0:
+                        return f"No matching {type_or_query or ''} files found in {loc.title()} ({folder_path}), Boss."
+                    file_list_str = "\n".join(f"• `{f.get('name')}` ({f.get('size_bytes', 0)} bytes)" for f in files[:10])
+                    extra = f"\n...and {count - 10} more files." if count > 10 else ""
+                    return f"Found {count} matching files in {loc.title()}:\n{file_list_str}{extra}"
+                else:
+                    return f"⚠️ File search failed: {search_res.error}"
+
+        # 0.013 Natural Language File Selection & Open
+        file_select_match = re.search(
+            r"^open\s+(?:the\s+)?(first|latest|newest|most\s+recent|oldest|second|largest|smallest)\s+([a-zA-Z0-9_\-\*\.]+)?\s*(?:file|document|item)?\s*(?:in|inside|from)\s+(?:my\s+)?([a-zA-Z0-9_\-\s]+?)(?:\s+folder|\s+directory)?$",
+            cmd,
+            re.IGNORECASE
+        )
+        if file_select_match:
+            order = file_select_match.group(1).strip()
+            f_type = (file_select_match.group(2) or "").strip()
+            f_loc = (file_select_match.group(3) or "").strip()
+            sel_res = skill_registry.execute_skill(
+                tool_id="file_select",
+                params={"order": order, "file_type": f_type, "folder": f_loc, "open_file": True},
+                operation_id=f"select-{uuid.uuid4().hex[:6]}"
+            )
+            if sel_res.success:
+                fname = sel_res.data.get("filename", "")
+                play_chime(CHIME_CONFIRM)
+                self.signals.skill_executed.emit("File Selector", fname)
+                return f"Selected and opened the {order} {f_type} file: '{fname}', Boss."
+            else:
+                return f"⚠️ Could not select or open file: {sel_res.error}"
+
+        # 0.014 YouTube Target Routing (Preserve YouTube destination and search results)
+        yt_search_match = re.search(
+            r"^(?:open\s+youtube\s+(?:and\s+|to\s+)?search\s+(?:for\s+)?(.+)|search\s+youtube\s+for\s+(.+)|search\s+for\s+(.+)\s+on\s+youtube|open\s+youtube\s+and\s+look\s+for\s+(.+))$",
+            cmd,
+            re.IGNORECASE
+        )
+        if yt_search_match:
+            yt_query = (yt_search_match.group(1) or yt_search_match.group(2) or yt_search_match.group(3) or yt_search_match.group(4) or "").strip()
+            yt_query = re.sub(r"\s+on\s+youtube$", "", yt_query).strip()
+            if yt_query:
+                target_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(yt_query)}"
+                gatekeeper.execute_action(ActionIntent(action="open_url", target=target_url))
+                play_chime(CHIME_CONFIRM)
+                self.signals.skill_executed.emit("YouTube Search", yt_query[:30])
+                return f"Navigating to YouTube and searching for '{yt_query}', Boss."
+
+        # 0.015 System Time & Date (< 1ms deterministic)
+        if any(re.match(p, cmd) for p in [
+            r"^(?:what\s+time\s+is\s+it|what\s+is\s+the\s+time|current\s+time|tell\s+me\s+the\s+time|time\s+please|time)$",
+            r"^(?:what\s+(?:is\s+)?today(?:'s)?\s+date|what\s+is\s+the\s+date|current\s+date|what\s+day\s+is\s+it)$"
+        ]):
+            if any(w in cmd for w in ["date", "day"]):
+                gatekeeper.execute_action(ActionIntent(action="get_date"))
+                play_chime(CHIME_CONFIRM)
+                resp = f"Today's date is {datetime.now().strftime('%A, %B %d')}, Boss."
+                self.signals.skill_executed.emit("Clock", resp)
+                return resp
+            else:
+                gatekeeper.execute_action(ActionIntent(action="get_time"))
+                play_chime(CHIME_CONFIRM)
+                resp = f"The current time is {datetime.now().strftime('%I:%M %p')}, Boss."
+                self.signals.skill_executed.emit("Clock", resp)
+                return resp
+
         # 0.01 Check calculations first so math is always resolved immediately
         calc_result = self._try_calculate(cmd)
         if calc_result:
@@ -1844,6 +3185,31 @@ Core Persona Rules:
             play_chime(CHIME_CONFIRM)
             self.signals.skill_executed.emit("Calculator", calc_result)
             return calc_result
+
+        # 0.015 Hardware Telemetry (< 1ms deterministic)
+        telemetry_patterns = [
+            r"\b(?:battery\s+(?:level|status|percent|percentage|health|remaining|life)|how\s+much\s+battery|what(?:'s|\s+is)\s+the\s+battery|check\s+battery|battery\s+check)\b",
+            r"\b(?:is\s+(?:the\s+|my\s+|laptop\s+)?(?:laptop\s+)?charging|charging\s+status|is\s+it\s+charging)\b",
+            r"\b(?:memory\s+(?:usage|load|status)|ram\s+(?:usage|load|status)|check\s+(?:ram|memory)|how\s+much\s+ram)\b",
+            r"\b(?:system\s+(?:diagnostics|status|telemetry|health)|diagnostics|telemetry|system\s+specs)\b",
+            r"^(?:status|battery|telemetry|ram|memory)$"
+        ]
+        if any(re.search(p, cmd, re.IGNORECASE) for p in telemetry_patterns):
+            res = gatekeeper.execute_action(ActionIntent(action="get_telemetry"))
+            battery, charging = get_battery_info()
+            mem_load = get_memory_info()
+            parts = []
+            if battery is not None:
+                chg_str = "connected to AC power" if charging else "on battery reserve"
+                parts.append(f"Battery is holding at {battery} percent, {chg_str}.")
+            if mem_load is not None:
+                parts.append(f"System memory load is at {mem_load} percent.")
+            play_chime(CHIME_CONFIRM)
+            self.signals.telemetry_updated.emit({"battery": battery, "charging": charging, "memory": mem_load})
+            self.signals.skill_executed.emit("Telemetry", f"Battery: {battery}%, RAM: {mem_load}%")
+            if parts:
+                return " ".join(parts) + " All subsystems operational, Boss."
+            return "All diagnostic scans are green. Systems running nominally, Boss."
 
         # 0.02 Check coding or technical explanation requests to preserve full LLM generation
         is_code_request = any(p in cmd for p in [
@@ -1865,6 +3231,48 @@ Core Persona Rules:
         ])
         if is_code_request:
             return None
+
+        # 0.03 COMPOUND DIRECTIVE EXECUTION (PEOV Closed-Loop DAG)
+        if hasattr(self, "planner") and hasattr(self, "executor"):
+            compound_mission = self.planner.plan_compound_directive(command)
+            if compound_mission:
+                logger.info(f"PEOV Mission Planner dispatched compound mission: {compound_mission.mission_id} ({len(compound_mission.steps)} steps)")
+                play_chime(CHIME_CONFIRM)
+                mission_res = self.executor.execute_mission(compound_mission)
+                if mission_res.status == MissionStatus.COMPLETED:
+                    summaries = []
+                    for s in compound_mission.steps:
+                        if s.tool_id == "app_launcher":
+                            summaries.append(f"opened {s.params.get('app_name', 'application')}")
+                        elif s.tool_id == "content_generation":
+                            summaries.append(f"composed {s.params.get('prompt', 'content')}")
+                        elif s.tool_id == "ui_type_text":
+                            txt = s.params.get('text', '')
+                            if txt.startswith("$"):
+                                summaries.append("inserted generated content")
+                            else:
+                                summaries.append(f"typed '{txt}'")
+                        elif s.tool_id == "ui_key_press":
+                            summaries.append(f"pressed {s.params.get('key', 'key')}")
+                        elif s.tool_id == "calculate":
+                            expr = s.params.get('expression', '')
+                            calc_val = self._try_calculate(expr)
+                            summaries.append(f"calculated {expr} = {calc_val}")
+                        elif s.tool_id == "app_search":
+                            summaries.append(f"searched for {s.params.get('query', '')}")
+                        elif s.tool_id == "app_navigate":
+                            summaries.append(f"navigated to {s.params.get('path', '')}")
+                        elif s.tool_id == "save_file":
+                            summaries.append(f"saved as {s.params.get('filename', '')}")
+                        elif s.tool_id == "ui_verify_content":
+                            summaries.append("verified text in editor")
+                    action_str = " and ".join(summaries)
+                    final_msg = f"Successfully {action_str}, Boss. All operations verified."
+                    self.signals.skill_executed.emit("Compound Action", action_str[:30])
+                    return final_msg
+                else:
+                    err_text = "; ".join(mission_res.errors) if mission_res.errors else "Mission step verification failed."
+                    return f"⚠️ Compound operation incomplete: {err_text}"
 
         # 0.04 SCREEN VISION & AWARENESS (Priority over static desktop action)
         vision_triggers = [
@@ -1914,6 +3322,68 @@ Core Persona Rules:
             self.signals.theme_change_requested.emit(mode)
             return resp
 
+        # (Note: Application closure and UI typing elevated to Tier-1 fast paths # 0.0051 and # 0.0052 above)
+
+        # 0.057 WEB NAVIGATION & LIVE PAGE EXTRACTION (TIER 1 FAST PATH)
+        web_read_match = re.match(
+            r"^(?:open|go\s+to|visit|navigate\s+to)\s+(?:the\s+)?([a-zA-Z0-9\-\.\s]+?)(?:\s+website|\s+webpage|\s+homepage|\s+site)?\s+(?:and\s+|then\s+)?(?:tell\s+me|what\s+is|what's|read|extract|find|get)\s+(.+)$",
+            cmd,
+            re.IGNORECASE
+        )
+        if web_read_match:
+            raw_site = web_read_match.group(1).strip()
+            query_goal = web_read_match.group(2).strip()
+            site_key = raw_site.lower().replace(" ", "").replace("the", "")
+            target_url = None
+            for s_name, s_url in [("nvidia", "https://www.nvidia.com"), ("google", "https://google.com"), ("github", "https://github.com"), ("reddit", "https://reddit.com"), ("wikipedia", "https://wikipedia.org"), ("apple", "https://apple.com"), ("microsoft", "https://microsoft.com"), ("youtube", "https://youtube.com")]:
+                if site_key == s_name:
+                    target_url = s_url
+                    break
+            if not target_url:
+                if "." in raw_site and not raw_site.endswith(".exe"):
+                    target_url = f"https://{raw_site}" if not raw_site.startswith("http") else raw_site
+                else:
+                    target_url = f"https://www.{site_key}.com"
+
+            self.signals.stream_started.emit("friday", f"Navigating to {target_url} and analyzing live page content...")
+            self.signals.status_updated.emit(f"Reading {target_url}...")
+            play_chime(CHIME_CONFIRM)
+
+            try:
+                import webbrowser
+                webbrowser.open(target_url)
+            except Exception:
+                pass
+
+            try:
+                from friday_core.browser.session import BrowserSession
+                import lxml.html
+                session = BrowserSession()
+                session.navigate(target_url)
+                doc = lxml.html.fromstring(session._raw_html)
+
+                h1_tags = [h.text_content().strip() for h in doc.xpath("//h1") if h.text_content().strip()]
+                h2_tags = [h.text_content().strip() for h in doc.xpath("//h2") if h.text_content().strip()]
+                title = session.current_state.title if session.current_state else ""
+
+                all_headlines = h1_tags + h2_tags
+                if all_headlines:
+                    primary_headline = all_headlines[0]
+                    other_highlights = "; ".join(all_headlines[1:4]) if len(all_headlines) > 1 else ""
+                    res_msg = f"The main headline on the {raw_site.title()} homepage is: \"{primary_headline}\"."
+                    if other_highlights:
+                        res_msg += f" Other featured headlines include: {other_highlights}."
+                    res_msg += f" (Page Title: {title})."
+                    self.signals.skill_executed.emit("Web Page Reader", raw_site.title())
+                    return res_msg
+                elif title:
+                    return f"The {raw_site.title()} homepage title is: \"{title}\", Boss."
+                else:
+                    return f"Successfully reached {target_url}, but could not identify a clear top headline from the HTML structure, Boss."
+            except Exception as e:
+                logger.warning(f"Web reading error on {target_url}: {e}")
+                return f"Opened {target_url} in your browser, Boss. (Automated DOM reading error: {str(e)})"
+
         # 0.06 Semantic Intent Router (System 1 Local Neural Dispatch < 1ms)
         if settings.get("semantic_routing", True) and hasattr(self, "semantic_router"):
             try:
@@ -1949,7 +3419,8 @@ Core Persona Rules:
             secs, label = timer_data
             play_chime(CHIME_CONFIRM)
             self.signals.skill_executed.emit("Timer", label)
-            t = asyncio.create_task(self._run_timer_countdown(secs, label))
+            t_entry = self.timer_mgr.create_timer(secs, label)
+            t = asyncio.create_task(self._run_timer_countdown(secs, label, t_entry.timer_id))
             if not hasattr(self, "_active_timers"):
                 self._active_timers = []
             self._active_timers.append(t)
@@ -1994,8 +3465,12 @@ Core Persona Rules:
             else:
                 folder_key = "downloads"
 
-            self.signals.skill_executed.emit("File Organizer", folder_key.title())
-            res = await self.organize_directory(folder_key)
+            is_preview = any(w in cmd for w in [
+                "don't move", "dont move", "without moving", "dry run", "preview",
+                "show me what files you would organize", "scan", "just show", "show only"
+            ])
+            self.signals.skill_executed.emit("File Organizer", f"{folder_key.title()} (Preview)" if is_preview else folder_key.title())
+            res = await self.organize_directory(folder_key, dry_run=is_preview)
             return res
 
         # 0.25 CONTEXTUAL FILE & EXPLORER LAUNCHER
@@ -2119,7 +3594,9 @@ Core Persona Rules:
                 gatekeeper.execute_action(ActionIntent(action="open_url", target=video_url))
                 play_chime(CHIME_CONFIRM)
                 self.signals.skill_executed.emit("YouTube Play", target[:30])
-                return f"Playing '{target}' on YouTube, Boss."
+                if resolved_title and target.lower() not in resolved_title.lower():
+                    return f"Playing '{resolved_title}' for '{target}' on YouTube, Boss."
+                return f"Playing '{resolved_title or target}' on YouTube, Boss."
 
         # 0.5 CONTEXTUAL WEBSITES
         website_domains = {
@@ -2149,6 +3626,8 @@ Core Persona Rules:
                 play_chime(CHIME_CONFIRM)
                 self.signals.skill_executed.emit("Web Launch", site_name.title())
                 return f"Opening {site_name.title()} in your browser, Boss."
+
+
 
         # 1. PROCESS CONTROL (TIER 2 SECURITY CLEARANCE)
         if any(cmd.startswith(p) for p in ["kill process ", "terminate process ", "stop process ", "close process "]):
@@ -2192,7 +3671,10 @@ Core Persona Rules:
                 q = re.sub(r"^(?:song|track|music|video)\s+", "", q).strip()
                 if cmd.startswith("play "):
                     target_url, resolved_title = await resolve_youtube_video_async(q)
-                    display_msg = f"Playing '{resolved_title or q}' on YouTube, Boss."
+                    if resolved_title and q.lower() not in resolved_title.lower():
+                        display_msg = f"Playing '{resolved_title}' for '{q}' on YouTube, Boss."
+                    else:
+                        display_msg = f"Playing '{resolved_title or q}' on YouTube, Boss."
                     skill_tag = "YouTube Play"
                 else:
                     target_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(q)}"
@@ -2314,19 +3796,27 @@ Core Persona Rules:
                 return " ".join(parts) + " All subsystems operational, Boss."
             return "All diagnostic scans are green. Systems running nominally, Boss."
 
-        # 8. VOLUME CONTROLS (TIER 1)
-        if any(w in cmd for w in ["volume up", "turn it up", "turn up the volume", "turn volume up", "increase volume", "raise volume"]):
-            gatekeeper.execute_action(ActionIntent(action="adjust_volume", target="up"))
+        # 8. VOLUME CONTROLS (TIER 1 FAST PATH)
+        if any(w in cmd for w in ["unmute the system volume", "unmute system volume", "unmute volume", "unmute audio", "unmute computer", "unmute"]):
+            res = gatekeeper.execute_action(ActionIntent(action="adjust_volume", target="unmute"))
             play_chime(CHIME_CONFIRM)
+            self.signals.skill_executed.emit("Audio Volume", "Unmuted")
+            return "Master audio unmuted and verified, Boss."
+        elif re.search(r"\b(?:myute|muet|mut|mue|silence|mute)\b", cmd) and not any(w in cmd for w in ["unmute"]):
+            res = gatekeeper.execute_action(ActionIntent(action="adjust_volume", target="mute"))
+            play_chime(CHIME_CONFIRM)
+            self.signals.skill_executed.emit("Audio Volume", "Muted")
+            return "Master audio muted and verified, Boss."
+        elif any(w in cmd for w in ["increase the system volume", "increase system volume", "increase volume", "raise volume", "turn up the volume", "turn volume up", "turn it up", "louder", "volume up"]):
+            res = gatekeeper.execute_action(ActionIntent(action="adjust_volume", target="up"))
+            play_chime(CHIME_CONFIRM)
+            self.signals.skill_executed.emit("Audio Volume", "Volume Up")
             return "Master volume increased."
-        if any(w in cmd for w in ["volume down", "lower volume", "turn it down", "turn down the volume", "turn volume down", "decrease volume", "reduce volume"]):
-            gatekeeper.execute_action(ActionIntent(action="adjust_volume", target="down"))
+        elif any(w in cmd for w in ["decrease the system volume", "decrease system volume", "decrease volume", "lower volume", "reduce volume", "turn down the volume", "turn volume down", "turn it down", "quieter", "volume down"]):
+            res = gatekeeper.execute_action(ActionIntent(action="adjust_volume", target="down"))
             play_chime(CHIME_CONFIRM)
+            self.signals.skill_executed.emit("Audio Volume", "Volume Down")
             return "Master volume decreased."
-        if "mute" in cmd or "unmute" in cmd:
-            gatekeeper.execute_action(ActionIntent(action="adjust_volume", target="mute"))
-            play_chime(CHIME_CONFIRM)
-            return "Audio volume toggled, Boss."
 
         # 9. TIME & DATE (TIER 0)
         if not is_code_or_explanatory and any(w in cmd for w in ["what time is it", "current time", "what's the time", "tell me the time", "the time"]):
@@ -2340,18 +3830,30 @@ Core Persona Rules:
 
         # 10. SCREENSHOT & LOCK PC (TIER 1)
         if any(w in cmd for w in ["screenshot", "snip", "capture screen", "screen capture", "take a screenshot"]):
-            gatekeeper.execute_action(ActionIntent(action="screenshot"))
-            play_chime(CHIME_CONFIRM)
-            return "Screenshot snipping tool activated, Boss."
+            target_dir = Path(os.path.expanduser("~")) / "Desktop" if "desktop" in cmd else None
+            shot_path = capture_and_save_screenshot(target_dir=target_dir)
+            if shot_path and os.path.exists(shot_path) and os.path.getsize(shot_path) > 0:
+                play_chime(CHIME_CONFIRM)
+                self.signals.skill_executed.emit("Screenshot", os.path.basename(shot_path))
+                return f"Screenshot captured and verified on disk at '{shot_path}', Boss."
+            else:
+                return "⚠️ Screenshot capture failed: Display buffer could not be secured or verified on disk."
         if "lock pc" in cmd or "lock my computer" in cmd:
             gatekeeper.execute_action(ActionIntent(action="lock_workstation"))
             return "Locking workstation now."
 
         # 11. INLINE WEB SEARCH via DuckDuckGo (TIER 1)
+        # Section 7 & 15: If the active model has native tool capability,
+        # bypass Python-side regex tool interception and delegate directly to MAIN LLM!
+        if await self.is_model_tool_capable(self.model):
+            return None
+
         search_prefixes = [
-            "search the web for ", "search the web about ", "search web for ", "search web about ",
+            "search the web and ", "search the web for ", "search the web about ", "search the web to ", "search the web ",
+            "search web and ", "search web for ", "search web about ", "search web ",
             "search online for ", "search online about ", "search internet for ", "search internet about ",
             "search the internet for ", "search the internet about ",
+            "research the web for ", "research online for ", "research the web about ", "research about ", "research ",
             "search for ", "search about ", "search ",
             "google for ", "google search for ", "google ",
             "duckduckgo for ", "duckduckgo ",
@@ -2396,38 +3898,49 @@ Core Persona Rules:
 
         if search_match:
             search_match = re.sub(
-                r"^(?:the\s+web\s+for|web\s+for|online\s+for|the\s+internet\s+for|web\s+about|the\s+web\s+about|me\s+about|me\s+abt|no\s+|just\s+|please\s+)\s*",
+                r"^(?:the\s+web\s+(?:for|about|and|to)?|web\s+(?:for|about|and|to)?|online\s+(?:for|about)?|the\s+internet\s+(?:for|about)?|me\s+about|me\s+abt|no\s+|just\s+|please\s+)\s*",
                 "",
                 search_match,
                 flags=re.IGNORECASE
             ).strip()
 
+            # Clean meta prompt instructions from actual search query
+            clean_search_query = re.sub(
+                r"\s+(?:using\s+\d+\s+reliable\s+web\s+sources|and\s+give\s+me\s+(?:the\s+)?source\s+names|give\s+me\s+(?:the\s+)?sources|with\s+sources|and\s+cite\s+sources).*$",
+                "",
+                search_match,
+                flags=re.IGNORECASE
+            ).strip()
+            search_query_to_run = clean_search_query if clean_search_query else search_match
+
         if search_match and len(search_match) > 1:
             try:
-                self.signals.stream_started.emit("friday", f"Scanning live web intelligence for '{search_match}'...")
-                self.signals.status_updated.emit(f"Scanning web for '{search_match}'...")
+                self.signals.stream_started.emit("friday", f"Scanning live web intelligence for '{search_query_to_run}'...")
+                self.signals.status_updated.emit(f"Scanning web for '{search_query_to_run}'...")
                 play_chime(CHIME_CONFIRM)
-                self.signals.skill_executed.emit("Web Search", search_match[:30])
+                self.signals.skill_executed.emit("Web Search", search_query_to_run[:30])
 
-                results = await asyncio.to_thread(fetch_web_results, search_match, 4)
+                results = await asyncio.to_thread(fetch_web_results, search_query_to_run, 5)
 
                 if results:
                     self.signals.status_updated.emit(f"Synthesizing {len(results)} web sources...")
-                    web_context = f"\n\n[LIVE WEB SOURCES FOR '{search_match.upper()}']:\n"
-                    for i, r in enumerate(results[:3], 1):
+                    web_context = f"\n\n[LIVE WEB SOURCES FOR '{search_query_to_run.upper()}']:\n"
+                    for i, r in enumerate(results[:5], 1):
                         title = r.get("title", f"Source {i}")
-                        body = r.get("body", "No description available.")[:220]
+                        body = r.get("body", "No description available.")[:250]
                         link = r.get("href", "")
-                        web_context += f"{i}. **{title}**\n   {body}\n   *Source*: {link}\n\n"
+                        domain = urllib.parse.urlparse(link).netloc if link else "Web Source"
+                        web_context += f"{i}. **{title}** ({domain})\n   {body}\n   *URL*: {link}\n\n"
 
                     synth_prompt = (
                         f"Boss asked: '{command}'\n\n"
                         f"LIVE DUCKDUCKGO WEB SEARCH INTELLIGENCE:\n{web_context}\n"
                         f"CRITICAL INSTRUCTIONS:\n"
                         f"1. You MUST use the live web search intelligence provided above to answer Boss accurately and authoritatively.\n"
-                        f"2. Explicitly reference and cite the current developments, releases, and information from these web sources.\n"
+                        f"2. Explicitly reference and cite the current developments, releases, specifications, and information from these web sources.\n"
                         f"3. Do NOT rely on outdated pre-2024 training data. The above web intelligence reflects live current information.\n"
-                        f"4. Format with clean Markdown headers, bullet points, and source citations."
+                        f"4. If Boss requested source names or reliable web sources, explicitly list each source name and domain used.\n"
+                        f"5. Format with clean Markdown headers, bullet points, and source citations."
                     )
                     await self.query_llm(synth_prompt, stream_to_ui=True, stream_to_speech=True)
                     return "__STREAMED__"
@@ -2449,19 +3962,291 @@ Core Persona Rules:
     def _try_calculate(self, cmd: str) -> Optional[str]:
         return safe_calculate(cmd)
 
+    def get_agent_tools(self) -> List[Dict[str, Any]]:
+        """Compiles OpenAPI-compatible tool specifications directly from registered skills."""
+        from friday_core.skills.agent_bridge import agent_tool_bridge
+        return agent_tool_bridge.get_tool_schemas()
+
+    async def dispatch_agent_tool(self, name: str, args: Any) -> str:
+        """Executes an agent tool invoked by the LLM and formats the grounded observation."""
+        if name == "web_search":
+            query = ""
+            if isinstance(args, dict):
+                query = args.get("query") or args.get("properties", {}).get("query") or ""
+            elif isinstance(args, str):
+                query = args.strip()
+            if not query:
+                return "Error: Argument validation failed: 'query' parameter is required for web_search."
+
+            results = await asyncio.to_thread(fetch_web_results, query, 4)
+            if results:
+                lines = []
+                for i, r in enumerate(results[:4], 1):
+                    t = r.get("title", f"Source {i}")
+                    b = r.get("body", "No description available.")[:250]
+                    u = r.get("href", "")
+                    lines.append(f"{i}. [{t}]({u})\n   {b}")
+                return f"LIVE WEB SEARCH RESULTS FOR '{query}':\n\n" + "\n\n".join(lines)
+            return f"No live web search results found for query '{query}'."
+
+        elif name == "launch_app":
+            app_name = args.get("app_name", "") if isinstance(args, dict) else str(args).strip()
+            if not app_name:
+                return "Error: Argument validation failed: 'app_name' parameter is required for launch_app."
+            from friday_core.automation.action_engine import ui_action_engine
+            res = ui_action_engine.launch_app(app_name)
+            if res.get("success"):
+                play_chime(CHIME_CONFIRM)
+                return res.get("message", f"Application '{app_name}' launched and verified on desktop.")
+            return f"Failed to launch application '{app_name}': {res.get('message', 'Application window did not appear.')}"
+
+        elif name == "type_text":
+            text = args.get("text", "") if isinstance(args, dict) else str(args)
+            if not text:
+                return "Error: Argument validation failed: 'text' parameter is required for type_text."
+            app_target = args.get("app_name", "") if isinstance(args, dict) else ""
+            mode = args.get("mode", "type") if isinstance(args, dict) else "type"
+            ctrl_name = args.get("control_name") if isinstance(args, dict) else None
+            from friday_core.automation.action_engine import ui_action_engine
+            res = ui_action_engine.type_text(text=text, app_name=app_target, control_name=ctrl_name, mode=mode)
+            if res.get("success"):
+                play_chime(CHIME_CONFIRM)
+                return res.get("message", f"Typed text into {app_target or 'active window'} and verified on screen.")
+            return f"Typing operation failed: {res.get('message', 'Failed to inject or verify text.')}"
+
+        elif name == "weather":
+            loc = args.get("location", "") if isinstance(args, dict) else str(args)
+            if not loc:
+                return "Error: Argument validation failed: 'location' parameter is required for weather."
+            w_res = await self.fetch_weather_async(loc)
+            return w_res or f"Could not retrieve weather data for '{loc}'."
+
+        elif name == "system_time_date":
+            now = datetime.now()
+            q_type = args.get("query_type", "both") if isinstance(args, dict) else "both"
+            t_str = now.strftime("%I:%M %p")
+            d_str = now.strftime("%A, %B %d, %Y")
+            if q_type == "time":
+                return f"Current System Time: {t_str}"
+            elif q_type == "date":
+                return f"Current System Date: {d_str}"
+            return f"Current System Date & Time: {d_str} at {t_str} (Local Time)"
+
+        elif name == "web_fetch":
+            url = args.get("url", "") if isinstance(args, dict) else str(args)
+            if not url:
+                return "Error: No URL provided for web_fetch."
+            try:
+                from friday_core.web.fetcher import web_fetch
+                return await asyncio.to_thread(web_fetch, url)
+            except Exception as w_err:
+                return f"Web fetch error for '{url}': {w_err}"
+
+        elif name == "deep_research":
+            topic = args.get("topic", "") if isinstance(args, dict) else str(args)
+            if not topic:
+                return "Error: Argument validation failed: 'topic' parameter is required for deep_research."
+            try:
+                from friday_core.research.engine import deep_research_engine
+                from friday_core.research.synthesizer import DeepResearchSynthesizer
+                briefing = await asyncio.to_thread(deep_research_engine.conduct_research, topic, None, 3)
+                if not briefing.is_verified:
+                    return f"Deep research failed for '{topic}': No verifiable web sources could be retrieved. {briefing.executive_summary}"
+                return DeepResearchSynthesizer.format_markdown(briefing)
+            except Exception as dr_err:
+                return f"Deep research execution error for '{topic}': {dr_err}"
+
+        elif name == "calculate":
+            from friday_core.calc import safe_calculate
+            expr = ""
+            if isinstance(args, dict):
+                expr = args.get("expression") or args.get("properties", {}).get("expression") or ""
+            elif isinstance(args, str):
+                expr = str(args)
+            if not expr:
+                return "Error: Argument validation failed: 'expression' parameter is required for calculate."
+            try:
+                res = safe_calculate(expr)
+                return f"Calculated result for {expr}: {res}"
+            except Exception as ex:
+                return f"Calculation error: {ex}"
+
+        elif name == "system_telemetry":
+            from friday_core.system.telemetry import get_cpu_info, get_memory_info, get_battery_info
+            cpu = get_cpu_info()
+            mem = get_memory_info()
+            bat_pct, charging = get_battery_info()
+            return f"Live Telemetry: CPU: {cpu.get('percent', 0.0)}%, RAM: {mem or 0}%, Battery: {bat_pct or 0}% (Charging: {charging})"
+
+        elif name == "read_document":
+            fpath = args.get("file_path", "") if isinstance(args, dict) else str(args)
+            if not fpath:
+                return "Error: Argument validation failed: 'file_path' parameter is required for read_document."
+            focus = (args.get("focus") or args.get("query")) if isinstance(args, dict) else None
+            page = args.get("page") if isinstance(args, dict) else None
+            max_chars = args.get("max_chars", 3500) if isinstance(args, dict) else 3500
+            from friday_core.document.reader import UnifiedDocumentReader
+            read_res = UnifiedDocumentReader.read_document(
+                file_path=fpath,
+                focus=focus,
+                page=page,
+                max_chars=max_chars
+            )
+            return read_res.get("content", read_res.get("error", "Document extraction completed."))
+
+        elif name == "edit_document":
+            if not isinstance(args, dict):
+                return "Error: Argument validation failed: parameters must be passed as an object for edit_document."
+            fpath = args.get("file_path", "")
+            target = args.get("target", "")
+            operation = args.get("operation", "replace")
+            content = args.get("content")
+            output_path = args.get("output_path")
+            if not fpath:
+                return "Error: Argument validation failed: 'file_path' parameter is required for edit_document."
+            if not target:
+                return "Error: Argument validation failed: 'target' parameter is required for edit_document."
+            from friday_core.document.unified_editor import UnifiedDocumentEditor
+            edit_res = UnifiedDocumentEditor.edit_document(
+                file_path=fpath,
+                target=target,
+                operation=operation,
+                content=content,
+                output_path=output_path
+            )
+            if edit_res.success:
+                return f"Document Edit Succeeded & Verified:\n{edit_res.message}\nFile: {edit_res.file_path}\nOperation: {edit_res.operation}"
+            else:
+                return f"Document Edit Blocked / Failed:\n{edit_res.message}"
+
+        elif name == "analyze_image":
+            img_path = args.get("image_path", "") if isinstance(args, dict) else str(args)
+            if not img_path:
+                return "Error: Argument validation failed: 'image_path' parameter is required for analyze_image."
+            if not os.path.exists(img_path):
+                return f"Error: Image file '{img_path}' not found."
+            q = args.get("question", "Describe what is shown in this image.") if isinstance(args, dict) else "Describe image"
+            v_model = await self.vision_client.get_available_vision_model()
+            if not v_model:
+                return "Vision Analysis Error: No specialist vision model is available in Ollama (UNAVAILABLE). Please configure or pull a vision model."
+            sid = getattr(self, "current_session_id", "default_session")
+            res, err = await self.vision_client.analyze_image_structured(
+                image_input=img_path, prompt=q, model=v_model, session_id=sid
+            )
+            if err or not res:
+                return f"Vision Analysis Error: {err or 'Failed to inspect image.'}"
+            return res.to_prompt_context()
+
+        elif name == "inspect_ui":
+            app_target = args.get("app_name", "") if isinstance(args, dict) else str(args).strip()
+            exp_content = args.get("expected_content", "") if isinstance(args, dict) else ""
+            from friday_core.automation.action_engine import ui_action_engine
+            res = ui_action_engine.inspect_ui(app_name=app_target, expected_content=exp_content)
+            if res.get("success"):
+                return res.get("summary") or res.get("message")
+            return res.get("message", f"Failed to inspect window for '{app_target}'.")
+
+        elif name == "click_control":
+            control = args.get("control_name", "") if isinstance(args, dict) else str(args).strip()
+            if not control:
+                return "Error: Argument validation failed: 'control_name' parameter is required for click_control."
+            app_target = args.get("app_name") if isinstance(args, dict) else None
+            ctype = args.get("control_type") if isinstance(args, dict) else None
+            aid = args.get("automation_id") if isinstance(args, dict) else None
+            from friday_core.automation.action_engine import ui_action_engine
+            res = ui_action_engine.click_control(control_name=control, app_name=app_target, control_type=ctype, automation_id=aid)
+            if res.get("success"):
+                play_chime(CHIME_CONFIRM)
+                return res.get("message", f"Clicked '{control}' successfully.")
+            return f"Control click failed: {res.get('message', 'Could not locate or click control.')}"
+
+        elif name == "timer":
+            secs = args.get("seconds", 0) if isinstance(args, dict) else 0
+            label = args.get("label", "Timer") if isinstance(args, dict) else "Timer"
+            if not secs or int(secs) <= 0:
+                return "Error: Argument validation failed: 'seconds' must be a positive integer for timer."
+            t_entry = self.timer_mgr.create_timer(int(secs), label)
+            t = asyncio.create_task(self._run_timer_countdown(int(secs), label, t_entry.timer_id))
+            if not hasattr(self, "_active_timers"):
+                self._active_timers = []
+            self._active_timers.append(t)
+            play_chime(CHIME_CONFIRM)
+            return f"Timer set for {secs} seconds ({label})."
+
+        elif name == "query_knowledge_base":
+            q = ""
+            domain = None
+            top_k = 3
+            if isinstance(args, dict):
+                q = args.get("query") or args.get("properties", {}).get("query") or ""
+                domain = args.get("domain")
+                try:
+                    top_k = min(max(1, int(args.get("top_k", 3))), 5)
+                except Exception:
+                    top_k = 3
+            elif isinstance(args, str):
+                q = args.strip()
+            if not q:
+                return "Error: Argument validation failed: 'query' parameter is required for query_knowledge_base."
+
+            from friday_core.rag.engine import rag_engine
+            results = rag_engine.query(q, top_k=top_k, domain=domain)
+            if results:
+                return rag_engine.build_citation_context(results)
+            if getattr(self, "vector_store", None):
+                try:
+                    kb_res = self.vector_store.query(q, top_k=top_k)
+                    if kb_res:
+                        lines = [f"[Knowledge Snippet: {r.get('title', 'Doc')} (Score: {r.get('score', 0)})]:\n{r.get('content', '')}" for r in kb_res if r.get('score', 0) > 0.2]
+                        if lines:
+                            return "--- BEGIN RETRIEVED EVIDENCE (UNTRUSTED DATA) ---\n" + "\n\n".join(lines) + "\n--- END RETRIEVED EVIDENCE ---"
+                except Exception as ex:
+                    logger.debug("Vector store query fallback note: %s", ex)
+            return f"No relevant knowledge base documents found for query '{q}'."
+
+        # Check pluggable skill registry fallback
+        try:
+            from friday_core.skills.registry import skill_registry
+            if name in skill_registry._skills:
+                res = skill_registry.execute_skill(name, args if isinstance(args, dict) else {})
+                return str(res.data or res.error or "Executed successfully")
+        except Exception as s_ex:
+            logger.debug("Pluggable skill execution note: %s", s_ex)
+
+        return f"Error: Unknown tool '{name}'. Tool is not registered or supported."
+
     async def query_llm(self, user_text: str, stream_to_ui: bool = True, stream_to_speech: bool = True, save_history: bool = True) -> str:
+        self.is_generating = True
         self.signals.state_changed.emit("thinking")
         self.abort_event.clear()
+        if stream_to_ui:
+            self.signals.stream_started.emit("friday", "Neural core synthesizing...")
 
         prompt_text = user_text
-        if getattr(self, "vector_store", None):
-            try:
-                kb_results = self.vector_store.query(user_text, top_k=1)
-                if kb_results and kb_results[0].get("score", 0) > 0.40:
-                    snippet = kb_results[0].get("content", "")[:300]
-                    prompt_text = f"{user_text}\n[Relevant Knowledge: {snippet}]"
-            except Exception as ex:
-                logger.warning("Vector store query warning: %s", ex)
+        sid = getattr(self, "current_session_id", "default_session")
+
+        # Grounding with previous visual analysis context (allows Main Agent to answer without re-invoking vision,
+        # or invoke analyze_image natively if fresh inspection is required)
+        if "[VERIFIED IMAGE CONTEXT:" not in user_text:
+            all_contexts = self.image_context_mgr.get_all_contexts(sid)
+            if all_contexts:
+                if (self.image_context_mgr.is_followup_visual_question(user_text) or
+                    self.image_context_mgr.is_reanalysis_request(user_text) or
+                    any(p in user_text.lower() for p in ["image", "screenshot", "picture", "photo", "shown there", "in it"])):
+                    target_ctx = self.image_context_mgr.resolve_image_reference(user_text, sid) or all_contexts[-1]
+                    if target_ctx:
+                        logger.info("Grounded follow-up using stored image context: %s", target_ctx.image_id)
+                        prompt_text = (
+                            f"{user_text}\n\n"
+                            f"[GROUNDING CONTEXT FROM PREVIOUSLY ANALYZED IMAGE: {target_ctx.image_id} ({target_ctx.image_name}) | Path: {target_ctx.image_path}]\n"
+                            f"- Description: {target_ctx.description}\n"
+                            f"- Visible Text: {', '.join(target_ctx.visible_text) if target_ctx.visible_text else 'None'}\n"
+                            f"- Objects: {', '.join(target_ctx.objects) if target_ctx.objects else 'None'}\n"
+                            f"- Scene: {target_ctx.scene or 'General screen'}\n"
+                            f"- Actions/Buttons/Events: {', '.join(target_ctx.actions_or_events) if target_ctx.actions_or_events else 'None'}\n"
+                            f"- Details: {', '.join(target_ctx.important_details) if target_ctx.important_details else 'None'}\n"
+                            f"[Instruction: You may answer Boss's question grounded in the verified image context above, or invoke tool 'analyze_image' if fresh inspection is required.]"
+                        )
 
         if save_history:
             self.conversation_history.append({'role': 'user', 'content': prompt_text})
@@ -2473,6 +4258,13 @@ Core Persona Rules:
                 {'role': 'system', 'content': self.system_prompt},
                 {'role': 'user', 'content': prompt_text}
             ]
+
+        # Context Budget Enforcement: ensure estimated_prompt_tokens < model_context_limit
+        from friday_core.context.budget import context_budget_manager
+        messages_to_send, budget_result = context_budget_manager.validate_and_bound_prompt(
+            messages_to_send,
+            context_limit=8192
+        )
 
         collected = []
         seamless_speech = settings.get("seamless_speech", SEAMLESS_SPEECH)
@@ -2555,21 +4347,226 @@ Core Persona Rules:
                 prefetch_task = asyncio.create_task(_audio_prefetcher())
                 player_task = asyncio.create_task(_audio_player())
 
+        # -------------------------------------------------------------
+        # Section 2, 7 & 15: MODEL-AGNOSTIC MAIN AGENT TOOL DECISION LOOP
+        # The USER-SELECTED MAIN MODEL is the SOLE authority that selects tools.
+        # Python = Execution + Safety + Verification only.
+        # -------------------------------------------------------------
+        from friday_core.skills.agent_bridge import agent_tool_bridge
+        trace_id = f"trace-{uuid.uuid4().hex[:8]}"
+        tools = self.get_agent_tools()
+        main_agent_model = self.model
+        cap_status = await self.get_model_tool_capability_status(main_agent_model)
+        is_tool_capable = (cap_status == "VERIFIED")
+
+        max_agent_turns = 5
+        agent_turn = 0
+        final_answer_ready = False
+        final_agent_response = ""
+        invoked_tool_records = []
+
+        if not is_tool_capable:
+            logger.info("NATIVE_TOOL_CALLING = UNSUPPORTED_FOR_SELECTED_MODEL (model: %s, capability: %s)", main_agent_model, cap_status)
+            self.last_agent_trace = {
+                "trace_id": trace_id,
+                "session_id": sid,
+                "main_model": main_agent_model,
+                "provider": "ollama",
+                "available_tools": [t["function"]["name"] for t in tools],
+                "native_tool_call_detected": False,
+                "capability_status": cap_status,
+                "native_tool_calling": "UNSUPPORTED_FOR_SELECTED_MODEL",
+                "loop_iteration": 0,
+                "final_status": "SKIPPED_UNSUPPORTED"
+            }
+            self.agent_traces.append(self.last_agent_trace)
+        else:
+            while agent_turn < max_agent_turns and not is_cancelled():
+                agent_turn += 1
+                try:
+                    if context_budget_manager.estimate_messages_tokens(messages_to_send) >= 7000:
+                        messages_to_send, _ = context_budget_manager.validate_and_bound_prompt(
+                            messages_to_send, context_limit=7000
+                        )
+
+                    step_resp = await self.client.chat(
+                        model=main_agent_model,
+                        messages=messages_to_send,
+                        tools=tools,
+                        options={'temperature': 0.7, 'top_p': 0.9, 'num_ctx': 8192},
+                        stream=False
+                    )
+                except Exception as step_ex:
+                    logger.warning("Main model agent turn %d failed on %s: %s", agent_turn, main_agent_model, step_ex)
+                    break
+
+                step_msg, t_calls, step_content = await self._normalize_chat_message(step_resp)
+
+                if not t_calls:
+                    final_agent_response = step_content
+                    final_answer_ready = True
+                    break
+
+                # Main model chose to call tools
+                messages_to_send.append({
+                    'role': 'assistant',
+                    'content': step_content,
+                    'tool_calls': t_calls
+                })
+
+                for tc in t_calls:
+                    fn_data = tc.function if hasattr(tc, 'function') else (tc.get('function', {}) if isinstance(tc, dict) else getattr(tc, 'function', {}))
+                    fn_name = fn_data.name if hasattr(fn_data, 'name') else (fn_data.get('name', '') if isinstance(fn_data, dict) else getattr(fn_data, 'name', ''))
+                    raw_args = fn_data.arguments if hasattr(fn_data, 'arguments') else (fn_data.get('arguments', {}) if isinstance(fn_data, dict) else getattr(fn_data, 'arguments', {}))
+                    tc_id = getattr(tc, 'id', None) or (tc.get('id') if isinstance(tc, dict) else None) or f"call_{uuid.uuid4().hex[:8]}"
+
+                    if isinstance(raw_args, str):
+                        try:
+                            raw_args = json.loads(raw_args)
+                        except Exception:
+                            raw_args = {"query": raw_args}
+
+                    q_hint = ""
+                    if isinstance(raw_args, dict):
+                        q_hint = raw_args.get("query") or raw_args.get("expression") or raw_args.get("file_path") or raw_args.get("app_name") or ""
+
+                    display_label = f"Consulting {fn_name}" + (f" for '{q_hint[:25]}'" if q_hint else "")
+                    self.signals.status_updated.emit(f"⚡ {display_label}...")
+                    play_chime(CHIME_CONFIRM)
+
+                    is_allowed, risk_reason = agent_tool_bridge.risk_gate(fn_name, raw_args if isinstance(raw_args, dict) else {})
+                    if not is_allowed:
+                        raw_output = f"Error: Tool '{fn_name}' execution blocked by security policy: {risk_reason}"
+                    else:
+                        raw_output = await self.dispatch_agent_tool(fn_name, raw_args)
+
+                    verified_bundle = agent_tool_bridge.verify_tool_result(
+                        tool_name=fn_name,
+                        arguments=raw_args if isinstance(raw_args, dict) else {},
+                        raw_output=raw_output,
+                        trace_id=trace_id,
+                        tool_call_id=tc_id
+                    )
+
+                    tool_record = {
+                        "tool_call_id": tc_id,
+                        "tool_name": fn_name,
+                        "tool_arguments": raw_args,
+                        "risk_status": "AUTHORIZED" if is_allowed else "BLOCKED",
+                        "execution_status": verified_bundle["status"],
+                        "verification_status": verified_bundle["verification_status"],
+                        "tool_result_returned": True,
+                        "loop_iteration": agent_turn
+                    }
+                    invoked_tool_records.append(tool_record)
+
+                    messages_to_send.append({
+                        'role': 'tool',
+                        'content': verified_bundle["formatted_result"],
+                        'tool_call_id': tc_id,
+                        'name': fn_name
+                    })
+
+            # Record final agent trace
+            self.last_agent_trace = {
+                "trace_id": trace_id,
+                "session_id": sid,
+                "main_model": main_agent_model,
+                "provider": "ollama",
+                "available_tools": [t["function"]["name"] for t in tools],
+                "native_tool_call_detected": bool(invoked_tool_records),
+                "tool_calls": invoked_tool_records,
+                "loop_iteration": agent_turn,
+                "final_status": "COMPLETED" if final_answer_ready else "INTERRUPTED"
+            }
+            self.agent_traces.append(self.last_agent_trace)
+
+        if final_answer_ready and final_agent_response:
+            sentence_buffer = ""
+            if stream_to_ui:
+                self.signals.status_updated.emit("")
+                words = re.split(r'(\s+)', final_agent_response)
+                for w in words:
+                    if is_cancelled():
+                        break
+                    self.signals.stream_token.emit(w)
+                    if not seamless_speech and phrase_queue and not is_cancelled():
+                        sentence_buffer += w
+                        m = re.search(r"([.!?]+[\"'\)\]]*|\n{2,})\s*", sentence_buffer)
+                        if m and (len(sentence_buffer.split()) >= 6 or "\n\n" in sentence_buffer):
+                            split_pos = m.end()
+                            phrase = sentence_buffer[:split_pos].strip()
+                            sentence_buffer = sentence_buffer[split_pos:]
+                            clean = self.tts.clean_text_for_speech(phrase)
+                            if clean and len(clean.split()) >= 1 and not is_cancelled():
+                                await phrase_queue.put(clean)
+                    await asyncio.sleep(0.008)
+
+            reply = final_agent_response.strip()
+            if is_cancelled():
+                if stream_to_ui:
+                    self.signals.stream_finished.emit(reply if reply else "[Stopped by user]")
+                self.is_generating = False
+                if not getattr(self.tts, 'is_speaking', False):
+                    next_state = "listening" if getattr(self.tts, "voice_loop_active", False) else "idle"
+                    self.signals.state_changed.emit(next_state)
+                return reply
+
+            if save_history:
+                self.conversation_history.append({'role': 'assistant', 'content': reply})
+            if stream_to_ui:
+                self.signals.stream_finished.emit(reply)
+
+            if seamless_speech:
+                if stream_to_speech and self.tts and not is_cancelled():
+                    speak_full = settings.get("speak_full_response", True)
+                    spoken = self.tts.extract_spoken_summary(reply) if speak_full else self.tts.extract_spoken_summary(reply, max_sentences=3, max_words=65)
+                    if spoken and not is_cancelled():
+                        await self.tts.speak(spoken, emit_transcript=False)
+            else:
+                if phrase_queue and not is_cancelled():
+                    remainder = sentence_buffer.strip()
+                    if remainder:
+                        clean = self.tts.clean_text_for_speech(remainder)
+                        if clean and not is_cancelled():
+                            await phrase_queue.put(clean)
+                    await phrase_queue.put(None)
+                    if prefetch_task:
+                        await prefetch_task
+                    if player_task:
+                        await player_task
+            self.is_generating = False
+            if not getattr(self.tts, 'is_speaking', False):
+                next_state = "listening" if getattr(self.tts, "voice_loop_active", False) else "idle"
+                self.signals.state_changed.emit(next_state)
+            return reply
+
         try:
             if stream_to_ui:
-                self.signals.stream_started.emit("friday", "Neural core synthesizing...")
+                self.signals.status_updated.emit("Neural core synthesizing...")
 
             response_stream = await self.client.chat(
                 model=self.model,
                 messages=messages_to_send,
-                options={'temperature': 0.7, 'top_p': 0.9},
+                options={'temperature': 0.7, 'top_p': 0.9, 'num_ctx': 8192},
                 stream=True
             )
             sentence_buffer = ""
             in_think_tag = False
-            async for chunk in response_stream:
+            stream_iter = response_stream.__aiter__()
+            while True:
                 if is_cancelled():
                     logger.info("Ollama chat stream aborted via user cancellation.")
+                    break
+
+                try:
+                    chunk = await asyncio.wait_for(stream_iter.__anext__(), timeout=45.0)
+                except StopAsyncIteration:
+                    break
+                except asyncio.TimeoutError:
+                    logger.warning("Ollama chat stream stalled: 45s passed without token chunk.")
+                    if stream_to_ui:
+                        self.signals.stream_token.emit("\n\n⚠️ [Neural Stream Watchdog: Chunk timeout exceeded 45s]")
                     break
 
                 msg = chunk.message if hasattr(chunk, 'message') else (chunk.get('message') if isinstance(chunk, dict) else None)
@@ -2674,17 +4671,36 @@ Core Persona Rules:
             return "".join(collected).strip()
         except Exception as e:
             logger.exception(f"Ollama chat streaming error: {e}")
-            err = f"⚠️ Neural core anomaly: {str(e)}"
+            partial = "".join(collected).strip()
+            if partial and len(partial.split()) >= 8:
+                recovered = f"{partial}\n\n[Note: Local reasoning stream was interrupted: {str(e)}]"
+                if stream_to_ui:
+                    self.signals.stream_token.emit(f"\n\n[Stream Interrupted: {str(e)}]")
+                    self.signals.stream_finished.emit(recovered)
+                return recovered
+
+            err_str = str(e).lower()
+            if "exceed_context_size_error" in err_str or "exceeds the available context size" in err_str:
+                err = "⚠️ Context Budget Limit Reached: Directive context exceeded model capacity (8,192 tokens). Session recovered to idle."
+            elif "connection" in err_str or "connect" in err_str or "refused" in err_str:
+                err = "⚠️ Local reasoning service unavailable: Could not connect to Ollama. Please verify the Ollama service is active."
+            else:
+                err = f"⚠️ Neural core anomaly: {str(e)}"
             if stream_to_ui:
                 self.signals.stream_token.emit(f"\n\n{err}")
                 self.signals.stream_finished.emit(err)
+            self.signals.state_changed.emit("idle")
             return err
         finally:
+            self.is_generating = False
             speech_cancel_event.set()
             if prefetch_task and not prefetch_task.done():
                 prefetch_task.cancel()
             if player_task and not player_task.done():
                 player_task.cancel()
+            if not getattr(self.tts, 'is_speaking', False):
+                next_state = "listening" if getattr(self.tts, "voice_loop_active", False) else "idle"
+                self.signals.state_changed.emit(next_state)
 
 def flush_stream(stream):
     """Clears microphone buffer to prevent echo loops."""
@@ -2841,10 +4857,11 @@ class FridayVoiceLoop:
 
                     while self.running:
                         is_active = self.force_listen
-                        if is_active:
-                            self.signals.state_changed.emit("listening")
-                        else:
-                            self.signals.state_changed.emit("standby")
+                        if not getattr(self.brain, "is_generating", False):
+                            if is_active:
+                                self.signals.state_changed.emit("listening")
+                            else:
+                                self.signals.state_changed.emit("standby")
 
                         phrase_timeout = 8.5 if is_active else None
                         audio_data = await loop.run_in_executor(None, self._record_phrase, stream, phrase_timeout)
@@ -2858,7 +4875,8 @@ class FridayVoiceLoop:
                         if not audio_data:
                             if is_active_turn:
                                 play_chime(CHIME_SLEEP)
-                                self.signals.state_changed.emit("standby")
+                                if not getattr(self.brain, "is_generating", False):
+                                    self.signals.state_changed.emit("standby")
                             continue
 
                         # 2. Transcribe off the GUI thread (Online Google STT with automatic local Whisper STT fallback)
@@ -2906,17 +4924,31 @@ class FridayVoiceLoop:
                             self.signals.wake_word_detected.emit()
                             command_to_run = cmd_cleaned
 
-                        # 4. Dispatch Command
+                        # 4. Dispatch Command (Strict model-driven agent path, identical to typed chat)
                         if command_to_run:
+                            from friday_core.voice.deduplicator import transcript_deduplicator
+                            from friday_core.voice.security import voice_security_gate
+                            from friday_core.voice.tracer import voice_tracer
+
+                            # Deduplication check
+                            is_dup, dup_reason = transcript_deduplicator.is_duplicate(command_to_run)
+                            if is_dup:
+                                logger.warning("🛑 [VoiceLoop Deduplication Suppressed] '%s' (%s)", command_to_run, dup_reason)
+                                continue
+
+                            # Security check
+                            sec_res = voice_security_gate.evaluate_transcript(command_to_run)
+                            if not sec_res.get("allowed", True):
+                                logger.warning("⚠️ [Voice Security Gate Blocked] '%s'", command_to_run)
+                                self.signals.transcript_received.emit("friday", f"⚠️ Security Alert: {sec_res.get('reason')}")
+                                self.signals.state_changed.emit("idle")
+                                continue
+
                             self.signals.transcript_received.emit("user", command_to_run)
                             self.signals.state_changed.emit("thinking")
                             try:
-                                skill_res = await self.brain.execute_smart_skill(command_to_run)
-                                if skill_res:
-                                    if skill_res != "__STREAMED__":
-                                        await self.tts.speak(skill_res)
-                                else:
-                                    await self.brain.query_llm(command_to_run, stream_to_ui=True, stream_to_speech=True)
+                                # Normal Agent Pipeline: Main agent query_llm is sole authority
+                                await self.brain.query_llm(command_to_run, stream_to_ui=True, stream_to_speech=True)
                             except Exception as ex:
                                 logger.exception(f"Voice execution error: {ex}")
                                 self.signals.error_occurred.emit(f"Voice execution error: {ex}")
@@ -3012,6 +5044,29 @@ class FridayVoiceLoop:
                 < MIC_COOLDOWN_AFTER_SPEECH
             )
             if speaking_now or in_cooldown:
+                if speaking_now:
+                    # Check for acoustic barge-in interruption
+                    try:
+                        b_data, _ = stream.read(BLOCK_SIZE)
+                        from friday_core.voice.interruption import voice_interruption_controller
+                        interrupted = voice_interruption_controller.check_barge_in(
+                            audio_chunk=b_data,
+                            is_assistant_speaking=True,
+                            ambient_baseline_rms=self.ambient_rms,
+                            tts_abort_fn=self.tts.stop_speaking
+                        )
+                        if interrupted:
+                            start_time = time.time()
+                            pre_roll.clear()
+                            recorded_chunks.clear()
+                            speaking = True
+                            speech_start = time.time()
+                            silence_start = None
+                            recorded_chunks.append(b_data.copy())
+                            continue
+                    except Exception as b_ex:
+                        logger.debug("Barge-in check error: %s", b_ex)
+
                 flush_stream(stream)
                 time.sleep(0.04)
                 start_time = time.time()

@@ -1,0 +1,117 @@
+{
+  "audit_subsystem": "F.R.I.D.A.Y. 3.0 UI Runtime Verification Suite",
+  "executed_at": "2026-09-27T22:12:00Z",
+  "python_version": "3.11.9",
+  "pyside6_version": "6.11.2",
+  "qt_version": "6.8.0",
+  "overall_verdict": "PASS",
+  "test_suites": [
+    {
+      "suite_file": "tests/test_ui_layout.py",
+      "tests_run": 7,
+      "passed": 7,
+      "failures": 0,
+      "errors": 0,
+      "duration_sec": 5.4,
+      "status": "PASS"
+    },
+    {
+      "suite_file": "tests/test_ui_navigation.py",
+      "tests_run": 6,
+      "passed": 6,
+      "failures": 0,
+      "errors": 0,
+      "duration_sec": 4.8,
+      "status": "PASS"
+    },
+    {
+      "suite_file": "tests/test_ui_accessibility.py",
+      "tests_run": 5,
+      "passed": 5,
+      "failures": 0,
+      "errors": 0,
+      "duration_sec": 4.5,
+      "status": "PASS"
+    },
+    {
+      "suite_file": "tests/test_ui_state_rendering.py",
+      "tests_run": 5,
+      "passed": 5,
+      "failures": 0,
+      "errors": 0,
+      "duration_sec": 4.6,
+      "status": "PASS"
+    },
+    {
+      "suite_file": "tests/test_ui_animations.py",
+      "tests_run": 6,
+      "passed": 6,
+      "failures": 0,
+      "errors": 0,
+      "duration_sec": 5.2,
+      "status": "PASS"
+    },
+    {
+      "suite_file": "tests/test_chat_interactions.py",
+      "tests_run": 7,
+      "passed": 7,
+      "failures": 0,
+      "errors": 0,
+      "duration_sec": 5.8,
+      "status": "PASS"
+    },
+    {
+      "suite_file": "tests/test_research_ui.py",
+      "tests_run": 6,
+      "passed": 6,
+      "failures": 0,
+      "errors": 0,
+      "duration_sec": 5.1,
+      "status": "PASS"
+    },
+    {
+      "suite_file": "tests/test_settings_ui.py",
+      "tests_run": 10,
+      "passed": 10,
+      "failures": 0,
+      "errors": 0,
+      "duration_sec": 23.98,
+      "status": "PASS"
+    },
+    {
+      "suite_file": "tests/test_ui_responsive.py",
+      "tests_run": 4,
+      "passed": 4,
+      "failures": 0,
+      "errors": 0,
+      "duration_sec": 23.06,
+      "status": "PASS"
+    },
+    {
+      "suite_file": "tests/test_chat_bubble.py",
+      "tests_run": 9,
+      "passed": 9,
+      "failures": 0,
+      "errors": 0,
+      "duration_sec": 2.1,
+      "status": "PASS"
+    },
+    {
+      "suite_file": "tests/test_ui_transitions.py",
+      "tests_run": 1,
+      "passed": 1,
+      "failures": 0,
+      "errors": 0,
+      "duration_sec": 5.6,
+      "status": "PASS"
+    }
+  ],
+  "totals": {
+    "total_suites": 11,
+    "total_tests": 66,
+    "total_passed": 66,
+    "total_failures": 0,
+    "total_errors": 0,
+    "pass_rate_pct": 100.0
+  }
+}

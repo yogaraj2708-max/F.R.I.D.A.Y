@@ -1,0 +1,13 @@
+{
+  "trace_id": "trace-doc-002-bc3a5617",
+  "test_id": "DOC-TEST-002",
+  "file": "c:\\Users\\Admin\\OneDrive\\Documents\\jarvis voice\\scratch\\docx_forensic_workspace\\large_enterprise_policy.docx",
+  "total_clauses": 150,
+  "target_range": "12-13",
+  "extracted_excerpt_chars": 545,
+  "estimated_tokens": 155,
+  "token_budget_cap": 1000,
+  "token_budget_met": true,
+  "whole_document_dump_prevented": true,
+  "verdict": "PASS"
+}

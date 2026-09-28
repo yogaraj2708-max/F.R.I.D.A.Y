@@ -1,0 +1,162 @@
+[
+  {
+    "tool": "web_search",
+    "description": "Live web search query via DuckDuckGo",
+    "registered": "PARTIAL",
+    "exposed_to_model": "NO",
+    "native_call_seen": "NO",
+    "dispatcher_works": "YES",
+    "execution_works": "YES",
+    "verified": "PARTIAL"
+  },
+  {
+    "tool": "deep_research",
+    "description": "Multi-vector autonomous web research & synthesis",
+    "registered": "PARTIAL",
+    "exposed_to_model": "NO",
+    "native_call_seen": "NO",
+    "dispatcher_works": "YES",
+    "execution_works": "YES",
+    "verified": "PARTIAL"
+  },
+  {
+    "tool": "click_control",
+    "description": "Focus and click application window controls",
+    "registered": "YES",
+    "exposed_to_model": "NO",
+    "native_call_seen": "NO",
+    "dispatcher_works": "YES",
+    "execution_works": "YES",
+    "verified": "PARTIAL"
+  },
+  {
+    "tool": "inspect_ui",
+    "description": "Read active UI text via UIAutomation",
+    "registered": "YES",
+    "exposed_to_model": "NO",
+    "native_call_seen": "NO",
+    "dispatcher_works": "YES",
+    "execution_works": "YES",
+    "verified": "PARTIAL"
+  },
+  {
+    "tool": "type_text",
+    "description": "Type text into targeted window",
+    "registered": "YES",
+    "exposed_to_model": "NO",
+    "native_call_seen": "NO",
+    "dispatcher_works": "YES",
+    "execution_works": "YES",
+    "verified": "PARTIAL"
+  },
+  {
+    "tool": "launch_app",
+    "description": "Launch desktop applications by name",
+    "registered": "YES",
+    "exposed_to_model": "NO",
+    "native_call_seen": "NO",
+    "dispatcher_works": "YES",
+    "execution_works": "YES",
+    "verified": "PARTIAL"
+  },
+  {
+    "tool": "analyze_image",
+    "description": "Analyze attached image via specialist vision model",
+    "registered": "PARTIAL",
+    "exposed_to_model": "NO",
+    "native_call_seen": "NO",
+    "dispatcher_works": "NO",
+    "execution_works": "YES",
+    "verified": "PARTIAL"
+  },
+  {
+    "tool": "read_document",
+    "description": "Analyze multi-page PDF or text documents",
+    "registered": "PARTIAL",
+    "exposed_to_model": "NO",
+    "native_call_seen": "NO",
+    "dispatcher_works": "NO",
+    "execution_works": "YES",
+    "verified": "PARTIAL"
+  },
+  {
+    "tool": "edit_document",
+    "description": "Structured editing and drafting in Word/DOCX",
+    "registered": "YES",
+    "exposed_to_model": "NO",
+    "native_call_seen": "NO",
+    "dispatcher_works": "YES",
+    "execution_works": "YES",
+    "verified": "PARTIAL"
+  },
+  {
+    "tool": "browser_navigate",
+    "description": "Navigate browser to URL and inspect elements",
+    "registered": "YES",
+    "exposed_to_model": "NO",
+    "native_call_seen": "NO",
+    "dispatcher_works": "YES",
+    "execution_works": "YES",
+    "verified": "PARTIAL"
+  },
+  {
+    "tool": "browser_download",
+    "description": "Download file from web URL",
+    "registered": "YES",
+    "exposed_to_model": "NO",
+    "native_call_seen": "NO",
+    "dispatcher_works": "YES",
+    "execution_works": "YES",
+    "verified": "PARTIAL"
+  },
+  {
+    "tool": "memory",
+    "description": "Persistent user preference memory get/set",
+    "registered": "YES",
+    "exposed_to_model": "NO",
+    "native_call_seen": "NO",
+    "dispatcher_works": "YES",
+    "execution_works": "YES",
+    "verified": "PARTIAL"
+  },
+  {
+    "tool": "RAG",
+    "description": "Local Chroma vector store query",
+    "registered": "PARTIAL",
+    "exposed_to_model": "NO",
+    "native_call_seen": "NO",
+    "dispatcher_works": "NO",
+    "execution_works": "YES",
+    "verified": "PARTIAL"
+  },
+  {
+    "tool": "timer",
+    "description": "Countdown timer management",
+    "registered": "YES",
+    "exposed_to_model": "NO",
+    "native_call_seen": "NO",
+    "dispatcher_works": "YES",
+    "execution_works": "YES",
+    "verified": "PARTIAL"
+  },
+  {
+    "tool": "telemetry",
+    "description": "Live CPU/RAM/Battery telemetry",
+    "registered": "YES",
+    "exposed_to_model": "NO",
+    "native_call_seen": "NO",
+    "dispatcher_works": "YES",
+    "execution_works": "YES",
+    "verified": "PARTIAL"
+  },
+  {
+    "tool": "media",
+    "description": "System volume control and mute/unmute",
+    "registered": "YES",
+    "exposed_to_model": "NO",
+    "native_call_seen": "NO",
+    "dispatcher_works": "YES",
+    "execution_works": "YES",
+    "verified": "PARTIAL"
+  }
+]

@@ -1,0 +1,144 @@
+[
+  {
+    "bug_id": "BUG-001",
+    "subsystem": "chat_rendering",
+    "severity": "CRITICAL",
+    "reproduction": "User inputs message, TTS speaks, but assistant chat bubble remains visually empty in chat container.",
+    "root_cause": "stream_started was called at the end of Turn 2 or not wired to initialize the text container before tokens arrived, leaving the bubble blank.",
+    "affected_files": [
+      "friday_ui/core/engine.py",
+      "friday_ui/views/chat_view.py",
+      "friday_ui/widgets/chat_bubble.py"
+    ],
+    "exploitability_impact": "Assistant responses were invisible to the user despite being synthesized by the model.",
+    "repair": "Connected stream_started early in query_llm, throttled markdown rendering in ChatBubble, and ensured raw_text correctly renders in text_browser.",
+    "unit_test": "tests/test_chat_bubble.py",
+    "integration_test": "tests/regression/test_bug_001_chat_silence.py",
+    "runtime_test": "scripts/reproduce_ui_bubble.py",
+    "evidence": "PASSED in test_chat_bubble_throttled_markdown_rendering and live visual verification.",
+    "status": "FIXED"
+  },
+  {
+    "bug_id": "BUG-002",
+    "subsystem": "ui_automation",
+    "severity": "HIGH",
+    "reproduction": "Execute smart skill 'open note pad and type FRIDAY IS TESTING CONTEXT' after another window has opened.",
+    "root_cause": "Window activation and focus transition timing was only 150ms, causing SendKeys to fail or Win11 multi-tab Notepad to return partial/stale UIA document ranges.",
+    "affected_files": [
+      "friday_core/skills/builtins/ui_automation.py"
+    ],
+    "exploitability_impact": "Automation missions involving fast app launches failed postcondition verification spuriously.",
+    "repair": "Increased focus delay to 300ms, added edit.SetFocus() error handling, and verified injected text against last_typed cache.",
+    "unit_test": "tests/test_peov_architecture.py",
+    "integration_test": "tests/regression/test_bug_002_compound_actions.py",
+    "runtime_test": "tests/regression/test_bug_002_compound_actions.py::test_compound_runtime_execution",
+    "evidence": "PASSED (3/3 passed in test_bug_002_compound_actions.py).",
+    "status": "FIXED"
+  },
+  {
+    "bug_id": "BUG-003",
+    "subsystem": "document_concurrency",
+    "severity": "CRITICAL",
+    "reproduction": "Run full test suite with PySide6 QThread workers executing heavy PDF extraction.",
+    "root_cause": "PDFAnalysisWorker QThread was not joined with worker.wait() before Python garbage collection, leading to Windows fatal exception: access violation upon C++ QThread destruction.",
+    "affected_files": [
+      "tests/test_pdf_concurrency_and_freeze.py"
+    ],
+    "exploitability_impact": "Fatal process crash during asynchronous document analysis cleanup.",
+    "repair": "Added explicit worker.wait(5000) calls across all QThread test loops ensuring full thread termination before scope exit.",
+    "unit_test": "tests/test_pdf_concurrency_and_freeze.py::test_pdf_worker_runs_on_background_thread",
+    "integration_test": "tests/test_pdf_concurrency_and_freeze.py",
+    "runtime_test": "tests/test_pdf_concurrency_and_freeze.py::test_large_pdf_matrix_processing",
+    "evidence": "PASSED (9/9 passed in test_pdf_concurrency_and_freeze.py without access violation).",
+    "status": "FIXED"
+  },
+  {
+    "bug_id": "BUG-004",
+    "subsystem": "voice_and_hud_state",
+    "severity": "HIGH",
+    "reproduction": "Send command 'What's the latest NVIDIA news?' with voice loop running in background.",
+    "root_cause": "FridayVoiceLoop.run() emitted 'standby' on every phrase recording timeout, clobbering 'ACTIVE // THINKING' state to 'ACTIVE // LISTENING' on the HUD while query_llm was running.",
+    "affected_files": [
+      "friday_ui/core/engine.py",
+      "friday_ui/views/main_window.py"
+    ],
+    "exploitability_impact": "HUD state displayed ACTIVE // LISTENING while model was actively thinking, leading user to believe assistant was stalled.",
+    "repair": "Introduced self.is_generating flag in FridayBrain and guarded state_changed emission in voice loop and main window.",
+    "unit_test": "tests/test_stop_and_session_isolation.py",
+    "integration_test": "tests/test_model_switching.py",
+    "runtime_test": "scratch/diagnose_ollama_direct.py",
+    "evidence": "Verified HUD stays in THINKING mode while is_generating is True.",
+    "status": "FIXED"
+  },
+  {
+    "bug_id": "BUG-005",
+    "subsystem": "agent_loop_observability",
+    "severity": "HIGH",
+    "reproduction": "Send multi-step tool command; UI showed zero response or status updates for 60-90s.",
+    "root_cause": "stream_started signal was deferred until Turn 2 finished, and status_updated signals were dropped by ChatView because _is_generating was False.",
+    "affected_files": [
+      "friday_ui/core/engine.py",
+      "friday_ui/views/chat_view.py"
+    ],
+    "exploitability_impact": "User received zero visual feedback during model planning and tool execution turns.",
+    "repair": "Emitted stream_started at the very start of query_llm with initial status, and updated status dynamically via status_updated during tool calls.",
+    "unit_test": "tests/test_agent_tools_plumbing.py",
+    "integration_test": "tests/test_native_tool_calling.py",
+    "runtime_test": "scripts/trace_chat_bubble_regression.py",
+    "evidence": "ChatBubble is staged immediately and displays live tool consultation updates.",
+    "status": "FIXED"
+  },
+  {
+    "bug_id": "BUG-006",
+    "subsystem": "security_risk_gate",
+    "severity": "CRITICAL",
+    "reproduction": "Call web_fetch or deep_research with 'http://169.254.169.254' or 'http://localhost' or file:// URLs.",
+    "root_cause": "agent_tool_bridge.risk_gate lacked explicit validation for private RFC1918 IPs, loopback addresses, cloud metadata endpoints, and non-HTTP schemes.",
+    "affected_files": [
+      "friday_core/skills/agent_bridge.py"
+    ],
+    "exploitability_impact": "Server-side request forgery (SSRF), local network scanning, and unauthorized local file retrieval via web tools.",
+    "repair": "Added comprehensive IP and scheme validation in risk_gate, rejecting non-HTTP schemes, loopback, cloud metadata, and private IP ranges with fail-closed status.",
+    "unit_test": "tests/test_tool_provenance.py::TestToolProvenance::test_security_gate_blocks_dangerous_actions",
+    "integration_test": "tests/test_web.py",
+    "runtime_test": "tests/test_tool_provenance.py",
+    "evidence": "PASSED (all SSRF and path traversal attack vectors blocked with BLOCKED status).",
+    "status": "FIXED"
+  },
+  {
+    "bug_id": "BUG-007",
+    "subsystem": "model_probing_performance",
+    "severity": "MEDIUM",
+    "reproduction": "App startup with 34 registered tools incurs a blocking 23s test_echo probe on cold start every launch.",
+    "root_cause": "_tool_capability_cache was volatile in-memory only and re-probed on every launch.",
+    "affected_files": [
+      "friday_ui/core/engine.py"
+    ],
+    "exploitability_impact": "User experienced an unnecessary 23-second cold start delay on the first query after every application start.",
+    "repair": "Persisted verified tool capability status to settings ('model_tool_capability_cache'), loading at startup and invalidating on explicit model change.",
+    "unit_test": "tests/test_model_switching.py",
+    "integration_test": "tests/test_native_tool_calling.py",
+    "runtime_test": "scripts/generate_native_tool_audit_evidence.py",
+    "evidence": "Verified cache hit eliminates 23s probe overhead on subsequent runs.",
+    "status": "FIXED"
+  },
+  {
+    "bug_id": "BUG-008",
+    "subsystem": "deep_research",
+    "severity": "HIGH",
+    "reproduction": "Execute deep research on queries with zero search hits, or observe page extraction targeting private IP addresses, or trigger synthesis HTTP error.",
+    "root_cause": "1) DeepResearchWorker proceeded to neural synthesis with empty sources, hallucinating ungrounded dossiers; 2) DeepResearchWorker had hardcoded fallback to llama3.2:1b; 3) fetch_page_content in engine.py lacked SSRF validation.",
+    "affected_files": [
+      "friday_core/research/worker.py",
+      "friday_ui/core/engine.py",
+      "friday_ui/views/main_window.py"
+    ],
+    "exploitability_impact": "Ungrounded claim hallucination when searches returned zero hits; silent model substitution violating configured model directive; SSRF/internal network exposure during page text extraction.",
+    "repair": "1) Enforced zero-source fail-closed check returning honest inconclusive dossier without LLM hallucination; 2) Removed silent fallback to llama3.2:1b and dynamically resolved configured model from settings; 3) Added is_safe_url SSRF guard and _NO_REDIRECT_OPENER to fetch_page_content.",
+    "unit_test": "tests/test_phase11_deep_research.py::TestDeepResearchForensicsAndHardening",
+    "integration_test": "tests/test_research_lifecycle_forensics.py",
+    "runtime_test": "scripts/verify_research_runtime.py",
+    "evidence": "PASSED (all 20 tests pass in test_phase11_deep_research.py & test_research_lifecycle_forensics.py; AUDIT/RUNTIME_EVIDENCE/RESEARCH_HANG_FIXED.json passes with 10 verified sources and qwen3.5:9b).",
+    "status": "FIXED"
+  }
+]

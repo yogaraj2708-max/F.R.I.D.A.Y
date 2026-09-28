@@ -1,0 +1,37 @@
+{
+  "subsystem": "vision",
+  "specialist_model": "qwen2.5vl:3b",
+  "routing_logic": "Dedicated vision client routes image queries directly to specialist; follow-ups use cached ImageContext without re-invoking vision model.",
+  "verification_points": [
+    {
+      "scenario": "Valid image attached with visual question",
+      "behavior": "Specialist model executes structured inspection, returns objects/scene/text.",
+      "status": "PASS",
+      "evidence": "tests/test_vision_architecture.py::test_image_validation_valid"
+    },
+    {
+      "scenario": "Follow-up question on previously analyzed image",
+      "behavior": "Re-uses verified ImageContext from memory; does not re-invoke vision model.",
+      "status": "PASS",
+      "evidence": "tests/test_vision_architecture.py::test_reanalysis_and_followup_detection"
+    },
+    {
+      "scenario": "Image attached + simple 'Hi' prompt",
+      "behavior": "Grounded without unnecessary vision model execution.",
+      "status": "PASS",
+      "evidence": "friday_ui/core/engine.py:4133-4150"
+    },
+    {
+      "scenario": "Corrupted or unreadable image file",
+      "behavior": "Fail closed, reports decode error, prevents crash.",
+      "status": "PASS",
+      "evidence": "tests/test_vision_architecture.py::test_image_validation_corrupted_file"
+    },
+    {
+      "scenario": "Vision model timeout during document diagram analysis",
+      "behavior": "Falls back gracefully to OCR text extraction without failing document task.",
+      "status": "PASS",
+      "evidence": "tests/test_pdf_concurrency_and_freeze.py::test_failure_injection_vision_timeout_fallback"
+    }
+  ]
+}

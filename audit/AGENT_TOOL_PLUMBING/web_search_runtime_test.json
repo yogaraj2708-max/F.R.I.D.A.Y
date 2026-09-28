@@ -1,0 +1,10 @@
+{
+  "test_target": "fetch_web_results isolated execution",
+  "query": "unique_test_query_jensen_huang_nvidia_2026",
+  "elapsed_sec": 1.773,
+  "results_count": 4,
+  "top_result_title": "The full text of Jensen Huang's GTC 2026 speech, translated below (with ...",
+  "top_result_href": "https://devpress.csdn.net/v1/article/detail/160188918",
+  "implementation_status": "FUNCTIONAL_AND_ONLINE",
+  "verdict": "PASS: Web search works when called directly in Python. Failure to call is 100% upstream model-tool integration."
+}

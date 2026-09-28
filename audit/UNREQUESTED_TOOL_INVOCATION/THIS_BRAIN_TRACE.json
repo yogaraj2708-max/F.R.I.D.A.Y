@@ -1,0 +1,75 @@
+{
+  "trace_id": "trace-3afafbb6",
+  "timestamp": "2026-09-27T10:40:49.929255",
+  "input_command": "this is your brain",
+  "attached_files": [
+    ".graphify_analysis.json",
+    ".graphify_labels.json",
+    "graph.html",
+    "graph.json",
+    "GRAPH_REPORT.md",
+    "manifest.json"
+  ],
+  "stages": [
+    {
+      "stage": 1,
+      "name": "GUI_SUBMISSION",
+      "component": "ChatView._submit_prompt",
+      "details": "User entered 'this is your brain' with 6 Graphify attachments.",
+      "duration_ms": 0.5
+    },
+    {
+      "stage": 2,
+      "name": "ATTACHMENT_INDEXING",
+      "component": "GraphifyIndexRetriever.retrieve_bounded_context",
+      "details": "Local AST graph.json queried. Retrieved 9 symbols and 4 files. ZERO web calls.",
+      "duration_ms": 37.48
+    },
+    {
+      "stage": 3,
+      "name": "ORCHESTRATION_ROUTER",
+      "component": "MainWindow._process_command",
+      "details": "Detected 'Boss Directive:', routed directly to brain.query_llm().",
+      "duration_ms": 1.2
+    },
+    {
+      "stage": 4,
+      "name": "CONTEXT_BUDGET_ENFORCEMENT",
+      "component": "ContextBudgetManager.validate_and_bound_prompt",
+      "details": "Prompt bounded to 2423 tokens (limit: 8192).",
+      "duration_ms": 2.1
+    },
+    {
+      "stage": 5,
+      "name": "TOOL_PREFLIGHT_INVOCATION",
+      "component": "FridayBrain.query_llm -> client.chat(model=llama3.2:1b, tools=tools)",
+      "details": "Sent prompt to llama3.2:1b with callable tools [web_search, calculate, system_telemetry].",
+      "result_tool_calls": [],
+      "result_raw_content": "",
+      "duration_ms": 0.0
+    },
+    {
+      "stage": 6,
+      "name": "TOOL_DISPATCH",
+      "component": "FridayBrain.dispatch_agent_tool",
+      "details": "Dispatched None with query ''.",
+      "executed": false,
+      "real_web_call_made": false,
+      "duration_ms": 0.0
+    },
+    {
+      "stage": 7,
+      "name": "CONTEXT_CONTAMINATION",
+      "component": "FridayBrain.query_llm",
+      "details": "Appended '[WEB_SEARCH RESULTS FOR ]' to messages_to_send.",
+      "occurred": false
+    },
+    {
+      "stage": 8,
+      "name": "REASONING_LEAKAGE_AND_HANG",
+      "component": "ChatBubble.append_thinking & text_browser",
+      "details": "Active model (deepseek-r1:8b) generated <think> tokens discussing the web search results. ChatBubble rendered private thinking directly into GUI and remained in Thinking state.",
+      "occurred": true
+    }
+  ]
+}

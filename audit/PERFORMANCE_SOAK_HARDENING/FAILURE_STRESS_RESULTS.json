@@ -1,0 +1,56 @@
+{
+  "audit": "FAILURE_STRESS_RESULTS",
+  "status": "PASS",
+  "test_suites": [
+    "tests/test_provider_failure_stress.py",
+    "tests/test_document_soak.py",
+    "tests/test_vision_soak.py",
+    "tests/test_voice_soak.py"
+  ],
+  "failure_injection_scenarios": {
+    "provider_connection_refused": {
+      "endpoint": "http://127.0.0.1:1/nonexistent",
+      "terminal_state": "FAILED",
+      "hung_tasks": 0,
+      "verdict": "PASS"
+    },
+    "network_dns_failure": {
+      "target_url": "https://invalid-nonexistent-domain-friday-audit-test.local/doc",
+      "handled_fail_closed": true,
+      "unhandled_exceptions": 0,
+      "verdict": "PASS"
+    },
+    "malformed_tool_syntax": {
+      "tool": "safe_calculate",
+      "input": "25 * + / -- 100",
+      "handled_safely": true,
+      "verdict": "PASS"
+    },
+    "watchdog_timeout_enforcement": {
+      "timeout_threshold_s": 0.1,
+      "detected_by_supervisor": true,
+      "terminal_state": "TIMED_OUT",
+      "verdict": "PASS"
+    },
+    "corrupt_document_format": {
+      "type": "disguised_binary_null_bytes",
+      "detected_as": "DocumentType.UNSUPPORTED",
+      "handled_fail_closed": true,
+      "verdict": "PASS"
+    },
+    "corrupt_image_structure": {
+      "type": "truncated_png_header",
+      "pil_verification_failed": true,
+      "crash_prevented": true,
+      "verdict": "PASS"
+    },
+    "tts_synthesis_empty_input": {
+      "input": "",
+      "handled_safely": true,
+      "text_chat_unaffected": true,
+      "verdict": "PASS"
+    }
+  },
+  "verdict": "PASS",
+  "analysis": "All injected faults, provider connection drops, timeout stalls, network DNS failures, corrupt document structures, and malformed inputs resolve deterministically into terminal failure states with full subsystem recovery."
+}

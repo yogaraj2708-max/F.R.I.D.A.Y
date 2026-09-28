@@ -1,0 +1,26 @@
+{
+  "subsystem": "task_lifecycle",
+  "state_machine": ["CREATED", "STARTING", "RUNNING", "COMPLETED", "FAILED", "TIMED_OUT", "CANCELLED"],
+  "rules": [
+    "Terminal states (COMPLETED, FAILED, TIMED_OUT, CANCELLED) are immutable and cannot transition back to active.",
+    "User cancellation immediately sets abort_event and drops in-flight token buffers.",
+    "Cross-thread signal emission uses Qt queued connection mechanism to prevent race conditions."
+  ],
+  "verification_points": [
+    {
+      "test": "Brain abort generation halts in-flight loop",
+      "status": "PASS",
+      "evidence": "tests/test_stop_and_session_isolation.py::TestStopAndSessionIsolation::test_brain_abort_generation"
+    },
+    {
+      "test": "Session isolation prevents cross-session token bleeding",
+      "status": "PASS",
+      "evidence": "tests/test_stop_and_session_isolation.py::TestStopAndSessionIsolation::test_cross_session_token_bleeding_prevention"
+    },
+    {
+      "test": "PDF worker cleanly transitions to CANCELLED upon midway abort",
+      "status": "PASS",
+      "evidence": "tests/test_pdf_concurrency_and_freeze.py::test_pdf_worker_cancellation_midway"
+    }
+  ]
+}

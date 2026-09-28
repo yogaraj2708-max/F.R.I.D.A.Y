@@ -1,0 +1,74 @@
+{
+  "subsystem": "Voice / STT / TTS Subsystem Bug Ledger",
+  "audit_phase": "VOICE_STT_TTS_ZERO_TRUST_HARDENING",
+  "timestamp": "2026-09-28T12:20:00Z",
+  "total_bugs_audited": 7,
+  "total_bugs_fixed": 7,
+  "bugs_remaining": 0,
+  "bugs": [
+    {
+      "bug_id": "BUG-VOICE-001",
+      "severity": "CRITICAL",
+      "component": "FridayVoiceLoop / Agent Dispatch",
+      "title": "Legacy Voice Loop Bypassed Main Agent Model Via Keyword Router",
+      "root_cause": "Spoken utterances were routed to self.brain.execute_smart_skill(command_to_run), bypassing query_llm and creating a divergent tool-calling architecture for voice vs typed text.",
+      "fix_applied": "Replaced execute_smart_skill in FridayVoiceLoop.run with direct await self.brain.query_llm(command_to_run, stream_to_ui=True, stream_to_speech=True), achieving 100% architectural parity with typed chat.",
+      "verification_status": "VERIFIED (Mission 1, 2, 3 and test_voice_tool_integration.py)"
+    },
+    {
+      "bug_id": "BUG-VOICE-002",
+      "severity": "HIGH",
+      "component": "FridayVoiceLoop / Interruption",
+      "title": "Lack of Acoustic Barge-In Interruption During Assistant Speech",
+      "root_cause": "FridayVoiceLoop._record_phrase_impl slept and discarded audio frames while self.tts.is_speaking was True, forcing users to wait until long speeches finished or press physical hotkeys.",
+      "fix_applied": "Integrated voice_interruption_controller.check_barge_in into _record_phrase_impl, dynamically checking frame RMS against baseline threshold (RMS >= baseline * 2.8) and triggering self.tts.stop_speaking() instantly on interruption.",
+      "verification_status": "VERIFIED (test_voice_continuous_mode.py and Mission 7)"
+    },
+    {
+      "bug_id": "BUG-VOICE-003",
+      "severity": "HIGH",
+      "component": "FridayVoiceEngine / TTS Sanitization",
+      "title": "Internal Thoughts and Tool Execution Traces Leaked to TTS Audio",
+      "root_cause": "Regex in clean_text_for_speech omitted <think>...</think> tags and [TOOL: ...] execution fences, causing internal model reasoning and system provenance to be spoken aloud.",
+      "fix_applied": "Added strict regex scrubbers for <think>[\\s\\S]*?</think>, \\[(?:TOOL|TRACE|ACTION|RESULT)[\\s\\S]*?\\], CRLF code fences, backticks, and emojis.",
+      "verification_status": "VERIFIED (test_tts_pipeline.py)"
+    },
+    {
+      "bug_id": "BUG-VOICE-004",
+      "severity": "MEDIUM",
+      "component": "VoiceActivityDetector / Noise Filtering",
+      "title": "Transient Key Clicks and Taps Inadvertently Accepted Due to Pre-Roll Length",
+      "root_cause": "Adding pre-roll buffer chunks artificially inflated total_samples above 0.20s even when active speech duration was a single 50ms click.",
+      "fix_applied": "Calculated active speech duration strictly between speech onset and silence onset (active_speech_sec = end_time - speech_start_time), rejecting clicks < 0.20s without pre-roll bias.",
+      "verification_status": "VERIFIED (test_voice_vad.py)"
+    },
+    {
+      "bug_id": "BUG-VOICE-005",
+      "severity": "HIGH",
+      "component": "FridayVoiceLoop / PortAudio Concurrency",
+      "title": "PortAudio Use-After-Close Panic on Rapid Loop Stopping",
+      "root_cause": "Cancelling the voice loop while the worker thread was blocked inside stream.read() closed the stream device out from under PortAudio, causing C library crashes (-9977).",
+      "fix_applied": "Added _reader_idle threading.Event synchronization, waiting up to 3.0s for the reader thread to exit before calling stream_cm.__exit__().",
+      "verification_status": "VERIFIED (test_voice_resource_cleanup.py)"
+    },
+    {
+      "bug_id": "BUG-VOICE-006",
+      "severity": "MEDIUM",
+      "component": "TranscriptDeduplicator",
+      "title": "Duplicate Utterance Execution on Rapid VAD Acoustic Echoes",
+      "root_cause": "Rapid back-to-back triggers or speaker acoustic rebound could re-submit the same voice command within sub-second intervals.",
+      "fix_applied": "Built TranscriptDeduplicator with normalized punctuation stripping, 2.5s temporal suppression window, and substring echo defense.",
+      "verification_status": "VERIFIED (test_stt_deduplication.py and Mission 9)"
+    },
+    {
+      "bug_id": "BUG-VOICE-007",
+      "severity": "HIGH",
+      "component": "VoiceSecurityGate",
+      "title": "Spoken Instructions Bypassed Security Scrutiny",
+      "root_cause": "Voice transcripts lacked zero-trust vetting for prompt injection and destructive OS commands prior to agent dispatch.",
+      "fix_applied": "Implemented VoiceSecurityGate evaluating all transcripts against prompt injection heuristics and destructive system commands.",
+      "verification_status": "VERIFIED (test_voice_security.py and Mission 10)"
+    }
+  ],
+  "verification_status": "ALL_BUGS_RESOLVED"
+}

@@ -1,0 +1,34 @@
+{
+  "subsystem": "performance",
+  "measurements": [
+    {
+      "metric": "Model Tool Capability Probe (Cold)",
+      "duration_s": 23.05,
+      "optimization": "Persisted in settings ('model_tool_capability_cache'); 0.00s overhead on warm launch.",
+      "status": "PASS"
+    },
+    {
+      "metric": "Web Search Dispatch (Live Tier 1-4)",
+      "duration_s": 5.2,
+      "optimization": "Multi-tier fallback across DDG, Wikipedia, and Grokipedia.",
+      "status": "PASS"
+    },
+    {
+      "metric": "ChatBubble Streaming Token Render",
+      "throttle_ms": 60,
+      "optimization": "Throttled markdown parsing to max once per 60ms to prevent GUI event loop starvation.",
+      "status": "PASS"
+    },
+    {
+      "metric": "PDF 105-page extraction",
+      "duration_s": 4.1,
+      "optimization": "Background QThread streaming extraction without full bitmap buffering.",
+      "status": "PASS"
+    },
+    {
+      "metric": "Host RAM Usage",
+      "observation": "88.7% host RAM utilized under dual 9.7B LLM and desktop workload; partial model offloading to system RAM occurs.",
+      "status": "PASS"
+    }
+  ]
+}

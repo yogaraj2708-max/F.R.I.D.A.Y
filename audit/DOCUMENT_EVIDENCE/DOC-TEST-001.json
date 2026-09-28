@@ -1,0 +1,28 @@
+{
+  "trace_id": "trace-doc-001-75f3b080",
+  "test_id": "DOC-TEST-001",
+  "operation": "DOC_EDIT",
+  "file": "c:\\Users\\Admin\\OneDrive\\Documents\\jarvis voice\\scratch\\docx_forensic_workspace\\defense_procurement_contract.docx",
+  "target": {
+    "type": "numbered_item",
+    "start": 12,
+    "end": 13
+  },
+  "action": "replace",
+  "content": "12. Operational item 12: High-velocity defensive radar telemetry verified active.\n13. Operational item 13: Quantum encrypted tactical link established and locked.",
+  "pre_write_file_hash": "d7830e2c09d87d50c35387f5fa8545380c5d96cf878f01a5fe5456011f459d76",
+  "post_write_file_hash": "0b9c449d4915e9982b3df7a8ca79c82d30bc8509d3f163d76c084ff62ff05648",
+  "total_paragraphs": 34,
+  "mutated_indices": [
+    14,
+    15
+  ],
+  "unaffected_paragraphs_verified_identical": true,
+  "table_count_preserved": true,
+  "independent_verification": {
+    "verified": true,
+    "target_content_observed": true,
+    "reopen_success": true
+  },
+  "verdict": "PASS"
+}

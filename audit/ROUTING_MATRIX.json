@@ -1,0 +1,126 @@
+{
+  "version": "1.0",
+  "description": "F.R.I.D.A.Y. Intent Routing Collision & Effectiveness Matrix",
+  "routes": [
+    {
+      "query": "play spotify",
+      "expected_intent": "media_control",
+      "routed_intent": "media_control",
+      "confidence": 0.9119250029325485,
+      "tier": 1,
+      "status": "PASS"
+    },
+    {
+      "query": "volume up",
+      "expected_intent": "desktop_audio",
+      "routed_intent": "desktop_audio",
+      "confidence": 0.9049778938293457,
+      "tier": 1,
+      "status": "PASS"
+    },
+    {
+      "query": "how much battery is left",
+      "expected_intent": "system_telemetry",
+      "routed_intent": "system_telemetry",
+      "confidence": 0.939109030365944,
+      "tier": 1,
+      "status": "PASS"
+    },
+    {
+      "query": "what time is it",
+      "expected_intent": "system_time_date",
+      "routed_intent": "system_time_date",
+      "confidence": 0.9161586299538612,
+      "tier": 1,
+      "status": "PASS"
+    },
+    {
+      "query": "take a screenshot",
+      "expected_intent": "desktop_action",
+      "routed_intent": "desktop_action",
+      "confidence": 0.9085452064871787,
+      "tier": 1,
+      "status": "PASS"
+    },
+    {
+      "query": "open notepad",
+      "expected_intent": "app_launch",
+      "routed_intent": "app_launch",
+      "confidence": 0.9103814676403998,
+      "tier": 1,
+      "status": "PASS"
+    },
+    {
+      "query": "set a timer for 5 minutes",
+      "expected_intent": "timer_clock",
+      "routed_intent": "timer_clock",
+      "confidence": 0.9397426396608353,
+      "tier": 1,
+      "status": "PASS"
+    },
+    {
+      "query": "deep research on quantum computing",
+      "expected_intent": "deep_research",
+      "routed_intent": "deep_research",
+      "confidence": 0.9412584722042083,
+      "tier": 1,
+      "status": "PASS"
+    },
+    {
+      "query": "what is the weather today",
+      "expected_intent": "weather",
+      "routed_intent": "weather",
+      "confidence": 0.9377845525741577,
+      "tier": 1,
+      "status": "PASS"
+    },
+    {
+      "query": "what is the first sentence of this pdf",
+      "expected_intent": "document_qa",
+      "routed_intent": "document_qa",
+      "confidence": 0.9561940670013427,
+      "tier": 1,
+      "status": "PASS"
+    },
+    {
+      "query": "read https://example.com",
+      "expected_intent": "web_reading",
+      "routed_intent": "app_launch",
+      "confidence": 0.95,
+      "tier": 2,
+      "status": "FAIL"
+    },
+    {
+      "query": "hi",
+      "expected_intent": "general_chat",
+      "routed_intent": "general_chat",
+      "confidence": 0.8756680943071842,
+      "tier": 1,
+      "status": "PASS"
+    },
+    {
+      "query": "use web to get current unixtime",
+      "expected_intent": "general_chat",
+      "routed_intent": "general_chat",
+      "confidence": 0.95,
+      "tier": 2,
+      "status": "PASS"
+    },
+    {
+      "query": "open website and tell me CPU usage",
+      "expected_intent": "general_chat",
+      "routed_intent": "app_launch",
+      "confidence": 0.95,
+      "tier": 2,
+      "status": "FAIL"
+    },
+    {
+      "query": "search this webpage and tell me volume",
+      "expected_intent": "general_chat",
+      "routed_intent": "desktop_audio",
+      "confidence": 0.95,
+      "tier": 2,
+      "status": "FAIL"
+    }
+  ]
+}

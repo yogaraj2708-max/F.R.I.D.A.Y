@@ -1,0 +1,14 @@
+{
+  "trace_id": "trace-bb-8ff507c3",
+  "category": "Telemetry",
+  "user_command": "system diagnostics",
+  "latency_ms": 0.56,
+  "response": "Battery is holding at 75 percent, connected to AC power. System memory load is at 71 percent. All subsystems operational, Boss.",
+  "expected_keywords": [
+    "battery",
+    "memory",
+    "operational"
+  ],
+  "keywords_observed": true,
+  "verdict": "PASS"
+}

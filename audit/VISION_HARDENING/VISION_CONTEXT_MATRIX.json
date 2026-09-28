@@ -1,0 +1,33 @@
+{
+  "title": "F.R.I.D.A.Y. 3.0 Vision Context & Memory Budget Matrix",
+  "generated_at": "2026-09-27T21:23:00Z",
+  "schema_fields": [
+    {"field": "image_id", "type": "str", "purpose": "Session-unique stable identifier (e.g. image_context_001)"},
+    {"field": "description", "type": "str", "purpose": "Primary visual description of scene and elements"},
+    {"field": "objects", "type": "List[str]", "purpose": "Individual identified UI components, entities, buttons"},
+    {"field": "visible_text", "type": "List[str]", "purpose": "Extracted OCR text, labels, status codes"},
+    {"field": "scene", "type": "str", "purpose": "Application window, desktop, or environmental layout"},
+    {"field": "actions_or_events", "type": "List[str]", "purpose": "Active operations, notifications, loading bars, or errors"},
+    {"field": "important_details", "type": "List[str]", "purpose": "Key colors, highlights, status indicators"},
+    {"field": "dimensions", "type": "Tuple[int, int]", "purpose": "Pixel width and height"},
+    {"field": "format", "type": "str", "purpose": "Verified image container format (PNG, JPEG, WEBP, BMP)"},
+    {"field": "preprocessing", "type": "Dict[str, Any]", "purpose": "Details of EXIF rotation, downscaling, color conversion"},
+    {"field": "uncertainty_rating", "type": "str", "purpose": "Enum: OBSERVED | LIKELY | UNCERTAIN | NOT_VISIBLE"},
+    {"field": "execution_status", "type": "str", "purpose": "SUCCESS | FAILED | DEGRADED"},
+    {"field": "verification_status", "type": "str", "purpose": "VERIFIED | UNVERIFIED"},
+    {"field": "source_model", "type": "str", "purpose": "Specialist model that performed analysis (e.g. qwen2.5vl:3b)"},
+    {"field": "session_id", "type": "str", "purpose": "Parent conversational session identifier"},
+    {"field": "timestamp", "type": "str", "purpose": "UTC ISO-8601 generation timestamp"}
+  ],
+  "budgeting_policy": {
+    "max_contexts_per_session": 20,
+    "eviction_strategy": "FIFO_OLDEST_REMOVAL",
+    "prompt_injection_safety": "NO_RAW_BASE64_INSERTION",
+    "prompt_budget_limit_tokens": 1200
+  },
+  "disambiguation_capabilities": {
+    "positional_resolution": ["first image", "second screenshot", "3rd image", "previous screenshot"],
+    "name_resolution": ["by filename", "by image_id"],
+    "relative_resolution": ["this image", "that image", "uploaded image"]
+  }
+}

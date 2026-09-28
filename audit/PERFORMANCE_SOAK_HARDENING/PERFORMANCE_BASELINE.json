@@ -1,0 +1,30 @@
+{
+  "startup": {
+    "total_startup_ms": 7643.73,
+    "window_init_ms": 5666.5
+  },
+  "budgets": {
+    "ui_navigation_ms": 25.51,
+    "native_tool_execution_ms": 0.026,
+    "telemetry_inspection_ms": 0.16,
+    "native_tool_call_ms": 0.15,
+    "native_tool_call_verified": true,
+    "document_query_ms": 0.12,
+    "web_search_ms": 5010.49,
+    "web_search_status": "DEGRADED",
+    "web_search_error": "https://www.bing.com/search TimeoutError: error sending request for url (https://www.bing.com/search?q=python+official+website) > operation timed out",
+    "tts_synthesis_ms": 3990.55,
+    "tts_status": "GOOD",
+    "vision_ingestion_ms": 0.05,
+    "vision_status": "GOOD",
+    "voice_stt_probe_ms": 0.0,
+    "voice_stt_status": "GOOD",
+    "cancellation_ms": 28.43,
+    "deep_research_init_ms": 0.06,
+    "first_token_ms": 12968.29,
+    "first_response_ms": 12968.29,
+    "simple_chat_ms": 36282.62,
+    "simple_chat_status": "GOOD"
+  },
+  "timestamp": 1790581672.3368437
+}

@@ -1,0 +1,31 @@
+{
+  "audit_phase": "MEMORY_RAG_ZERO_TRUST_HARDENING",
+  "embedding_subsystem": {
+    "provider": "FastLocalEmbedder (Offline Deterministic Blake2b Projection)",
+    "default_model": "fast_blake2b_384",
+    "default_dimension": 384,
+    "dynamic_configuration": {
+      "dimension_configurable": true,
+      "model_name_configurable": true,
+      "supported_dimensions": [128, 256, 384, 512, 768, 1024]
+    },
+    "dimension_safety_tests": [
+      {
+        "test": "Deterministic Vector Generation",
+        "result": "Identical arrays generated across multiple calls for same text",
+        "status": "PASS"
+      },
+      {
+        "test": "Dynamic Dimension Switching (384 -> 512)",
+        "result": "Embedder creates accurate 512-dim vectors on demand",
+        "status": "PASS"
+      },
+      {
+        "test": "Dimension Mismatch Detection",
+        "scenario": "Stored chunk has 512-dim embedding while active embedder is 384-dim",
+        "behavior": "Mismatch detected in HybridRetriever; incompatible vector safely skipped with warning; no np.dot crash",
+        "status": "PASS"
+      }
+    ]
+  }
+}

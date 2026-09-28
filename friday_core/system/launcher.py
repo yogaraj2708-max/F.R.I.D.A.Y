@@ -61,6 +61,7 @@ def safe_launch(target: str, args: str = "") -> bool:
         # Check if URL or protocol
         if (clean_target.startswith("http://") or clean_target.startswith("https://") or
             clean_target.startswith("ms-") or clean_target.startswith("microsoft.") or
+            clean_target.startswith("shell:") or
             (":" in clean_target and clean_target.endswith(":"))):
             os.startfile(clean_target)
             return True
@@ -203,6 +204,10 @@ def find_and_open_desktop_or_system_item(query: str) -> Tuple[bool, str]:
     if not q:
         return False, query
 
+    # Guard: Do not treat web navigation or website queries as desktop applications
+    if any(w in q for w in ["youtube", "website", "webpage", "homepage", "url", "http://", "https://", "and tell me", "and read", "and summarize", ".com", ".org", ".net"]):
+        return False, query
+
     # Conversational alias mappings
     aliases = {
         "minecraft": "tlauncher",
@@ -276,11 +281,13 @@ def find_and_open_desktop_or_system_item(query: str) -> Tuple[bool, str]:
                     if not sub_d.startswith(".") and not _is_reparse_point(os.path.join(root, sub_d))
                 ]
 
+            stop_words = {"app", "application", "exe", "the", "open", "launch", "run", "start"}
+            tokens = set(re.findall(r"[a-z0-9]+", query.lower())) - stop_words
             for item in files + dirs_list:
                 scanned += 1
                 base = os.path.splitext(item)[0]
                 clean_base = re.sub(r"[^a-zA-Z0-9]", "", base.lower())
-                if not clean_base:
+                if not clean_base or clean_base in stop_words:
                     continue
                 score = 0
                 if clean_q == clean_base:
@@ -289,7 +296,7 @@ def find_and_open_desktop_or_system_item(query: str) -> Tuple[bool, str]:
                     score = 80 + priority
                 elif clean_q in clean_base:
                     score = 60 + priority
-                elif clean_base in clean_q and len(clean_base) >= 4:
+                elif clean_base in tokens and len(clean_base) >= 3:
                     score = 40 + priority
 
                 if score > 0:
@@ -306,6 +313,10 @@ def find_and_open_desktop_or_system_item(query: str) -> Tuple[bool, str]:
 def launch_application(target: str) -> Tuple[bool, str]:
     """Universal Application & File Launcher Dispatcher."""
     t = target.lower().strip()
+
+    # Guard: Never launch local apps for web targets or URLs
+    if "youtube" in t or "http://" in t or "https://" in t or t.endswith(".com") or t.endswith(".org"):
+        return False, target
 
     # 1. Visual Studio Code
     if (

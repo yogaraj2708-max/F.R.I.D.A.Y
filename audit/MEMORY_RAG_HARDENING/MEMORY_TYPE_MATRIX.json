@@ -1,0 +1,76 @@
+{
+  "audit_phase": "MEMORY_RAG_ZERO_TRUST_HARDENING",
+  "version": "3.0.0",
+  "memory_types": [
+    {
+      "class": "A",
+      "name": "Short-term conversation history",
+      "storage": "In-memory list / SessionStore (SQLite)",
+      "lifetime": "Active conversation session (bounded to last 12-20 turns)",
+      "owner": "Session Orchestrator",
+      "retention": "FIFO sliding window; oldest turns pruned when budget exceeded",
+      "deletion": "User clears chat or creates new session",
+      "retrieval_policy": "Injected only as dialogue turns for conversational coherence"
+    },
+    {
+      "class": "B",
+      "name": "Session memory",
+      "storage": "SQLite memories table with session_id column",
+      "lifetime": "Bound strictly to the specific session_id",
+      "owner": "Active Session",
+      "retention": "Persisted while session exists; marked historical on key update",
+      "deletion": "Session purge or explicit user memory delete command",
+      "retrieval_policy": "Filtered strictly by session_id; invisible to foreign sessions"
+    },
+    {
+      "class": "C",
+      "name": "Persistent user memory",
+      "storage": "SQLite memories table (Tier 4 Preference & Tier 5 Semantic)",
+      "lifetime": "Permanent across application restarts until deleted by user",
+      "owner": "User (Sovereign)",
+      "retention": "Active with incremented versioning; never auto-purged",
+      "deletion": "Explicit user command / UI memory manager; verified absence",
+      "retrieval_policy": "Main Model invokes memory tool; returned as untrusted data block"
+    },
+    {
+      "class": "D",
+      "name": "Knowledge-base documents",
+      "storage": "SQLite document_chunks table with content_hash and doc_hash",
+      "lifetime": "Indexed file lifetime; updated upon source modification",
+      "owner": "Workspace / User Repository",
+      "retention": "Versioned upon file change; duplicate ingestion avoided via SHA256",
+      "deletion": "Document removal command; full chunk readback absence check",
+      "retrieval_policy": "Model explicitly queries via query_knowledge_base tool"
+    },
+    {
+      "class": "E",
+      "name": "RAG retrieval results",
+      "storage": "Transient query result object in memory (QueryResult)",
+      "lifetime": "Active query execution turn only",
+      "owner": "Retrieval Engine",
+      "retention": "Discarded after turn completion; never persisted as new truth",
+      "deletion": "Automatic garbage collection",
+      "retrieval_policy": "Ranked via Hybrid BM25 + dense vector; capped at top_k <= 10, max_chars <= 3500"
+    },
+    {
+      "class": "F",
+      "name": "Research evidence",
+      "storage": "Deep research output brief / session artifact",
+      "lifetime": "Task duration until synthesized into report",
+      "owner": "Research Engine",
+      "retention": "Artifact file in app data directory",
+      "deletion": "Task cleanup or session discard",
+      "retrieval_policy": "Model inspects briefing markdown; never converts into silent permanent memory"
+    },
+    {
+      "class": "G",
+      "name": "Temporary task context",
+      "storage": "MissionStore SQLite (Tier 2 Task Memory)",
+      "lifetime": "Active mission execution until terminal state",
+      "owner": "PEOV Agent Engine",
+      "retention": "Checkpoint status retained until mission archived",
+      "deletion": "Mission abort or purge",
+      "retrieval_policy": "Inspected by planner and executor during active step transitions"
+    }
+  ]
+}

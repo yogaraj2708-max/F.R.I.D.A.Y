@@ -1,0 +1,13 @@
+{
+  "trace_id": "trace-bb-5bd17260",
+  "category": "Timer",
+  "user_command": "check timer status",
+  "latency_ms": 0.09,
+  "response": "There is approximately 9 seconds remaining on your timer ('10 seconds'), Boss.",
+  "expected_keywords": [
+    "timer",
+    "running"
+  ],
+  "keywords_observed": true,
+  "verdict": "PASS"
+}

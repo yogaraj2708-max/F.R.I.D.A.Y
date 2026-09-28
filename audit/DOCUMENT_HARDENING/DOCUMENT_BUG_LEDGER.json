@@ -1,0 +1,92 @@
+[
+  {
+    "bug_id": "BUG-DOC-01",
+    "severity": "HIGH",
+    "component": "friday_ui/core/engine.py",
+    "description": "Legacy regex fast-paths (pdf_qa_patterns, docx_patterns) intercepted user commands before the main LLM tool selection loop ran. An attached document with casual user input like 'Hi' triggered ungrounded document operations instead of letting the model converse naturally.",
+    "fix": "Removed regex fast paths for PDF and DOCX in _process_command; updated execute_smart_skill to yield control to the agent loop whenever attachments are present.",
+    "verification": "test_test01_hi_causes_zero_tool_calls and test_test05_document_test_pdf_explanation pass; model autonomously chooses tool calls.",
+    "status": "FIXED"
+  },
+  {
+    "bug_id": "BUG-DOC-02",
+    "severity": "CRITICAL",
+    "component": "friday_ui/core/engine.py",
+    "description": "Legacy regex block at line 2862 called self._handle_document_qa(command, cmd), which did not exist on FridayEngine. Any command matching pdf_qa_patterns crashed with AttributeError.",
+    "fix": "Removed dead fast path calling non-existent _handle_document_qa.",
+    "verification": "Full test suite execution without AttributeError.",
+    "status": "FIXED"
+  },
+  {
+    "bug_id": "BUG-DOC-03",
+    "severity": "HIGH",
+    "component": "friday_core/document/file_detector.py & friday_core/skills/agent_bridge.py",
+    "description": "Sensitive path pattern '\\sam' and '/sam' in risk gate matched substrings in common legitimate filenames like 'sample.docx' or 'sample.pdf', causing false-positive access blocks on valid user files.",
+    "fix": "Implemented is_sensitive_path() with exact filename and directory component matching so 'sample.docx' is allowed while 'C:\\Windows\\System32\\config\\SAM' is strictly blocked.",
+    "verification": "test_valid_pdf_detected, test_valid_docx_detected, and test_security_gate_blocks_dangerous_actions all pass.",
+    "status": "FIXED"
+  },
+  {
+    "bug_id": "BUG-DOC-04",
+    "severity": "MEDIUM",
+    "component": "friday_core/document/pdf_worker.py",
+    "description": "PDFAnalysisTask hardcoded default model_name='deepseek-r1:8b', bypassing user's active model choice (qwen3.5:9b).",
+    "fix": "Updated PDFAnalysisTask to dynamically resolve active model from settings.get('chat_model') with qwen3.5:9b fallback.",
+    "verification": "PDFAnalysisTask dynamically adopts configured chat model.",
+    "status": "FIXED"
+  },
+  {
+    "bug_id": "BUG-DOC-05",
+    "severity": "HIGH",
+    "component": "friday_core/skills/agent_bridge.py",
+    "description": "The system lacked an OpenAPI tool schema definition for edit_document in get_tool_schemas(), preventing the main model from generating native tool calls for document edits.",
+    "fix": "Added complete OpenAPI tool schema for edit_document with parameters (file_path, target, operation, content, output_path) and provenance tracking.",
+    "verification": "test_agent_tools_schema_definition and test_edit_document_provenance_bundle pass.",
+    "status": "FIXED"
+  },
+  {
+    "bug_id": "BUG-DOC-06",
+    "severity": "HIGH",
+    "component": "friday_ui/core/engine.py",
+    "description": "dispatch_agent_tool lacked a handler for edit_document and used a naive, unbounded read_document implementation that only returned structural summaries or blind 3000 character slices without targeted relevance retrieval.",
+    "fix": "Replaced read_document handler with UnifiedDocumentReader.read_document() and wired edit_document to UnifiedDocumentEditor.edit_document().",
+    "verification": "dispatch_agent_tool executes targeted extraction and surgical verified edits across all formats.",
+    "status": "FIXED"
+  },
+  {
+    "bug_id": "BUG-DOC-07",
+    "severity": "MEDIUM",
+    "component": "friday_core/document/file_detector.py",
+    "description": "detect_and_validate_file accessed reader.pages before checking reader.is_encrypted, causing pypdf to raise an unhandled FileNotDecryptedError on encrypted PDFs.",
+    "fix": "Checked reader.is_encrypted before accessing reader.pages and mapped decryption errors to clean honest error messages.",
+    "verification": "test_pdf_encrypted_fails_safely passes with honest failure.",
+    "status": "FIXED"
+  },
+  {
+    "bug_id": "BUG-DOC-08",
+    "severity": "HIGH",
+    "component": "friday_core/document/reader.py",
+    "description": "Document text was susceptible to prompt injection; documents containing instructions or closing delimiter tokens could escape and hijack model instructions.",
+    "fix": "Enclosed all extracted document content in immutable <<<EXTERNAL_DOCUMENT_DATA_NOT_SYSTEM_INSTRUCTIONS>>> boundary delimiters and stripped internal escape tokens.",
+    "verification": "test_prompt_injection_delimiter_shielding and test_delimiter_escape_neutralization pass.",
+    "status": "FIXED"
+  },
+  {
+    "bug_id": "BUG-DOC-09",
+    "severity": "CRITICAL",
+    "component": "friday_core/document/unified_editor.py",
+    "description": "Document editing operations lacked atomic staging and before/after hash verification for text and source code files.",
+    "fix": "Implemented UnifiedDocumentEditor with temporary staging file, os.fsync(), atomic os.replace(), fresh handle reopen verification, and before/after SHA-256 hash tracking.",
+    "verification": "test_text_surgical_edit_and_verification and test_source_code_surgical_edit pass.",
+    "status": "FIXED"
+  },
+  {
+    "bug_id": "BUG-DOC-10",
+    "severity": "MEDIUM",
+    "component": "friday_core/document/pdf_worker.py",
+    "description": "PDFAnalysisWorker.run() checked for file existence before checking is_cancelled(), causing pre-cancelled workers to emit file errors rather than cleanly terminating.",
+    "fix": "Placed is_cancelled() check at the very entry of run() before filesystem operations.",
+    "verification": "test_pdf_worker_cancellation passes cleanly.",
+    "status": "FIXED"
+  }
+]

@@ -1,0 +1,64 @@
+{
+  "subsystem": "document_processing",
+  "worker_architecture": "PDFAnalysisWorker running on dedicated QThread (zero GUI thread blocking)",
+  "formats_supported": ["PDF", "DOCX", "TXT", "MD", "CSV", "JSON"],
+  "test_matrix_results": [
+    {
+      "test_case": "TEST-A (5 pages)",
+      "file": "scratch/test_pdfs/TEST_A_5_pages.pdf",
+      "expected_min_pages": 5,
+      "result": "SUCCESS",
+      "status": "PASS",
+      "evidence": "tests/test_pdf_concurrency_and_freeze.py::test_large_pdf_matrix_processing"
+    },
+    {
+      "test_case": "TEST-C (50 pages)",
+      "file": "scratch/test_pdfs/TEST_C_50_pages.pdf",
+      "expected_min_pages": 50,
+      "result": "SUCCESS",
+      "status": "PASS",
+      "evidence": "tests/test_pdf_concurrency_and_freeze.py::test_large_pdf_matrix_processing"
+    },
+    {
+      "test_case": "TEST-D (105 pages)",
+      "file": "scratch/test_pdfs/TEST_D_105_pages.pdf",
+      "expected_min_pages": 105,
+      "result": "SUCCESS",
+      "status": "PASS",
+      "evidence": "tests/test_pdf_concurrency_and_freeze.py::test_large_pdf_matrix_processing"
+    },
+    {
+      "test_case": "TEST-F (Text heavy)",
+      "file": "scratch/test_pdfs/TEST_F_text_heavy.pdf",
+      "expected_min_pages": 1,
+      "result": "SUCCESS",
+      "status": "PASS",
+      "evidence": "tests/test_pdf_concurrency_and_freeze.py::test_large_pdf_matrix_processing"
+    },
+    {
+      "test_case": "TEST-K (Tables)",
+      "file": "scratch/test_pdfs/TEST_K_tables.pdf",
+      "expected_min_pages": 1,
+      "result": "SUCCESS",
+      "status": "PASS",
+      "evidence": "tests/test_pdf_concurrency_and_freeze.py::test_large_pdf_matrix_processing"
+    },
+    {
+      "test_case": "TEST-I (Malformed/Corrupted)",
+      "file": "scratch/test_pdfs/TEST_I_malformed.pdf",
+      "expected_min_pages": 0,
+      "result": "FAIL_CLOSED (truthful error reported)",
+      "status": "PASS",
+      "evidence": "tests/test_pdf_concurrency_and_freeze.py::test_pdf_worker_malformed_pdf_fail_closed"
+    },
+    {
+      "test_case": "Midway Cancellation",
+      "file": "scratch/test_pdfs/TEST_D_105_pages.pdf",
+      "expected_min_pages": 0,
+      "result": "CANCELLED cleanly; thread joined",
+      "status": "PASS",
+      "evidence": "tests/test_pdf_concurrency_and_freeze.py::test_pdf_worker_cancellation_midway"
+    }
+  ],
+  "concurrency_guarantee": "worker.wait(5000) enforced across all teardowns; zero C++ QThread destruction access violations."
+}

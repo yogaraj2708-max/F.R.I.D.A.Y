@@ -1,0 +1,135 @@
+{
+  "total_failures": 13,
+  "failures": [
+    {
+      "failure_id": "fail_e9eaec23",
+      "task_id": "task_type_2851f9",
+      "timestamp": "2026-09-28T13:40:22.387499",
+      "action": "type_text",
+      "application": "non_existent_app_999",
+      "failure_type": "WINDOW_NOT_FOUND",
+      "reason": "Target window for 'non_existent_app_999' not found.",
+      "details": {}
+    },
+    {
+      "failure_id": "fail_add5faed",
+      "task_id": "task_click_4d4dba",
+      "timestamp": "2026-09-28T13:40:23.997273",
+      "action": "click_control",
+      "application": "non_existent_app_888",
+      "failure_type": "WINDOW_NOT_FOUND",
+      "reason": "Window 'non_existent_app_888' not found for click target 'phantom_button_xyz'.",
+      "details": {}
+    },
+    {
+      "failure_id": "fail_c8cfee57",
+      "task_id": "task_launch_f96a41",
+      "timestamp": "2026-09-28T13:40:25.578209",
+      "action": "launch_app",
+      "application": "definitely_fake_app_xyz_12345.exe",
+      "failure_type": "APP_NOT_FOUND",
+      "reason": "Could not find or launch 'definitely_fake_app_xyz_12345.exe' in system registry or PATH.",
+      "details": {}
+    },
+    {
+      "failure_id": "fail_0e577ac5",
+      "task_id": "task_launch_e4f8d2",
+      "timestamp": "2026-09-28T13:40:25.832610",
+      "action": "launch_app",
+      "application": "",
+      "failure_type": "SECURITY_BLOCKED",
+      "reason": "Security Gatekeeper: Empty application name rejected.",
+      "details": {}
+    },
+    {
+      "failure_id": "fail_57d5f726",
+      "task_id": "task_launch_925239",
+      "timestamp": "2026-09-28T13:40:25.833129",
+      "action": "launch_app",
+      "application": "csrss.exe",
+      "failure_type": "SECURITY_BLOCKED",
+      "reason": "Security Gatekeeper: Prohibited targeting of protected OS process 'csrss.exe'.",
+      "details": {}
+    },
+    {
+      "failure_id": "fail_06952ffc",
+      "task_id": "task_insp_be3b32",
+      "timestamp": "2026-09-28T13:40:27.716841",
+      "action": "inspect_ui",
+      "application": "non_existent_app_xyz_999",
+      "failure_type": "WINDOW_NOT_FOUND",
+      "reason": "Target window for 'non_existent_app_xyz_999' not found on desktop.",
+      "details": {}
+    },
+    {
+      "failure_id": "fail_6975ff45",
+      "task_id": "task_click_a10a33",
+      "timestamp": "2026-09-28T13:40:27.718260",
+      "action": "click_control",
+      "application": "",
+      "failure_type": "SECURITY_BLOCKED",
+      "reason": "Security Gatekeeper: Empty control name rejected.",
+      "details": {}
+    },
+    {
+      "failure_id": "fail_e3be1564",
+      "task_id": "task_type_44d193",
+      "timestamp": "2026-09-28T13:40:29.236439",
+      "action": "type_text",
+      "application": "notepad",
+      "failure_type": "WINDOW_NOT_FOUND",
+      "reason": "Target window for 'notepad' not found.",
+      "details": {}
+    },
+    {
+      "failure_id": "fail_539218a0",
+      "task_id": "test_cancel_launch_001",
+      "timestamp": "2026-09-28T13:40:29.238102",
+      "action": "launch_app",
+      "application": "notepad",
+      "failure_type": "CANCELLED",
+      "reason": "Task cancelled by user.",
+      "details": {}
+    },
+    {
+      "failure_id": "fail_d9da9ca1",
+      "task_id": "test_cancel_click_002",
+      "timestamp": "2026-09-28T13:40:29.239734",
+      "action": "click_control",
+      "application": "calculator",
+      "failure_type": "CANCELLED",
+      "reason": "Task cancelled before click.",
+      "details": {}
+    },
+    {
+      "failure_id": "fail_07fd9e2d",
+      "task_id": "test_cancel_type_003",
+      "timestamp": "2026-09-28T13:40:29.241403",
+      "action": "type_text",
+      "application": "notepad",
+      "failure_type": "CANCELLED",
+      "reason": "Task cancelled before typing.",
+      "details": {}
+    },
+    {
+      "failure_id": "fail_cf29d739",
+      "task_id": "test_cancel_insp_004",
+      "timestamp": "2026-09-28T13:40:29.242624",
+      "action": "inspect_ui",
+      "application": "calculator",
+      "failure_type": "CANCELLED",
+      "reason": "Task cancelled before inspection.",
+      "details": {}
+    },
+    {
+      "failure_id": "fail_156afb5d",
+      "task_id": "task_type_88f4d7",
+      "timestamp": "2026-09-28T13:40:30.978844",
+      "action": "type_text",
+      "application": "completely_unrelated_target_app_404",
+      "failure_type": "WINDOW_NOT_FOUND",
+      "reason": "Target window for 'completely_unrelated_target_app_404' not found.",
+      "details": {}
+    }
+  ]
+}

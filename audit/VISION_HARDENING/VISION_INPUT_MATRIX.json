@@ -1,0 +1,88 @@
+{
+  "title": "F.R.I.D.A.Y. 3.0 Vision Input Ingestion & Safety Limits Matrix",
+  "generated_at": "2026-09-27T21:23:00Z",
+  "limits": {
+    "max_file_size_bytes": 20971520,
+    "max_file_size_mb": 20,
+    "max_dimension_pixels": 4096,
+    "max_total_pixels": 16777216,
+    "max_processing_dimension": 1920,
+    "max_images_per_request": 5
+  },
+  "format_support": [
+    {
+      "format": "PNG",
+      "extension": ".png",
+      "magic_bytes": "89 50 4E 47 0D 0A 1A 0A",
+      "status": "SUPPORTED_AND_VERIFIED",
+      "transparency_handling": "PRESERVED_OR_ALPHA_COMPOSITED"
+    },
+    {
+      "format": "JPEG",
+      "extension": [".jpg", ".jpeg"],
+      "magic_bytes": "FF D8 FF",
+      "status": "SUPPORTED_AND_VERIFIED",
+      "transparency_handling": "CONVERTED_TO_RGB"
+    },
+    {
+      "format": "WEBP",
+      "extension": ".webp",
+      "magic_bytes": "52 49 46 46 ... 57 45 42 50",
+      "status": "SUPPORTED_AND_VERIFIED",
+      "transparency_handling": "PRESERVED"
+    },
+    {
+      "format": "BMP",
+      "extension": ".bmp",
+      "magic_bytes": "42 4D",
+      "status": "SUPPORTED_AND_VERIFIED",
+      "transparency_handling": "CONVERTED_TO_RGB"
+    },
+    {
+      "format": "GIF",
+      "extension": ".gif",
+      "magic_bytes": "47 49 46 38",
+      "status": "SUPPORTED_STATIC_FRAME",
+      "transparency_handling": "FIRST_FRAME_CONVERTED_TO_RGB"
+    },
+    {
+      "format": "TIFF",
+      "extension": ".tiff",
+      "magic_bytes": "49 49 2A 00 / 4D 4D 00 2A",
+      "status": "SUPPORTED_AND_VERIFIED",
+      "transparency_handling": "CONVERTED_TO_RGB"
+    }
+  ],
+  "adversarial_inputs_verified": [
+    {
+      "input_type": "Zero-byte file",
+      "test_result": "REJECTED_WITH_HONEST_FAILURE",
+      "error_message": "Image analysis failed: Attached image file is empty (0 bytes)."
+    },
+    {
+      "input_type": "Corrupted PNG stream",
+      "test_result": "REJECTED_WITH_HONEST_FAILURE",
+      "error_message": "Image analysis failed: Invalid or malformed image data"
+    },
+    {
+      "input_type": "Renamed executable/script (calc.exe -> photo.png)",
+      "test_result": "REJECTED_WITH_HONEST_FAILURE",
+      "error_message": "Image analysis failed: Invalid or malformed image data (unrecognized format or header mismatch)."
+    },
+    {
+      "input_type": "Oversized dimensions (> 4096px)",
+      "test_result": "REJECTED_WITH_HONEST_FAILURE",
+      "error_message": "Image analysis failed: Image dimensions exceed maximum allowed dimension of 4096px."
+    },
+    {
+      "input_type": "Decompression bomb (> 16 MP)",
+      "test_result": "REJECTED_WITH_HONEST_FAILURE",
+      "error_message": "Image analysis failed: Total pixel count exceeds maximum decompression limit of 16777216 pixels."
+    },
+    {
+      "input_type": "Unsupported format (.pdf/.mp4)",
+      "test_result": "REJECTED_WITH_HONEST_FAILURE",
+      "error_message": "Image analysis failed: Unsupported image format"
+    }
+  ]
+}

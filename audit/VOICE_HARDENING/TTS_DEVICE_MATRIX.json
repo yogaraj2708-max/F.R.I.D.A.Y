@@ -1,0 +1,92 @@
+{
+  "subsystem": "Text-to-Speech Output Device & Engine Matrix",
+  "audit_phase": "VOICE_STT_TTS_ZERO_TRUST_HARDENING",
+  "timestamp": "2026-09-28T12:20:00Z",
+  "device_enumeration": {
+    "engine": "PyGame Mixer / Windows SAPI / PortAudio",
+    "output_devices": [
+      {
+        "index": 2,
+        "name": "Speakers (Realtek(R) Audio)",
+        "hostapi": "MME",
+        "max_output_channels": 2,
+        "default_samplerate": 48000,
+        "mixer_frequency": 24000,
+        "status": "READY",
+        "default_device": true
+      },
+      {
+        "index": 3,
+        "name": "Speakers (Realtek(R) Audio)",
+        "hostapi": "Windows WASAPI",
+        "max_output_channels": 2,
+        "default_samplerate": 48000,
+        "mixer_frequency": 24000,
+        "status": "READY",
+        "default_device": false
+      }
+    ]
+  },
+  "engine_hierarchy": [
+    {
+      "tier": 1,
+      "engine_name": "Kokoro-82M ONNX",
+      "model_type": "Neural TTS (ONNX Runtime, CPU int8)",
+      "weights_location": "%USERPROFILE%/.friday/models/kokoro/kokoro-v1.0.int8.onnx",
+      "voice_binaries": "%USERPROFILE%/.friday/models/kokoro/voices-v1.0.bin",
+      "latency_profile": "Sub-150ms instant CPU synthesis",
+      "network_required": false,
+      "tested_voices": ["bf_emma", "af_bella", "af_sarah"],
+      "status": "READY",
+      "priority": "PRIMARY"
+    },
+    {
+      "tier": 2,
+      "engine_name": "Microsoft Edge-TTS",
+      "model_type": "Cloud Neural Voice",
+      "latency_profile": "~400ms streaming WebSocket",
+      "network_required": true,
+      "tested_voices": ["en-US-AriaNeural", "en-GB-SoniaNeural"],
+      "status": "READY",
+      "priority": "SECONDARY_FALLBACK"
+    },
+    {
+      "tier": 3,
+      "engine_name": "Windows SAPI COM (SpVoice)",
+      "model_type": "OS In-Process COM Automation",
+      "latency_profile": "<50ms instant zero-dependency",
+      "network_required": false,
+      "tested_voices": ["Microsoft Zira Desktop", "Microsoft David Desktop"],
+      "status": "READY",
+      "priority": "TERTIARY_FAILSAFE"
+    }
+  ],
+  "runtime_scenarios": [
+    {
+      "scenario": "A. Normal Local Neural Speech Synthesis",
+      "engine_invoked": "Kokoro-82M ONNX",
+      "playback": "PyGame Mixer Stream",
+      "result": "PASS"
+    },
+    {
+      "scenario": "B. Kokoro ONNX Missing / Disabled",
+      "fallback_engine": "Edge-TTS (Tier 2)",
+      "playback": "PyGame Mixer Stream",
+      "result": "PASS"
+    },
+    {
+      "scenario": "C. Total Network Disconnection + Kokoro Disabled",
+      "fallback_engine": "Windows SAPI COM (Tier 3)",
+      "playback": "SpVoice Direct Audio Sink",
+      "result": "PASS"
+    },
+    {
+      "scenario": "D. Output Device Disconnected During Playback",
+      "injected_error": "OSError: Output device disconnected",
+      "expected": "Audio fails safely, error logged, assistant text chat intact in UI",
+      "observed": "Zero UI freeze, text bubble delivered cleanly, state returns to IDLE",
+      "result": "PASS"
+    }
+  ],
+  "verification_status": "PASS"
+}

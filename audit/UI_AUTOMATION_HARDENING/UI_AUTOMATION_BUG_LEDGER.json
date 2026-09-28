@@ -1,0 +1,61 @@
+{
+  "audit_phase": "UI_AUTOMATION_ZERO_TRUST_FORENSIC_HARDENING",
+  "timestamp": "2026-09-28T00:20:00Z",
+  "total_bugs_resolved": 6,
+  "bugs": [
+    {
+      "bug_id": "BUG_UIA_001",
+      "severity": "CRITICAL",
+      "title": "Windows Interactive Desktop Isolation & COM Initialization Error 170",
+      "symptom": "Calling uiautomation or EnumWindows from background task threads failed with WinError 170 (The requested resource is in use) or returned empty window lists.",
+      "root_cause": "The agent execution environment runs under desktop session 'exebox-...', while the user's interactive desktop is 'WinSta0\\Default'. Importing uiautomation before attaching to WinSta0\\Default caused COM to bind to the empty exebox desktop.",
+      "remediation": "Implemented automatic desktop attachment in friday_core/automation/__init__.py and inspector.py using user32.OpenDesktopW('default', 0, False, 0x01FF) and user32.SetThreadDesktop before importing uiautomation.",
+      "verification": "100% verified across all test suites and live execution runs."
+    },
+    {
+      "bug_id": "BUG_UIA_002",
+      "severity": "HIGH",
+      "title": "Windows 11 Packaged Notepad Zombie Session & TabState Hang",
+      "symptom": "Launching 'notepad.exe' initiated background Notepad.exe processes with MainWindowHandle=0 that hung attempting to restore corrupted tab/window states.",
+      "root_cause": "Windows 11 App Execution Alias redirects 'notepad.exe' to Microsoft.WindowsNotepad WinUI 3 App, which when called from background sessions checks cached TabState and WindowState .bin files and enters a headless session restore loop.",
+      "remediation": "Mapped Notepad activation in apps.py and launcher.py to 'shell:AppsFolder\\Microsoft.WindowsNotepad_8wekyb3d8bbwe!App' and enabled shell: protocol handling in safe_launch().",
+      "verification": "Notepad launches cleanly, creates top-level window (Untitled - Notepad), and exposes 50+ controls."
+    },
+    {
+      "bug_id": "BUG_UIA_003",
+      "severity": "HIGH",
+      "title": "UIA Generic Control GetInvokePattern Method Missing",
+      "symptom": "Attempting to invoke Calculator buttons via uiautomation.Control resulted in AttributeError: 'Control' object has no attribute 'GetInvokePattern'.",
+      "root_cause": "The uiautomation library exposes GetInvokePattern() on typed controls (e.g. ButtonControl, MenuItemControl) rather than the generic Control base class.",
+      "remediation": "Updated action_engine.py to dynamically cast or instantiate specific typed controls (auto.ButtonControl, auto.MenuItemControl) when searching and invoking elements.",
+      "verification": "Calculator keypad clicks (7, +, 5, =) successfully invoke via SEMANTIC_UIA_INVOKE."
+    },
+    {
+      "bug_id": "BUG_UIA_004",
+      "severity": "MEDIUM",
+      "title": "Launcher Token Matcher Spurious Fallback on Stop Words",
+      "symptom": "Requesting to launch 'definitely_fake_app_xyz_12345.exe' matched a random shortcut named 'app' or 'application' in the Start Menu and reported success.",
+      "root_cause": "find_and_open_desktop_or_system_item() tokenized queries without filtering stop words ('app', 'exe', 'application'), allowing clean_base 'app' in tokens to match with score 60.",
+      "remediation": "Added LAUNCHER_STOP_WORDS filter in launcher.py to eliminate 'app', 'application', 'exe', 'the', 'open', 'launch', 'run', 'start' from candidate scoring.",
+      "verification": "Fake applications now immediately return (False, app_clean) and action_engine reports honest FAILED status."
+    },
+    {
+      "bug_id": "BUG_UIA_005",
+      "severity": "MEDIUM",
+      "title": "Missing Stable Accessibility Identifiers on Research View Buttons",
+      "symptom": "Audit scan for 15 stable accessibility identifiers failed to locate 'research_start_btn' and 'research_stop_btn'.",
+      "root_cause": "In friday_ui/views/research_view.py, the buttons were set with objectNames 'start_btn' and 'stop_btn'.",
+      "remediation": "Updated objectNames in research_view.py to 'research_start_btn' and 'research_stop_btn'.",
+      "verification": "All 15 of 15 required accessibility identifiers verified present and stable."
+    },
+    {
+      "bug_id": "BUG_UIA_006",
+      "severity": "MEDIUM",
+      "title": "Subprocess Fallback CREATE_NO_WINDOW Hiding GUI Applications",
+      "symptom": "safe_launch() subprocess fallback used CREATE_NO_WINDOW and wShowWindow=0 (SW_HIDE), causing GUI applications to spawn with invisible windows.",
+      "root_cause": "Launcher was previously configured for silent console command execution, inadvertently suppressing GUI windows.",
+      "remediation": "Configured GUI subprocess launches with STARTUPINFO.lpDesktop = r'WinSta0\\Default' and wShowWindow = 1 (SW_SHOWNORMAL).",
+      "verification": "Applications launch with visible, interactable top-level windows."
+    }
+  ]
+}

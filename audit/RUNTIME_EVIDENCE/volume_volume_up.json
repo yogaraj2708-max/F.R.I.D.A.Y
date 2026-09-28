@@ -1,0 +1,13 @@
+{
+  "trace_id": "trace-bb-b534248a",
+  "category": "Volume",
+  "user_command": "volume up",
+  "latency_ms": 8.72,
+  "response": "Master volume increased.",
+  "expected_keywords": [
+    "volume increased",
+    "increased"
+  ],
+  "keywords_observed": true,
+  "verdict": "PASS"
+}

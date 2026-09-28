@@ -1,0 +1,37 @@
+{
+  "audit_phase": "MEMORY_RAG_ZERO_TRUST_HARDENING",
+  "context_budget_integration": {
+    "model_context_limit": 8192,
+    "reserved_allocations": {
+      "system_prompt": 1200,
+      "dialogue_history": 1000,
+      "generation_output": 1536,
+      "available_for_rag_and_tools": 4456
+    },
+    "rag_retrieval_bounds": {
+      "default_max_chars": 3500,
+      "default_max_tokens": 1000,
+      "max_chunks": 10,
+      "enforcement_method": "ContextBudgetManager.estimate_tokens + max_chars ceiling"
+    },
+    "overflow_prevention_tests": [
+      {
+        "test": "Large Multi-Turn Dialogue + RAG Context",
+        "turns_count": 21,
+        "raw_prompt_tokens": 747,
+        "budget_limit": 4096,
+        "is_valid": true,
+        "truncation_needed": false,
+        "status": "PASS"
+      },
+      {
+        "test": "Extremely Large Document Chunk Overflow Protection",
+        "raw_chunks_count": 25,
+        "requested_top_k": 50,
+        "clamped_chunks_returned": 10,
+        "bounded_chars": 1500,
+        "status": "PASS"
+      }
+    ]
+  }
+}

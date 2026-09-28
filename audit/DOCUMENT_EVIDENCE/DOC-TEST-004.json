@@ -1,0 +1,10 @@
+{
+  "trace_id": "trace-doc-004-63ed6c10",
+  "test_id": "DOC-TEST-004",
+  "file": "c:\\Users\\Admin\\OneDrive\\Documents\\jarvis voice\\scratch\\docx_forensic_workspace\\ambiguous_contract.docx",
+  "target_item": "12",
+  "occurrences_detected": 2,
+  "ambiguity_flagged": true,
+  "policy": "FAIL_CLOSED_AND_ASK_USER",
+  "verdict": "PASS"
+}

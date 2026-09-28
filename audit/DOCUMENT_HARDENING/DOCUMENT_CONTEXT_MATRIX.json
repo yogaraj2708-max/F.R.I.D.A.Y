@@ -1,0 +1,58 @@
+[
+  {
+    "format": "TXT / Markdown",
+    "budget_rule": "Strict character limit (default: 3500 chars / ~875 tokens)",
+    "enforcement_mechanism": "UnifiedDocumentReader slice with truncation advisory",
+    "overflow_risk": "8k/16k context window flooding from giant log files",
+    "verification_test": "test_text_file_bounded_to_max_chars",
+    "status": "PASS"
+  },
+  {
+    "format": "CSV",
+    "budget_rule": "Maximum 100 rows, 50 columns preview",
+    "enforcement_mechanism": "csv.reader iteration bounded by MAX_CSV_ROWS; default preview 10 rows",
+    "overflow_risk": "Thousands of raw data rows dumped into LLM prompt",
+    "verification_test": "test_csv_bounded_to_row_limit",
+    "status": "PASS"
+  },
+  {
+    "format": "JSON",
+    "budget_rule": "Structural AST bounding: schema keys preview + top 5 sample items",
+    "enforcement_mechanism": "json.load depth limiter (depth <= 10) and dictionary preview",
+    "overflow_risk": "Multi-megabyte JSON stringification overflowing context",
+    "verification_test": "test_json_structural_bounding_never_raw_dumps",
+    "status": "PASS"
+  },
+  {
+    "format": "Multi-page PDF",
+    "budget_rule": "Bounded incremental extraction: top candidate pages or targeted regions",
+    "enforcement_mechanism": "pypdf.PdfReader reading only matching or top 5 pages; PDFAnalysisWorker QThread",
+    "overflow_risk": "100+ page textbook dumping all text and bitmaps into prompt",
+    "verification_test": "test_pdf_context_strictly_bounded",
+    "status": "PASS"
+  },
+  {
+    "format": "DOCX",
+    "budget_rule": "Summary metadata (< 150 tokens) + targeted region context (< 800 tokens)",
+    "enforcement_mechanism": "DocxStructuralParser.find_relevant_region()",
+    "overflow_risk": "Raw OpenXML XML/HTML string dumps",
+    "verification_test": "test_docx_read_default_bounded",
+    "status": "PASS"
+  },
+  {
+    "format": "Duplicate Attachments",
+    "budget_rule": "Stable identity deduplication via SHA-256",
+    "enforcement_mechanism": "In-memory _DOCUMENT_CACHE keyed by hash:focus:page",
+    "overflow_risk": "Repeatedly attaching the same PDF doubles/triples prompt token count",
+    "verification_test": "test_attachment_deduplication",
+    "status": "PASS"
+  },
+  {
+    "format": "Graphify Knowledge Graph",
+    "budget_rule": "Targeted sub-graph / community retrieval, never raw graph.json prompt dump",
+    "enforcement_mechanism": "Graphify query / path / explain CLI tools",
+    "overflow_risk": "Raw 10,000-node graph.json dumped into conversation prompt",
+    "verification_test": "Graphify architecture guidelines",
+    "status": "PASS"
+  }
+]

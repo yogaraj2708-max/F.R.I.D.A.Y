@@ -1,0 +1,44 @@
+{
+  "tested_modes": [
+    {
+      "mode": "HTTP_404",
+      "behavior": "Marked FAILED, extracted_text=None",
+      "verdict": "PASS"
+    },
+    {
+      "mode": "HTTP_403",
+      "behavior": "Marked FAILED, extracted_text=None",
+      "verdict": "PASS"
+    },
+    {
+      "mode": "HTTP_500",
+      "behavior": "Marked FAILED, extracted_text=None",
+      "verdict": "PASS"
+    },
+    {
+      "mode": "SOCKET_TIMEOUT",
+      "behavior": "Marked TIMEOUT, status 408",
+      "verdict": "PASS"
+    },
+    {
+      "mode": "DNS_FAILURE",
+      "behavior": "Marked BLOCKED, safe rejection",
+      "verdict": "PASS"
+    },
+    {
+      "mode": "ZERO_SOURCES",
+      "behavior": "Fail-closed to FAILED, zero fabrication",
+      "verdict": "PASS"
+    },
+    {
+      "mode": "ALL_UNVERIFIED",
+      "behavior": "Fail-closed, refuses snippet hallucination",
+      "verdict": "PASS"
+    },
+    {
+      "mode": "TOTAL_OFFLINE",
+      "behavior": "Inconclusive notice returned, no model call",
+      "verdict": "PASS"
+    }
+  ]
+}

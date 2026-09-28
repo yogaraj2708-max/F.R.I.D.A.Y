@@ -1,0 +1,12 @@
+{
+  "trace_id": "trace-bb-7d7db994",
+  "category": "Memory",
+  "user_command": "what is my call sign",
+  "latency_ms": 3.46,
+  "response": "According to your persistent profile, your call sign is Maverick, Boss.",
+  "expected_keywords": [
+    "maverick"
+  ],
+  "keywords_observed": true,
+  "verdict": "PASS"
+}

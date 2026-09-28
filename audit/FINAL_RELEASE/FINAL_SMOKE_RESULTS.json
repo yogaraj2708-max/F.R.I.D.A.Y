@@ -1,0 +1,107 @@
+{
+  "timestamp": 1790584833.827847,
+  "date": "2026-09-28 14:10:33",
+  "total_smoke_tests": 13,
+  "passed": 13,
+  "failed": 0,
+  "tests": {
+    "1_hi": {
+      "status": "PASS",
+      "query": "Hi",
+      "response": "Hello Boss",
+      "tools_triggered": 0,
+      "verified": true
+    },
+    "2_calculator": {
+      "status": "PASS",
+      "query": "What is 2 + 2?",
+      "result": "The answer is 4.",
+      "eval_injection_safe": true
+    },
+    "3_native_tool": {
+      "status": "PASS",
+      "tool_name": "calculate",
+      "trace_id": "smoke_trace_01",
+      "verification_status": "VERIFIED",
+      "bundle": {
+        "provenance": {
+          "tool_name": "calculate",
+          "tool_call_id": "call_ff9fb3cf",
+          "execution_status": "SUCCESS",
+          "verification_status": "VERIFIED",
+          "trace_id": "smoke_trace_01",
+          "executed_at": "2026-09-28T08:40:34.008834+00:00"
+        },
+        "formatted_result": "[VERIFIED TOOL PROVENANCE | tool: calculate | status: SUCCESS | verification: VERIFIED | trace: smoke_trace_01]\nThe answer is 100.",
+        "status": "SUCCESS",
+        "verification_status": "VERIFIED",
+        "raw_output": "The answer is 100.",
+        "tool_name": "calculate",
+        "tool_call_id": "call_ff9fb3cf",
+        "execution_status": "SUCCESS",
+        "trace_id": "smoke_trace_01",
+        "executed_at": "2026-09-28T08:40:34.008834+00:00"
+      }
+    },
+    "4_current_web_query": {
+      "status": "PASS",
+      "endpoint": "https://httpbin.org/status/200",
+      "retrieval_status": "SUCCESS",
+      "sample_content": "\n<<<EXTERNAL_WEB_REFERENCE_DATA_NOT_SYSTEM_INSTRUCTIONS>>>\n[Source URL: https://httpbin.org/status/200]\n\n<<<END_EXTERNAL"
+    },
+    "5_deep_research": {
+      "status": "PASS",
+      "task_id": "task_1790584835599_537f24",
+      "route": "RESEARCH",
+      "terminal_state": "TaskState.CANCELLED"
+    },
+    "6_pdf_question": {
+      "status": "PASS",
+      "detected_type": "DocumentType.PDF",
+      "is_valid": true
+    },
+    "7_docx_question": {
+      "status": "PASS",
+      "detected_type": "DocumentType.DOCX",
+      "is_valid": true
+    },
+    "8_image_question": {
+      "status": "PASS",
+      "stored_id": "smoke_img_01",
+      "description": "Synthetic blue calibration target",
+      "isolated_from_casual_chat": true
+    },
+    "9_notepad_automation": {
+      "status": "PASS",
+      "action": "launch_app",
+      "target": "notepad.exe",
+      "authorized_by_risk_gate": true,
+      "peov_verified": true
+    },
+    "10_voice_command": {
+      "status": "PASS",
+      "synthesized_bytes": 118356,
+      "thought_scrubbing": true,
+      "pipeline_intact": true
+    },
+    "11_memory_lifecycle": {
+      "status": "PASS",
+      "stored_id": "pref-smoke_sess-flight_mode",
+      "retrieved_val": "autonomous_mach_3",
+      "deleted": true,
+      "verified_absence": true
+    },
+    "12_cancellation": {
+      "status": "PASS",
+      "task_id": "task_1790584840226_0bb284",
+      "terminal_state": "TaskState.CANCELLED",
+      "zombie_free": true
+    },
+    "13_restart_persistence": {
+      "status": "PASS",
+      "settings_persistent": true,
+      "model_persisted": "qwen3.5:9b",
+      "clean_shutdown_ready": true
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "trace_id": "trace-bb-e5db240b",
+  "category": "Telemetry",
+  "user_command": "ram usage",
+  "latency_ms": 0.78,
+  "response": "Battery is holding at 75 percent, connected to AC power. System memory load is at 71 percent. All subsystems operational, Boss.",
+  "expected_keywords": [
+    "memory",
+    "%"
+  ],
+  "keywords_observed": true,
+  "verdict": "PASS"
+}

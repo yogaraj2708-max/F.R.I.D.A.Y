@@ -1,0 +1,23 @@
+{
+  "subsystem": "context_budget",
+  "manager": "friday_core.context.budget.context_budget_manager",
+  "hard_limit_tokens": 8192,
+  "compaction_trigger_tokens": 7000,
+  "rules": [
+    "Context budget enforces estimated_prompt_tokens < 8192 before LLM chat calls.",
+    "Trimming preserves the system prompt, latest user message, and tool-call/result pairings.",
+    "Conversation history in engine.py is capped to 12 turns, preserving turn 0 system context."
+  ],
+  "verification_points": [
+    {
+      "test": "Structured prompt bounding within 8192 limit",
+      "status": "PASS",
+      "evidence": "friday_ui/core/engine.py:4171-4176"
+    },
+    {
+      "test": "Dynamic tool loop budget enforcement at turn boundary",
+      "status": "PASS",
+      "evidence": "friday_ui/core/engine.py:4296-4300"
+    }
+  ]
+}

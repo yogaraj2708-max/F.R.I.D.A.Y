@@ -1,0 +1,31 @@
+{
+  "audit": "CONTEXT_GROWTH",
+  "status": "PASS",
+  "model_context_limit": 4096,
+  "budget_formula": "AVAILABLE_CONTEXT = MODEL_CONTEXT_LIMIT - RESERVED_SYSTEM - RESERVED_HISTORY - RESERVED_OUTPUT",
+  "audits": {
+    "long_conversation_pruning": {
+      "initial_messages": 101,
+      "initial_tokens": 1949,
+      "bounded_messages": 51,
+      "bounded_tokens": 992,
+      "truncation_occurred": true,
+      "system_prompt_preserved": true,
+      "latest_user_directive_preserved": true
+    },
+    "massive_attachment_compaction": {
+      "initial_tokens": 13932,
+      "final_tokens": 774,
+      "overflow_prevented": true,
+      "directive_preserved": true
+    },
+    "tool_call_result_pairing_integrity": {
+      "tool_call_ids": ["call_123"],
+      "tool_result_ids": ["call_123"],
+      "orphaned_tool_results": 0,
+      "pairing_broken": false
+    }
+  },
+  "verdict": "BOUNDED",
+  "analysis": "ContextBudgetManager strictly enforces model context windows before dispatching requests to Ollama. Long histories are pruned while preserving system prompts, latest directives, and intact tool_call/tool_result pairs."
+}

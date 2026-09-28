@@ -1,0 +1,12 @@
+{
+  "trace_id": "trace-bb-ed8dd4a2",
+  "category": "Volume",
+  "user_command": "myute the volume",
+  "latency_ms": 2793.09,
+  "response": "Master audio volume muted and verified, Boss.",
+  "expected_keywords": [
+    "muted"
+  ],
+  "keywords_observed": true,
+  "verdict": "PASS"
+}

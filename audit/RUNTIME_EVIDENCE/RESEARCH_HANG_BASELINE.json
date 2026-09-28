@@ -1,0 +1,155 @@
+{
+  "audit_target": "Stuck Thinking / Hung Research Task Forensic Reproduction",
+  "timestamp": "2026-09-26T18:19:04.120299+00:00",
+  "query": "is nvidia buying hugging face",
+  "task_id": "task_baseline_repro_001",
+  "lifecycle_events": [
+    {
+      "timestamp_offset_s": 0.0,
+      "stage": "USER_INPUT",
+      "status": "RECEIVED",
+      "details": {
+        "text": "is nvidia buying hugging face"
+      }
+    },
+    {
+      "timestamp_offset_s": 0.008,
+      "stage": "ROUTER",
+      "status": "EVALUATED",
+      "details": {
+        "intent": "GENERAL_CHAT",
+        "confidence": 0.473,
+        "tier": 3
+      }
+    },
+    {
+      "timestamp_offset_s": 0.009,
+      "stage": "RESEARCH_DECISION",
+      "status": "CHECK_REGEX",
+      "details": {
+        "matches_deep_research_regex": false
+      }
+    },
+    {
+      "timestamp_offset_s": 0.209,
+      "stage": "MAIN_WINDOW",
+      "status": "PROCESS_COMMAND_START",
+      "details": {
+        "initial_gui_state": "IDLE"
+      }
+    },
+    {
+      "timestamp_offset_s": 0.209,
+      "stage": "GUI_STATE_MACHINE",
+      "status": "TRANSITION",
+      "details": {
+        "new_state": "thinking"
+      }
+    },
+    {
+      "timestamp_offset_s": 5.114,
+      "stage": "SMART_SKILL",
+      "status": "EVALUATED",
+      "details": {
+        "result": null
+      }
+    },
+    {
+      "timestamp_offset_s": 5.114,
+      "stage": "MAIN_WINDOW",
+      "status": "FALLTHROUGH_TO_QUERY_LLM",
+      "details": {
+        "reason": "skill_res is None"
+      }
+    },
+    {
+      "timestamp_offset_s": 5.114,
+      "stage": "DEEP_RESEARCH",
+      "status": "EVALUATING_RUN_RESEARCH_FLOW",
+      "details": {
+        "topic": "is nvidia buying hugging face"
+      }
+    },
+    {
+      "timestamp_offset_s": 5.115,
+      "stage": "DEEP_RESEARCH",
+      "status": "SOURCE_DISCOVERY_START",
+      "details": {
+        "clean_topic": "is nvidia buying hugging face"
+      }
+    },
+    {
+      "timestamp_offset_s": 7.098,
+      "stage": "DEEP_RESEARCH",
+      "status": "SOURCE_DISCOVERY_COMPLETED",
+      "details": {
+        "sources_found": 4
+      }
+    },
+    {
+      "timestamp_offset_s": 11.555,
+      "stage": "DEEP_RESEARCH",
+      "status": "PAGE_CONTENT_FETCHED",
+      "details": {
+        "pages_fetched": 2
+      }
+    },
+    {
+      "timestamp_offset_s": 11.556,
+      "stage": "DEEP_RESEARCH",
+      "status": "SYNTHESIS_STAGE",
+      "details": {
+        "active_sources": 4
+      }
+    }
+  ],
+  "state_transitions": [
+    {
+      "from": "IDLE",
+      "to": "thinking",
+      "timestamp_offset_s": 0.209
+    }
+  ],
+  "stuck_detected": true,
+  "root_causes_discovered": [
+    {
+      "id": "RC-1",
+      "name": "Missing State Machine Transition to IDLE in query_llm and _process_command",
+      "file": "friday_ui/views/main_window.py:560-565",
+      "mechanism": "When user command falls through to query_llm, state_changed('thinking') is emitted, but state_changed('idle') is never emitted upon stream conclusion."
+    },
+    {
+      "id": "RC-2",
+      "name": "Missing State Machine Transition to IDLE in _run_research",
+      "file": "friday_ui/views/main_window.py:707,862",
+      "mechanism": "_run_research emits state_changed('thinking') at start, but exits without emitting state_changed('idle'), leaving HUD permanently stuck in ACTIVE // THINKING."
+    },
+    {
+      "id": "RC-3",
+      "name": "Orphaned Task and Broken Stop Button for Deep Research",
+      "file": "friday_ui/views/main_window.py:690,480",
+      "mechanism": "handle_research() spawns an untracked asyncio task without assigning to self._current_command_task. Pressing Stop button checks self._current_command_task which is None, failing to cancel active research."
+    },
+    {
+      "id": "RC-4",
+      "name": "Missing Task Watchdog, Idle Timeout, and Deadlines",
+      "file": "friday_ui/views/main_window.py and friday_ui/core/engine.py",
+      "mechanism": "No watchdog monitors running tasks. If web scraping, URL fetching, or local Ollama reasoning blocks or exceeds 180s, the task hangs indefinitely without TIMEOUT or FAIL terminal state."
+    },
+    {
+      "id": "RC-5",
+      "name": "Unbounded Non-Streaming LLM Synthesis in Deep Research",
+      "file": "friday_ui/views/main_window.py:814",
+      "mechanism": "_run_research calls query_llm(synth_prompt, stream_to_ui=False). The UI receives 0 token chunks and 0 progress updates, remaining frozen on 'Neural core synthesizing...' for minutes until Ollama socket times out."
+    },
+    {
+      "id": "RC-6",
+      "name": "Ollama num_ctx Default Overflow",
+      "file": "friday_ui/core/engine.py:3900",
+      "mechanism": "query_llm does not pass num_ctx: 8192, causing Ollama to exceed default context on multi-source research dossiers, failing with silent read timeouts."
+    }
+  ],
+  "terminal_state_reached": false,
+  "final_gui_state": "thinking",
+  "verdict": "REPRODUCED"
+}

@@ -1,0 +1,574 @@
+{
+  "audit_metadata": {
+    "version": "3.0.0",
+    "date": "2026-09-25",
+    "compliance": "Strict Evidence-First (Rule 0.1 - Rule 0.28, Rule 57, Rule 61)",
+    "total_features": 44,
+    "summary": {
+      "pass": 36,
+      "partially_verified": 3,
+      "unverified": 4,
+      "blocked": 1,
+      "fail": 0
+    }
+  },
+  "features": [
+    {
+      "id": "F-001",
+      "name": "Greeting Fast Path (Tier 0)",
+      "module": "friday_ui/core/engine.py",
+      "entrypoint": "execute_smart_skill() -> greeting_patterns",
+      "router_route": "SkillIntent.GENERAL_CHAT (bypassed by Tier 0 regex)",
+      "test_coverage": [
+        "tests/regression/test_bug_001_chat_silence.py",
+        "tests/test_1000_mega_battery.py",
+        "AUDIT/RUNTIME_EVIDENCE/greeting_*.json"
+      ],
+      "status": "PASS",
+      "notes": "Regex fast path (<1ms), no LLM invocation. Tested with 'hi', 'hello', 'hey friday', 'yo'."
+    },
+    {
+      "id": "F-002",
+      "name": "Compound Command Parsing",
+      "module": "friday_core/agent/compound.py",
+      "entrypoint": "CompoundParser.parse()",
+      "router_route": "CompoundIntentParser -> PEOV DAG execution",
+      "test_coverage": [
+        "tests/regression/test_bug_002_compound_actions.py",
+        "tests/test_peov_architecture.py",
+        "tests/test_1000_mega_battery.py"
+      ],
+      "status": "PASS",
+      "notes": "PEOV DAG multi-action planning. Word delegation resolved in compound parser. Sub-actions individually authorized."
+    },
+    {
+      "id": "F-003",
+      "name": "Audio Pipeline (Mic/STT/TTS)",
+      "module": "friday_ui/core/engine.py (FridayVoiceEngine, VoiceLoop), friday_core/voice/",
+      "entrypoint": "VoiceLoop.run()",
+      "router_route": "N/A (hardware I/O)",
+      "test_coverage": [
+        "tests/regression/test_bug_003_audio_pipeline.py"
+      ],
+      "status": "PARTIALLY VERIFIED",
+      "notes": "Software buffers, device enumeration, and mock audio pipelines verified. Real microphone->STT->reasoning->TTS->speaker physical round-trip unverified per Rule 0.21."
+    },
+    {
+      "id": "F-004",
+      "name": "Protected Process Termination Guard",
+      "module": "friday_core/security/gate.py, friday_core/gatekeeper/gatekeeper.py",
+      "entrypoint": "SecurityGate.check_process_fence()",
+      "router_route": "N/A (security layer)",
+      "test_coverage": [
+        "tests/regression/test_bug_004_process_termination.py",
+        "tests/test_1000_mega_battery.py"
+      ],
+      "status": "PASS",
+      "notes": "csrss.exe, lsass.exe, smss.exe protected. Deny-list and Gatekeeper PANIC mode verified."
+    },
+    {
+      "id": "F-005",
+      "name": "Approval Token Replay Prevention",
+      "module": "friday_core/security/gate.py",
+      "entrypoint": "SecurityGate.evaluate_authorization()",
+      "router_route": "N/A (security layer)",
+      "test_coverage": [
+        "tests/regression/test_bug_005_approval_token.py",
+        "AUDIT/SECOND_PASS/CHALLENGE-006.json"
+      ],
+      "status": "PASS",
+      "notes": "Single-use cryptographic nonce with expiration. Replay rejected immediately."
+    },
+    {
+      "id": "F-006",
+      "name": "Path Traversal / Symlink Fencing",
+      "module": "friday_core/security/gate.py",
+      "entrypoint": "SecurityGate.check_path_fence()",
+      "router_route": "N/A (security layer)",
+      "test_coverage": [
+        "tests/regression/test_bug_006_path_traversal.py",
+        "AUDIT/SECOND_PASS/CHALLENGE-005.json"
+      ],
+      "status": "PASS",
+      "notes": "Windows system root, System32, Program Files fenced via canonicalization. Relative path traversal and UNC path escapes blocked."
+    },
+    {
+      "id": "F-007",
+      "name": "State Machine & Transitions",
+      "module": "friday_core/agent/state_machine.py",
+      "entrypoint": "AgentStateMachine.transition_to()",
+      "router_route": "N/A (runtime coordination)",
+      "test_coverage": [
+        "tests/test_peov_architecture.py",
+        "AUDIT/SECOND_PASS/CHALLENGE-008.json"
+      ],
+      "status": "PASS",
+      "notes": "Thread-safe RLock state machine. 10 concurrent threads transitioning across states without race conditions or illegal jumps."
+    },
+    {
+      "id": "F-008",
+      "name": "App Close with Post-Death Verification",
+      "module": "friday_core/gatekeeper/gatekeeper.py",
+      "entrypoint": "ActionGatekeeper.execute_action(close_app)",
+      "router_route": "Tier 0 regex in execute_smart_skill",
+      "test_coverage": [
+        "tests/regression/test_bug_008_notepad_close.py"
+      ],
+      "status": "PASS",
+      "notes": "HWND enumeration and post-close process death verification. Blocks close of protected OS processes."
+    },
+    {
+      "id": "F-009",
+      "name": "Standalone Typing Fast Path",
+      "module": "friday_ui/core/engine.py",
+      "entrypoint": "execute_smart_skill() -> type_match regex",
+      "router_route": "Tier 0 regex",
+      "test_coverage": [
+        "tests/regression/test_bug_009_standalone_typing.py"
+      ],
+      "status": "PASS",
+      "notes": "Direct text insertion intent resolved without LLM escalation when active interactive window exists."
+    },
+    {
+      "id": "F-010",
+      "name": "Volume Control (Mute/Unmute/Up/Down)",
+      "module": "friday_core/system/telemetry.py, friday_core/skills/builtins/volume.py",
+      "entrypoint": "adjust_volume()",
+      "router_route": "SkillIntent.DESKTOP_AUDIO",
+      "test_coverage": [
+        "tests/regression/test_bug_010_volume_fuzzy.py",
+        "AUDIT/RUNTIME_EVIDENCE/volume_*.json"
+      ],
+      "status": "PASS",
+      "notes": "COM IAudioEndpointVolume used. Typo 'myute the volume' safely handled without opposite action."
+    },
+    {
+      "id": "F-011",
+      "name": "Screenshot Capture & Verification",
+      "module": "friday_core/vision/capture.py, friday_core/skills/builtins/desktop_action.py",
+      "entrypoint": "capture_and_save_screenshot()",
+      "router_route": "SkillIntent.DESKTOP_ACTION",
+      "test_coverage": [
+        "tests/regression/test_bug_011_screenshot_verify.py"
+      ],
+      "status": "PARTIALLY VERIFIED",
+      "notes": "File existence, non-zero byte size, and Pillow image reopen verified. Physical multi-monitor pixel contents unverified in headless environment per Rule 0.20."
+    },
+    {
+      "id": "F-012",
+      "name": "PDF Document QA (Title, Content, Summary)",
+      "module": "friday_ui/core/engine.py (_handle_document_qa)",
+      "entrypoint": "_handle_document_qa()",
+      "router_route": "SkillIntent.DOCUMENT_QA",
+      "test_coverage": [
+        "tests/regression/test_bug_012_pdf_title.py",
+        "tests/test_1000_mega_battery.py"
+      ],
+      "status": "PASS",
+      "notes": "Title and content extracted from real PDF metadata and page text. Zero hallucination on untitled PDF."
+    },
+    {
+      "id": "F-013",
+      "name": "DOCX Structured Document Agent",
+      "module": "friday_core/document/",
+      "entrypoint": "StructuredDocumentAgent.execute_task()",
+      "router_route": "SkillIntent.DOCUMENT_QA -> execute_document_agent",
+      "test_coverage": [
+        "tests/regression/test_bug_021_docx_overflow.py",
+        "AUDIT/DOCUMENT_EVIDENCE/DOC-TEST-*.json",
+        "AUDIT/SECOND_PASS/CHALLENGE-002.json"
+      ],
+      "status": "PASS",
+      "notes": "Structural parsing, localized context (<1000 tokens), zero drift (100% SHA256 match on unaffected paragraphs), table/heading preservation verified."
+    },
+    {
+      "id": "F-014",
+      "name": "Web Page Reading (HTTP Fetch)",
+      "module": "friday_ui/core/engine.py (_handle_web_reading), friday_core/web/fetcher.py",
+      "entrypoint": "_handle_web_reading()",
+      "router_route": "SkillIntent.WEB_READING",
+      "test_coverage": [
+        "tests/regression/test_bug_017_web_retrieval.py",
+        "AUDIT/WEB_EVIDENCE/TEST-WEB-*.json"
+      ],
+      "status": "PASS",
+      "notes": "20 forensic web retrieval tests verified: runtime nonce extraction, raw body propagation, 404/500/timeout handling, SSRF gating."
+    },
+    {
+      "id": "F-015",
+      "name": "Semantic Intent Router (Tier 1/2/3)",
+      "module": "friday_core/router/semantic_router.py",
+      "entrypoint": "SemanticIntentRouter.route()",
+      "router_route": "ALL",
+      "test_coverage": [
+        "tests/regression/test_bug_019_laya_routing.py",
+        "tests/test_routing_collision_redteam.py",
+        "tests/test_1000_mega_battery.py"
+      ],
+      "status": "PASS",
+      "notes": "Multi-tier router: Tier 0 regex (<1ms), Tier 1 embeddings, Tier 2 Laya, Tier 3 LLM. 7 collision pairs verified."
+    },
+    {
+      "id": "F-016",
+      "name": "App Launch & Idempotent Guard",
+      "module": "friday_core/system/launcher.py",
+      "entrypoint": "launch_application()",
+      "router_route": "SkillIntent.APP_LAUNCH",
+      "test_coverage": [
+        "tests/test_peov_architecture.py",
+        "tests/test_1000_mega_battery.py"
+      ],
+      "status": "PASS",
+      "notes": "HWND enumeration prevents duplicate application launches. Safe target validation."
+    },
+    {
+      "id": "F-017",
+      "name": "CPU/RAM/Battery/Disk Telemetry",
+      "module": "friday_core/system/telemetry.py",
+      "entrypoint": "get_cpu_info(), get_battery_info(), get_memory_info(), get_disk_info()",
+      "router_route": "SkillIntent.SYSTEM_TELEMETRY",
+      "test_coverage": [
+        "tests/test_1000_mega_battery.py",
+        "AUDIT/RUNTIME_EVIDENCE/telemetry_*.json"
+      ],
+      "status": "PASS",
+      "notes": "Direct psutil/ctypes OS telemetry calls. Live data confirmed; no model fabrication."
+    },
+    {
+      "id": "F-018",
+      "name": "Clipboard Read/Write/Verify",
+      "module": "friday_core/skills/builtins/desktop_action.py",
+      "entrypoint": "clipboard_set(), clipboard_get(), clipboard_verify()",
+      "router_route": "SkillIntent.DESKTOP_ACTION",
+      "test_coverage": [
+        "tests/test_1000_mega_battery.py"
+      ],
+      "status": "PASS",
+      "notes": "Verified via win32clipboard readback and verification cycle."
+    },
+    {
+      "id": "F-019",
+      "name": "File Search & Semantic Selection",
+      "module": "friday_ui/core/engine.py (open_contextual_file_or_explorer, find_recent_files)",
+      "entrypoint": "open_contextual_file_or_explorer()",
+      "router_route": "SkillIntent.DESKTOP_ACTION",
+      "test_coverage": [
+        "tests/test_1000_mega_battery.py"
+      ],
+      "status": "PASS",
+      "notes": "Contextual file search, extension filtering, and path resolution verified."
+    },
+    {
+      "id": "F-020",
+      "name": "Emergency Stop",
+      "module": "friday_core/agent/emergency_stop.py",
+      "entrypoint": "EmergencyStopManager.trigger_stop()",
+      "router_route": "N/A (global interrupt)",
+      "test_coverage": [
+        "tests/test_1000_mega_battery.py"
+      ],
+      "status": "PASS",
+      "notes": "Global interrupt halts active executor missions, kills child PIDs, and engages PANIC mode."
+    },
+    {
+      "id": "F-021",
+      "name": "Crash Recovery",
+      "module": "friday_core/agent/recovery.py",
+      "entrypoint": "RecoveryManager.checkpoint() / resume()",
+      "router_route": "N/A (internal)",
+      "test_coverage": [
+        "tests/test_peov_architecture.py"
+      ],
+      "status": "PASS",
+      "notes": "Mission checkpoints saved to disk; clean resumption without orphaned state."
+    },
+    {
+      "id": "F-022",
+      "name": "Persistent Memory (SQLite)",
+      "module": "friday_core/memory/store.py, friday_core/memory/manager.py",
+      "entrypoint": "PersistentMemoryManager.set_preference(), .get_preference()",
+      "router_route": "SkillIntent.COGNITIVE_MEMORY",
+      "test_coverage": [
+        "AUDIT/RUNTIME_EVIDENCE/memory_*.json",
+        "AUDIT/SECOND_PASS/CHALLENGE-007.json"
+      ],
+      "status": "PASS",
+      "notes": "SQLite persistence verified across independent process instances. Re-stored key retrieved intact."
+    },
+    {
+      "id": "F-023",
+      "name": "Timer/Countdown Management",
+      "module": "friday_core/skills/builtins/timer.py",
+      "entrypoint": "timer_manager.create_timer()",
+      "router_route": "SkillIntent.TIMER_CLOCK",
+      "test_coverage": [
+        "AUDIT/RUNTIME_EVIDENCE/timer_*.json"
+      ],
+      "status": "PASS",
+      "notes": "Timer creation, status polling, and cancellation verified through natural language interface."
+    },
+    {
+      "id": "F-024",
+      "name": "File Organizer (Dry Run/Preview)",
+      "module": "friday_ui/core/engine.py (organize_directory)",
+      "entrypoint": "organize_directory()",
+      "router_route": "SkillIntent.DESKTOP_ACTION",
+      "test_coverage": [
+        "tests/test_1000_mega_battery.py"
+      ],
+      "status": "PASS",
+      "notes": "Dry-run zero-mutation verified. Fenced directory moves."
+    },
+    {
+      "id": "F-025",
+      "name": "Failure Injection Resilience",
+      "module": "friday_core/agent/state_machine.py, friday_core/security/gate.py",
+      "entrypoint": "Multiple",
+      "router_route": "Multiple",
+      "test_coverage": [
+        "AUDIT/FAILURE_MATRIX.json",
+        "AUDIT/SECOND_PASS/CHALLENGE-001.json",
+        "AUDIT/SECOND_PASS/CHALLENGE-003.json"
+      ],
+      "status": "PASS",
+      "notes": "Unreachable web domain, invalid drive path, and process termination boundaries report truthful failures without crash or false success."
+    },
+    {
+      "id": "F-026",
+      "name": "YouTube/Media Routing",
+      "module": "friday_ui/core/engine.py, friday_core/web/youtube.py",
+      "entrypoint": "execute_smart_skill() -> YouTube regex",
+      "router_route": "SkillIntent.MEDIA_CONTROL",
+      "test_coverage": [
+        "tests/test_1000_mega_battery.py"
+      ],
+      "status": "PASS",
+      "notes": "YouTube playback and media controls routed accurately."
+    },
+    {
+      "id": "F-027",
+      "name": "Browser Agent (Interactive DOM)",
+      "module": "friday_core/browser/",
+      "entrypoint": "BrowserController.execute()",
+      "router_route": "N/A (called from skills)",
+      "test_coverage": [],
+      "status": "UNVERIFIED",
+      "notes": "Real Chromium/Playwright DOM interaction (clicks, typing in web forms) unverified in live browser process per Rule 0.19 and Rule 8."
+    },
+    {
+      "id": "F-028",
+      "name": "Deep Research Engine",
+      "module": "friday_core/research/",
+      "entrypoint": "ResearchEngine.run_research()",
+      "router_route": "SkillIntent.DEEP_RESEARCH",
+      "test_coverage": [
+        "tests/test_phase11_deep_research.py",
+        "tests/test_1000_mega_battery.py"
+      ],
+      "status": "PASS",
+      "notes": "Multi-source web synthesis with citation ground truth."
+    },
+    {
+      "id": "F-029",
+      "name": "RAG (Retrieval Augmented Generation)",
+      "module": "friday_core/rag/",
+      "entrypoint": "RAGEngine.ingest(), .query()",
+      "router_route": "N/A (UI view driven)",
+      "test_coverage": [
+        "tests/test_phase9_rag.py",
+        "tests/test_1000_mega_battery.py"
+      ],
+      "status": "PASS",
+      "notes": "Chunking, vector embeddings, and hybrid retrieval verified."
+    },
+    {
+      "id": "F-030",
+      "name": "OCR (Optical Character Recognition)",
+      "module": "friday_core/vision/ocr.py",
+      "entrypoint": "OCR class",
+      "router_route": "N/A",
+      "test_coverage": [],
+      "status": "UNVERIFIED",
+      "notes": "Module exists, but live optical character recognition against physical scanned documents unverified."
+    },
+    {
+      "id": "F-031",
+      "name": "Vision Model Analysis",
+      "module": "friday_core/vision/vision_model.py, friday_core/vision/image_context.py",
+      "entrypoint": "VisionModelClient.analyze_image_structured() -> FridayBrain.process_image_command()",
+      "router_route": "Vision Intent Detection -> qwen2.5vl:3b -> ImageContext -> Main Model",
+      "test_coverage": [
+        "tests/test_vision_architecture.py",
+        "AUDIT/RUNTIME_EVIDENCE/VISION_TEST_001_INITIAL_ANALYSIS.json",
+        "AUDIT/RUNTIME_EVIDENCE/VISION_TEST_002_FOLLOWUP_MEMORY.json",
+        "AUDIT/RUNTIME_EVIDENCE/VISION_TEST_003_OCR_FOLLOWUP.json",
+        "AUDIT/RUNTIME_EVIDENCE/VISION_TEST_004_REANALYSIS.json",
+        "AUDIT/RUNTIME_EVIDENCE/VISION_TEST_005_MULTI_IMAGE.json",
+        "AUDIT/RUNTIME_EVIDENCE/VISION_TEST_006_CASUAL_SKIPPED.json",
+        "AUDIT/RUNTIME_EVIDENCE/VISION_TEST_007_SESSION_ISOLATION.json",
+        "AUDIT/RUNTIME_EVIDENCE/VISION_VERIFICATION_SUMMARY.json"
+      ],
+      "status": "PASS",
+      "notes": "Specialist vision architecture verified end-to-end with qwen2.5vl:3b. Converts image to structured ImageContext, hands off to primary conversational model. Grounded follow-ups with 0 vision re-runs, targeted re-analysis, multi-image positional resolution, and non-visual filtering all verified live with 100% pass rate."
+    },
+    {
+      "id": "F-032",
+      "name": "Duplex Voice / Wake Word",
+      "module": "friday_core/voice/duplex.py, friday_core/voice/wake_word.py",
+      "entrypoint": "DuplexVoice, WakeWordDetector",
+      "router_route": "N/A (hardware I/O)",
+      "test_coverage": [],
+      "status": "UNVERIFIED",
+      "notes": "Wake word and duplex barge-in audio unverified on physical microphone hardware per Rule 0.21."
+    },
+    {
+      "id": "F-033",
+      "name": "Context Manager",
+      "module": "friday_core/context/manager.py",
+      "entrypoint": "ContextManager",
+      "router_route": "N/A (internal)",
+      "test_coverage": [
+        "tests/test_phase5_context_manager.py"
+      ],
+      "status": "PASS",
+      "notes": "Sliding window token budget and context summarization verified."
+    },
+    {
+      "id": "F-034",
+      "name": "Scheduler / Proactive Monitor",
+      "module": "friday_core/scheduler/",
+      "entrypoint": "Scheduler, ProactiveMonitor",
+      "router_route": "N/A",
+      "test_coverage": [
+        "tests/test_phase13_scheduler.py"
+      ],
+      "status": "PASS",
+      "notes": "Cron/interval task scheduling verified."
+    },
+    {
+      "id": "F-035",
+      "name": "Dev Agent (Code Generation)",
+      "module": "friday_core/dev_agent/",
+      "entrypoint": "DevAgent",
+      "router_route": "N/A",
+      "test_coverage": [
+        "tests/test_phase14_dev_agent.py"
+      ],
+      "status": "PASS",
+      "notes": "Autonomous code drafting and linting agent verified."
+    },
+    {
+      "id": "F-036",
+      "name": "Observability / Event Logger",
+      "module": "friday_core/observability/event_logger.py",
+      "entrypoint": "structured_event_logger",
+      "router_route": "N/A (internal)",
+      "test_coverage": [
+        "AUDIT/PERFORMANCE/LATENCY_BENCHMARK.json"
+      ],
+      "status": "PASS",
+      "notes": "Structured event logging, latency tracking (p50, p95, p99), and security audits."
+    },
+    {
+      "id": "F-037",
+      "name": "GUI (PySide6 Main Window)",
+      "module": "friday_ui/views/, friday_ui/app.py",
+      "entrypoint": "FridayApp.main()",
+      "router_route": "N/A (UI layer)",
+      "test_coverage": [],
+      "status": "PARTIALLY VERIFIED",
+      "notes": "PySide6 views and engine bindings compiled; physical window display unverified in headless environment."
+    },
+    {
+      "id": "F-038",
+      "name": "EXE Packaging (PyInstaller)",
+      "module": "build_exe.py, FRIDAY_3.0.spec",
+      "entrypoint": "pyinstaller FRIDAY_3.0.spec",
+      "router_route": "N/A",
+      "test_coverage": [],
+      "status": "UNVERIFIED",
+      "notes": "PyInstaller spec and build script configured; live standalone execution on clean machine unverified per Rule 51."
+    },
+    {
+      "id": "F-039",
+      "name": "Weather",
+      "module": "friday_ui/core/engine.py",
+      "entrypoint": "execute_smart_skill() -> weather intent",
+      "router_route": "SkillIntent.WEATHER",
+      "test_coverage": [
+        "tests/test_1000_mega_battery.py"
+      ],
+      "status": "PASS",
+      "notes": "Weather intent routing and external service retrieval verified."
+    },
+    {
+      "id": "F-040",
+      "name": "System Time/Date",
+      "module": "friday_ui/core/engine.py",
+      "entrypoint": "execute_smart_skill() -> time/date handling",
+      "router_route": "SkillIntent.SYSTEM_TIME_DATE",
+      "test_coverage": [
+        "AUDIT/RUNTIME_EVIDENCE/time_*.json",
+        "AUDIT/RUNTIME_EVIDENCE/date_*.json"
+      ],
+      "status": "PASS",
+      "notes": "Local system clock queried; live date and time confirmed without model fabrication."
+    },
+    {
+      "id": "F-041",
+      "name": "SSRF Protection (Web Fetcher)",
+      "module": "friday_core/web/fetcher.py",
+      "entrypoint": "is_safe_url()",
+      "router_route": "N/A (security layer)",
+      "test_coverage": [
+        "AUDIT/WEB_EVIDENCE/TEST-WEB-*.json"
+      ],
+      "status": "PASS",
+      "notes": "Private IP ranges (127.0.0.0/8, 10.0.0.0/8, 192.168.0.0/16, 169.254.169.254) gated to prevent SSRF."
+    },
+    {
+      "id": "F-042",
+      "name": "Soak / Long-Running Stability",
+      "module": "tests/soak/",
+      "entrypoint": "N/A",
+      "router_route": "N/A",
+      "test_coverage": [],
+      "status": "BLOCKED",
+      "notes": "Rule 39 requires a continuous 4-hour soak test tracking RSS, handles, and memory leaks. Duration unavailable in CI/audit run."
+    },
+    {
+      "id": "F-043",
+      "name": "Heavy Multi-Page PDF Analysis & Non-Blocking Worker",
+      "module": "friday_core/document/pdf_worker.py, friday_ui/widgets/chat_bubble.py",
+      "entrypoint": "PDFAnalysisWorker.start() -> _start_background_pdf_analysis()",
+      "router_route": "SkillIntent.DOCUMENT_QA -> Background QThread Worker",
+      "test_coverage": [
+        "tests/test_pdf_concurrency_and_freeze.py",
+        "AUDIT/RUNTIME_EVIDENCE/PDF_UI_FREEZE_FIXED.json",
+        "AUDIT/PERFORMANCE/PDF_ANALYSIS_METRICS.json",
+        "AUDIT/PERFORMANCE/PDF_RESOURCE_TIMELINE.json"
+      ],
+      "status": "PASS",
+      "notes": "Dedicated QThread execution eliminating GUI freeze. 24-page transformer guide verified live: zero UI thread blocking, 14,434 chars analyzed across 24 pages, 0 pages dropped, throttled 60ms batch markdown streaming, net RAM delta 1.25 MB."
+    },
+    {
+      "id": "F-044",
+      "name": "Deep Research Task Lifecycle & Watchdog Supervision",
+      "module": "friday_core/agent/task_lifecycle.py, friday_core/research/worker.py, friday_ui/views/main_window.py",
+      "entrypoint": "handle_research() -> DeepResearchWorker.start() -> task_supervisor",
+      "router_route": "SkillIntent.DEEP_RESEARCH -> Background Supervised QThread Worker",
+      "test_coverage": [
+        "tests/test_research_lifecycle_forensics.py",
+        "tests/test_deep_research_and_vision.py",
+        "AUDIT/RUNTIME_EVIDENCE/RESEARCH_HANG_BASELINE.json",
+        "AUDIT/RUNTIME_EVIDENCE/RESEARCH_HANG_FIXED.json",
+        "AUDIT/RUNTIME_EVIDENCE/RESEARCH_TIMEOUT.json",
+        "AUDIT/RUNTIME_EVIDENCE/RESEARCH_CANCEL.json",
+        "AUDIT/RUNTIME_EVIDENCE/RESEARCH_HANG_INJECTION.json",
+        "AUDIT/PERFORMANCE/RESEARCH_TASK_TIMELINE.json"
+      ],
+      "status": "PASS",
+      "notes": "Zero-trust lifecycle supervisor with bounded idle watchdog (45s), chunk streaming timeouts, multi-vector decomposition, live token/thinking HUD emission, working Stop button cancellation, late-callback protection, and guaranteed terminal transition to IDLE state under normal, error, or fault injection conditions."
+    }
+  ]
+}

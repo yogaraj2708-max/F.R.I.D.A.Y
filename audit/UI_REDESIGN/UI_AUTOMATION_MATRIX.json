@@ -1,0 +1,137 @@
+{
+  "audit_subsystem": "F.R.I.D.A.Y. 3.0 Desktop UI Automation Matrix",
+  "evaluated_at": "2026-09-27T22:11:00Z",
+  "locator_philosophy": "Dynamic-First, Name/ID-Explicit, Coordinate-Independent",
+  "actions": [
+    {
+      "action_name": "Type Chat Prompt",
+      "target_control": "QLineEdit (Prompt Input)",
+      "objectName": "chat_input",
+      "accessibleName": "Type a message or command",
+      "locator_pattern": "window.findChild(QLineEdit, 'chat_input')",
+      "locator_type": "Qt ObjectName / UIA Name",
+      "stability_score": 1.0,
+      "status": "PASS"
+    },
+    {
+      "action_name": "Click Send",
+      "target_control": "PrimaryPushButton (Send Button)",
+      "objectName": "send_button",
+      "accessibleName": "Send directive",
+      "locator_pattern": "window.findChild(QPushButton, 'send_button')",
+      "locator_type": "Qt ObjectName / UIA Name",
+      "stability_score": 1.0,
+      "status": "PASS"
+    },
+    {
+      "action_name": "Stop Generation",
+      "target_control": "PushButton (Stop Button)",
+      "objectName": "stop_button",
+      "accessibleName": "Stop generation",
+      "locator_pattern": "window.findChild(QPushButton, 'stop_button')",
+      "locator_type": "Qt ObjectName / UIA Name",
+      "stability_score": 1.0,
+      "status": "PASS"
+    },
+    {
+      "action_name": "Choose Model",
+      "target_control": "ComboBox (Model Selector)",
+      "objectName": "model_selector",
+      "accessibleName": "Select active AI model",
+      "locator_pattern": "window.findChild(ComboBox, 'model_selector')",
+      "locator_type": "Qt ObjectName / UIA Name",
+      "stability_score": 1.0,
+      "status": "PASS"
+    },
+    {
+      "action_name": "Switch Session",
+      "target_control": "ComboBox (Session Selector)",
+      "objectName": "session_selector",
+      "accessibleName": "Select conversation session",
+      "locator_pattern": "window.findChild(ComboBox, 'session_selector')",
+      "locator_type": "Qt ObjectName / UIA Name",
+      "stability_score": 1.0,
+      "status": "PASS"
+    },
+    {
+      "action_name": "Attach File",
+      "target_control": "ToolButton (Attachment Button)",
+      "objectName": "attachment_button",
+      "accessibleName": "Attach File",
+      "locator_pattern": "window.findChild(QToolButton, 'attachment_button')",
+      "locator_type": "Qt ObjectName / UIA Name",
+      "stability_score": 1.0,
+      "status": "PASS"
+    },
+    {
+      "action_name": "Start Research",
+      "target_control": "PrimaryPushButton (Research Button)",
+      "objectName": "research_start_btn",
+      "accessibleName": "Start deep research",
+      "locator_pattern": "window.findChild(QPushButton, 'research_start_btn')",
+      "locator_type": "Qt ObjectName / UIA Name",
+      "stability_score": 1.0,
+      "status": "PASS"
+    },
+    {
+      "action_name": "Type Research Target",
+      "target_control": "LineEdit (Research Input)",
+      "objectName": "research_input",
+      "accessibleName": "Research target query",
+      "locator_pattern": "window.findChild(QLineEdit, 'research_input')",
+      "locator_type": "Qt ObjectName / UIA Name",
+      "stability_score": 1.0,
+      "status": "PASS"
+    },
+    {
+      "action_name": "Filter Documents",
+      "target_control": "LineEdit (Doc Search)",
+      "objectName": "doc_search_input",
+      "accessibleName": "Filter documents",
+      "locator_pattern": "window.findChild(QLineEdit, 'doc_search_input')",
+      "locator_type": "Qt ObjectName / UIA Name",
+      "stability_score": 1.0,
+      "status": "PASS"
+    },
+    {
+      "action_name": "Browse Ingest Document",
+      "target_control": "PushButton (Browse Doc Button)",
+      "objectName": "browse_doc_btn",
+      "accessibleName": "Browse file dialog",
+      "locator_pattern": "window.findChild(QPushButton, 'browse_doc_btn')",
+      "locator_type": "Qt ObjectName / UIA Name",
+      "stability_score": 1.0,
+      "status": "PASS"
+    },
+    {
+      "action_name": "Commit Document Ingest",
+      "target_control": "PrimaryPushButton (Ingest Button)",
+      "objectName": "ingest_btn",
+      "accessibleName": "Ingest document to vector database",
+      "locator_pattern": "window.findChild(QPushButton, 'ingest_btn')",
+      "locator_type": "Qt ObjectName / UIA Name",
+      "stability_score": 1.0,
+      "status": "PASS"
+    },
+    {
+      "action_name": "Open Settings Category",
+      "target_control": "QListWidget (Settings Nav)",
+      "objectName": "settings_category_list",
+      "accessibleName": "Settings categories",
+      "locator_pattern": "window.findChild(QListWidget, 'settings_category_list')",
+      "locator_type": "Qt ObjectName / UIA Name",
+      "stability_score": 1.0,
+      "status": "PASS"
+    },
+    {
+      "action_name": "Save Settings",
+      "target_control": "PrimaryPushButton (Save Settings Button)",
+      "objectName": "save_settings_btn",
+      "accessibleName": "Save settings to disk",
+      "locator_pattern": "window.findChild(QPushButton, 'save_settings_btn')",
+      "locator_type": "Qt ObjectName / UIA Name",
+      "stability_score": 1.0,
+      "status": "PASS"
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "audit_target": "Granular Deep Research Task Timeline & Bottleneck Profile",
+  "timestamp": "2026-09-27T14:06:47.658864+00:00",
+  "query": "is nvidia buying hugging face",
+  "total_pipeline_duration_s": 10.324,
+  "phases": [
+    {
+      "phase": "QUERY_EXPANSION_AND_DECOMPOSITION",
+      "start_offset_s": 0.0,
+      "end_offset_s": 0.02,
+      "duration_s": 0.02,
+      "details": {
+        "vectors": [
+          "is nvidia buying hugging face",
+          "is nvidia buying hugging face acquisition deal news",
+          "is nvidia buying hugging face buyout official statement SEC filing",
+          "is nvidia buying hugging face rumors analysis"
+        ]
+      }
+    },
+    {
+      "phase": "MULTI_VECTOR_SOURCE_DISCOVERY",
+      "start_offset_s": 0.02,
+      "end_offset_s": 5.151,
+      "duration_s": 5.131,
+      "details": {
+        "results_returned": 5,
+        "top_sources": [
+          "https://blogs.nvidia.com/blog/nvidia-to-acquire-hugging-face/",
+          "https://www.cnn.com/2026/09/03/tech/nvidia-hugging-face-ai-acquisition",
+          "https://www.cnbc.com/2026/08/27/nvidia-hugging-face-acquisition.html"
+        ]
+      }
+    },
+    {
+      "phase": "PARALLEL_WEB_SCRAPING",
+      "start_offset_s": 5.151,
+      "end_offset_s": 10.324,
+      "duration_s": 5.173,
+      "details": {
+        "pages_scraped": 1,
+        "total_characters": 3000
+      }
+    },
+    {
+      "phase": "PROMPT_BUDGET_ENFORCEMENT",
+      "start_offset_s": 10.324,
+      "end_offset_s": 10.324,
+      "duration_s": 0.0,
+      "details": {
+        "raw_chars": 141,
+        "bounded_chars": 141,
+        "estimated_tokens": 45
+      }
+    }
+  ],
+  "analysis": {
+    "longest_phase": "PARALLEL_WEB_SCRAPING",
+    "io_bound_duration_s": 10.303,
+    "cpu_bound_duration_s": 0.02
+  },
+  "verdict": "ALL_PIPELINE_STAGES_STRICTLY_BOUNDED_WITH_DETERMINISTIC_LATENCIES"
+}

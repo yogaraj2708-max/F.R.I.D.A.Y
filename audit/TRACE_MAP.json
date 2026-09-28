@@ -1,0 +1,59 @@
+{
+  "metadata": {
+    "title": "F.R.I.D.A.Y. 3.0 End-to-End Execution Trace Map",
+    "version": "3.0.0"
+  },
+  "pipelines": {
+    "conversational_fast_path": [
+      "USER_INPUT",
+      "FridayBrain.execute_smart_skill (Tier 0 Regex)",
+      "Signal: skill_executed('Conversational Greeting')",
+      "Audio Earcon: CHIME_CONFIRM",
+      "Deterministic Response Format (< 2ms)",
+      "UI ChatBubble Render"
+    ],
+    "compound_directive": [
+      "USER_INPUT",
+      "CompoundIntentParser.parse()",
+      "PEOVPlanner.plan_compound_directive()",
+      "CompoundMission DAG (Steps + Dependencies)",
+      "PEOVExecutor.execute_mission()",
+      "For each step: PreconditionCheck -> Execute -> Observe -> Verify",
+      "On failure: Rollback preceding steps",
+      "Final verified summary -> UI"
+    ],
+    "web_reading": [
+      "USER_INPUT",
+      "URL Detection & Validation",
+      "SafeWeb SSRF Guard (is_safe_url)",
+      "HTTP Client GET (httpx/urllib)",
+      "Raw Body Capture & Hash Calculation",
+      "DOM Parsing (lxml.html)",
+      "Tag Extraction (Title, Headings, Paragraphs)",
+      "Target Matching (Heading vs Paragraph vs Body)",
+      "Format Verified Response -> UI (Zero Hallucination)"
+    ],
+    "document_agent": [
+      "USER_INPUT",
+      "Target DOCX Detection",
+      "DocxStructuralParser.parse()",
+      "Build Item & Heading Index Map",
+      "Context Extraction (< 1,000 tokens relevant window)",
+      "Structured DocEditOperation Schema",
+      "DocxStructuredEditor.apply_operation() (In-place XML mutation)",
+      "DocxIndependentVerifier.verify() (Reopen, target check, preservation check)",
+      "Verified Confirmation -> UI"
+    ],
+    "gatekeeper_security": [
+      "ACTION_INTENT",
+      "Gatekeeper.classify_tier (0, 1, 2, 3)",
+      "Panic Mode Check (observe_only)",
+      "Tier 3 Allowlist Check",
+      "Tier 2 User Confirmation / Rate Limit Check",
+      "Path Fencing / Process Deny-List Check",
+      "Single-Use Approval Token Nonce Check",
+      "Action Dispatch -> OS",
+      "Audit Log Commit (audit.jsonl)"
+    ]
+  }
+}

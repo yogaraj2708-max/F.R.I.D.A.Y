@@ -18,3 +18,4 @@ kokoro-onnx>=0.3.0
 soundfile>=0.12.1
 faster-whisper>=1.0.0
 pillow>=10.0.0
+beautifulsoup4>=4.12.0

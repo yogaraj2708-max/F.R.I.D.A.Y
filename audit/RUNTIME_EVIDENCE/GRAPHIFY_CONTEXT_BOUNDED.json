@@ -1,0 +1,41 @@
+{
+  "timestamp": "2026-09-27 10:11:13",
+  "bug_id": "GRAPHIFY_CONTEXT_OVERFLOW_16062",
+  "description": "Graphify attachments dumped whole into prompt resulting in 16,062 tokens > 8,192 limit (HTTP 400). Fixed via GraphifyIndexRetriever + ContextBudgetManager.",
+  "directive": "this is your brain",
+  "model_context_limit": 8192,
+  "before": {
+    "mechanism": "chat_view._submit_prompt read 7500 chars from 6 Graphify artifacts (analysis, labels, graph.html, graph.json, report, manifest)",
+    "raw_attached_chars": 45846,
+    "estimated_tokens": 13301,
+    "context_limit": 8192,
+    "verdict": "FAIL",
+    "error": "HTTP 400: request (16062 tokens) exceeds available context size (8192 tokens)"
+  },
+  "after": {
+    "mechanism": "GraphifyIndexRetriever indexes graph.json, rejects HTML/JSON dumps, retrieves targeted symbols and real source code windows within ContextBudgetManager limits",
+    "raw_html_dumped": false,
+    "raw_json_dumped": false,
+    "retrieved_symbols": [
+      "F.R.I.D.A.Y. 2.0 - Graphical Launcher Run this script to launch the Windows 11\u2026",
+      ".handle_settings_update()",
+      ".query_llm()",
+      "Test that FridayBrain.abort_generation sets the abort event and halts TTS.",
+      "test_organizer_preview_intent_in_brain()",
+      "test_clipboard_intent_in_brain()",
+      "Auto-registers built-in skills directly into this registry."
+    ],
+    "retrieved_files": [
+      "tests/test_1000_mega_battery.py",
+      "friday_ui/widgets/arc_reactor.py",
+      "friday_ui/views/chat_view.py",
+      "run_friday_gui.py"
+    ],
+    "final_prompt_tokens": 2023,
+    "available_context": 4456,
+    "context_limit": 8192,
+    "verdict": "PASS",
+    "live_ollama_status": "SUCCESS (HTTP 200) - prompt_eval: 1606 tokens, generated: 9 tokens",
+    "elapsed_seconds": 5.869
+  }
+}

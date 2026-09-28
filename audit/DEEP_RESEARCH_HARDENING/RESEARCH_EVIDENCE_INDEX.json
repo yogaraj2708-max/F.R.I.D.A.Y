@@ -1,0 +1,28 @@
+{
+  "missions": [
+    "MISSION_A",
+    "MISSION_B",
+    "MISSION_C",
+    "MISSION_D",
+    "MISSION_E",
+    "MISSION_F",
+    "MISSION_G",
+    "MISSION_H",
+    "MISSION_I",
+    "MISSION_J"
+  ],
+  "test_suites_passing": [
+    "tests/test_deep_research_forensics.py",
+    "tests/test_research_network_failures.py",
+    "tests/test_research_cancellation.py",
+    "tests/test_research_source_provenance.py",
+    "tests/test_research_context_budget.py",
+    "tests/test_research_prompt_injection.py",
+    "tests/test_research_ssrf.py",
+    "tests/test_research_concurrency.py",
+    "tests/test_research_false_success.py",
+    "tests/test_phase11_deep_research.py",
+    "tests/test_research_lifecycle_forensics.py"
+  ],
+  "total_tests_passing": 57
+}

@@ -1,0 +1,28 @@
+{
+  "process_id": 21772,
+  "friday_process_rss_mb": 260.7,
+  "friday_process_vms_mb": 530.29,
+  "friday_process_cpu_pct": 0.0,
+  "process_count": 1,
+  "thread_count": 34,
+  "asyncio_task_count": 1,
+  "active_sockets": 2,
+  "ollama_memory": {
+    "process_count": 2,
+    "rss_bytes": 111329280,
+    "rss_mb": 106.17,
+    "vms_bytes": 130707456,
+    "vms_mb": 124.65
+  },
+  "disk_usage": {
+    "workspace": {
+      "bytes": 1993389527,
+      "mb": 1901.04
+    },
+    "app_data": {
+      "bytes": 0,
+      "mb": 0.0
+    }
+  },
+  "timestamp": 1790581626.7101758
+}

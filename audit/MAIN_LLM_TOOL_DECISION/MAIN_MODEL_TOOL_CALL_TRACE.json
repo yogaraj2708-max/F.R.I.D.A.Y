@@ -1,0 +1,26 @@
+{
+  "model": "deepseek-r1:8b",
+  "capability_probe_status": "UNAVAILABLE",
+  "registered_schemas_count": 34,
+  "sample_schema": {
+    "type": "function",
+    "function": {
+      "name": "web_search",
+      "description": "Searches the live web using DuckDuckGo for up-to-date facts, breaking news, people, companies, or specifications.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The concise search query string to look up on the web"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    }
+  },
+  "trace_timestamp": "2026-09-27T11:37:14.653810+00:00",
+  "status": "READY"
+}

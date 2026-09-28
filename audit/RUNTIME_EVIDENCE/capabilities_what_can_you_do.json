@@ -1,0 +1,14 @@
+{
+  "trace_id": "trace-bb-d49e4ce7",
+  "category": "Capabilities",
+  "user_command": "what can you do",
+  "latency_ms": 0.06,
+  "response": "At your service, Boss. Here are my verified capabilities:\n\u2022 **Desktop Automation**: Launch apps, type text, window management\n\u2022 **Telemetry & Diagnostics**: Battery, RAM, CPU, power telemetry\n\u2022 **Media & Audio**: Adjust volume, mute/unmute, Spotify/YouTube playback\n\u2022 **Utilities**: Math calculations, system clock/date, timers, and countdowns\n\u2022 **File Organization**: Clean and organize Desktop, Downloads, and Documents\n\u2022 **Deep Web Research**: Autonomous multi-source research and report synthesis\n\u2022 **Neural Intelligence**: Local reasoning powered by Ollama.",
+  "expected_keywords": [
+    "capabilities",
+    "telemetry",
+    "automation"
+  ],
+  "keywords_observed": true,
+  "verdict": "PASS"
+}

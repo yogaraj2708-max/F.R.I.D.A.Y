@@ -145,7 +145,7 @@ class TestFridayBrainSemanticIntegration(unittest.TestCase):
         # "snap my desktop" previously had no regex match
         res = asyncio.run(self.brain.execute_smart_skill("snap my desktop"))
         self.assertIsNotNone(res)
-        self.assertIn("Screenshot snipping tool activated", res)
+        self.assertTrue("screenshot" in res.lower() and ("captured" in res.lower() or "activated" in res.lower()))
 
     def test_semantic_volume_dispatch(self):
         res = asyncio.run(self.brain.execute_smart_skill("crank the volume"))

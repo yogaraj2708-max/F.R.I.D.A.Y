@@ -1,0 +1,48 @@
+{
+  "audit_target": "User Cooperative Cancellation and Resource Teardown",
+  "timestamp": "2026-09-27T14:08:31.471711+00:00",
+  "task_id": "task_1790518109108_c7610f",
+  "time_to_abort_ms": 1613.3,
+  "terminal_state": "CANCELLED",
+  "thread_terminated_cleanly": true,
+  "verification_status": "PASS",
+  "lifecycle_events": [
+    {
+      "timestamp_offset_s": 0.0,
+      "stage": "TASK_LIFECYCLE",
+      "status": "CREATED",
+      "details": {
+        "task_id": "task_1790518109108_c7610f"
+      }
+    },
+    {
+      "timestamp_offset_s": 0.002,
+      "stage": "WORKER_THREAD",
+      "status": "STARTED",
+      "details": {}
+    },
+    {
+      "timestamp_offset_s": 0.759,
+      "stage": "USER_INTERACTION",
+      "status": "STOP_BUTTON_CLICKED",
+      "details": {}
+    },
+    {
+      "timestamp_offset_s": 2.363,
+      "stage": "WORKER_THREAD",
+      "status": "JOINED",
+      "details": {
+        "is_alive": false
+      }
+    },
+    {
+      "timestamp_offset_s": 2.363,
+      "stage": "TASK_LIFECYCLE",
+      "status": "FINAL_STATE",
+      "details": {
+        "state": "CANCELLED"
+      }
+    }
+  ],
+  "verdict": "TASK_ABORTED_IMMEDIATELY_WITH_CLEAN_RESOURCE_TEARDOWN"
+}

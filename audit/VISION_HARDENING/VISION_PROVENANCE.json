@@ -1,0 +1,46 @@
+{
+  "title": "F.R.I.D.A.Y. 3.0 Vision Result Provenance Schema & Verification Log",
+  "generated_at": "2026-09-27T21:23:00Z",
+  "required_provenance_fields": [
+    "image_id",
+    "vision_model",
+    "tool_call_id",
+    "execution_status",
+    "verification_status",
+    "timestamp",
+    "dimensions",
+    "uncertainty_rating"
+  ],
+  "provenance_pipeline": {
+    "step_1": "Vision Specialist completes VLM inference and populates ImageContext",
+    "step_2": "Engine dispatch_agent_tool wraps output in security boundaries",
+    "step_3": "agent_tool_bridge.verify_tool_result extracts provenance metadata",
+    "step_4": "Verified bundle formatted with [VERIFIED TOOL PROVENANCE ...] prefix and returned to Main Agent"
+  },
+  "sample_verified_provenance_records": [
+    {
+      "trace_id": "trace_vis_sample_001",
+      "tool_name": "analyze_image",
+      "tool_call_id": "tc_vis_9a8b7c",
+      "image_id": "image_context_001",
+      "vision_model": "qwen2.5vl:3b",
+      "dimensions": "200x150",
+      "execution_status": "SUCCESS",
+      "verification_status": "VERIFIED",
+      "uncertainty_rating": "OBSERVED",
+      "timestamp": "2026-09-27T21:23:00.000000Z"
+    },
+    {
+      "trace_id": "trace_vis_sample_002",
+      "tool_name": "analyze_image",
+      "tool_call_id": "tc_vis_1d2e3f",
+      "image_id": "image_context_002",
+      "vision_model": "qwen2.5vl:3b",
+      "dimensions": "16x16",
+      "execution_status": "SUCCESS",
+      "verification_status": "VERIFIED",
+      "uncertainty_rating": "UNCERTAIN",
+      "timestamp": "2026-09-27T21:23:05.000000Z"
+    }
+  ]
+}

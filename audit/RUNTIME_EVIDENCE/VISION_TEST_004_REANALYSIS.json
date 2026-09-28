@@ -1,0 +1,8 @@
+{
+  "test_id": "VISION-TEST-004",
+  "description": "Targeted Re-Analysis -> invokes qwen2.5vl:3b with targeted query -> updates context",
+  "duration_s": 76.24,
+  "vision_model_reinvoked": true,
+  "main_model_reply_preview": "Understood, Boss. F.R.I.D.A.Y. is analyzing the top-right corner of the provided image, `audit_system_panel.png`, as per your directive.\n\nHere's the breakdown based on the fresh context:\n\n### Top-Right Corner Analysis\nFocusing on the top-right corner",
+  "verdict": "PASS"
+}

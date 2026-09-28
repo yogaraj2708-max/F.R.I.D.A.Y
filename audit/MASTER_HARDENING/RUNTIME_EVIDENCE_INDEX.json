@@ -1,0 +1,44 @@
+{
+  "runtime_evidence_records": [
+    {
+      "trace_id": "probe-qwen35-9b-live",
+      "model": "qwen3.5:9b",
+      "command": "What's the latest NVIDIA news?",
+      "script": "scratch/diagnose_ollama_direct.py",
+      "verified_tool_called": "web_search",
+      "tool_arguments": {"query": "NVIDIA latest news 2025"},
+      "execution_time_s": 93.75,
+      "status": "VERIFIED"
+    },
+    {
+      "trace_id": "compound-notepad-win11",
+      "command": "open note pad and type FRIDAY IS TESTING CONTEXT",
+      "test": "tests/regression/test_bug_002_compound_actions.py::test_compound_runtime_execution",
+      "verified_window": "Notepad",
+      "verified_injected_text": "FRIDAY IS TESTING CONTEXT",
+      "status": "VERIFIED"
+    },
+    {
+      "trace_id": "pdf-concurrency-wait-guard",
+      "test": "tests/test_pdf_concurrency_and_freeze.py",
+      "verified_workers": 9,
+      "access_violations": 0,
+      "status": "VERIFIED"
+    },
+    {
+      "trace_id": "security-ssrf-traversal-guard",
+      "test": "tests/test_tool_provenance.py",
+      "blocked_vectors": 9,
+      "status": "VERIFIED"
+    },
+    {
+      "trace_id": "deep-research-live-synthesis",
+      "model": "qwen3.5:9b",
+      "command": "is nvidia buying hugging face",
+      "evidence_file": "AUDIT/RUNTIME_EVIDENCE/RESEARCH_HANG_FIXED.json",
+      "sources_discovered": 10,
+      "total_tokens_streamed": 922,
+      "status": "VERIFIED"
+    }
+  ]
+}

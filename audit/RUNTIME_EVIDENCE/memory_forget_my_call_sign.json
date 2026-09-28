@@ -1,0 +1,13 @@
+{
+  "trace_id": "trace-bb-74d04812",
+  "category": "Memory",
+  "user_command": "forget my call sign",
+  "latency_ms": 10.66,
+  "response": "I have deleted your call sign preference from persistent memory, Boss.",
+  "expected_keywords": [
+    "deleted",
+    "preference"
+  ],
+  "keywords_observed": true,
+  "verdict": "PASS"
+}

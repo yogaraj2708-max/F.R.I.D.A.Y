@@ -1,0 +1,51 @@
+{
+  "test_1_request": {
+    "scenario": "EXISTING_PRODUCTION_PATH",
+    "user_query": "who is jensen huang search web and tell",
+    "endpoint": "http://localhost:11434/api/chat",
+    "active_model": "llama3.2:1b",
+    "options": {
+      "temperature": 0.7,
+      "top_p": 0.9,
+      "num_ctx": 4096
+    },
+    "messages_sent_count": 2,
+    "system_prompt_length_chars": 2360,
+    "system_prompt_snippet": "You are F.R.I.D.A.Y. 2.0, Boss's elite tactical AI assistant and engineering copilot, modeled after Tony Stark's AI in Marvel's Iron Man.\nCore Persona Rules:\n1. Address the user naturally as 'Boss' or 'Boss'.\n2. Tone: Calm, sharp, tactically aware, subtly witty, and professional.\n3. Dynamic Intelligence: For quick chit-chat and simple status requests, keep replies punchy and conversational. For file analyses, programming tasks, document reviews, technical inquiries, and deep explanations, provid...",
+    "tools_parameter_passed": false,
+    "tools_array": null,
+    "tool_choice": null,
+    "verdict": "ROOT_CAUSE_CONFIRMED: TOOLS NOT EXPOSED TO MODEL"
+  },
+  "test_7_tools_request": {
+    "model": "llama3.2:1b",
+    "tools_passed": [
+      {
+        "type": "function",
+        "function": {
+          "name": "web_search",
+          "description": "Searches the live web using DuckDuckGo for up-to-date information, news, companies, people, or events.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "Target search terms to query on the web."
+              }
+            },
+            "required": [
+              "query"
+            ]
+          }
+        }
+      }
+    ],
+    "messages": [
+      {
+        "role": "user",
+        "content": "What's the latest NVIDIA news? Search the web and tell me."
+      }
+    ],
+    "verdict": "WHEN TOOLS PASSED: Model emits native tool_calls!"
+  }
+}

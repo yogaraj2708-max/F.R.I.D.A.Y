@@ -1,0 +1,573 @@
+{
+  "audit_metadata": {
+    "framework": "F.R.I.D.A.Y. 3.0 Forensic Zero-Trust Audit",
+    "date": "2026-09-25",
+    "compliance": "Strict Evidence-First (Rule 0.1 - Rule 0.28, Rule 57)",
+    "total_bugs_audited": 22
+  },
+  "bugs": [
+    {
+      "id": "BUG-001",
+      "name": "Greeting 'hi' fallthrough to expensive reasoning / silence",
+      "symptom": "Casual greetings ('hi', 'hello', 'hey friday') routed to heavy LLM reasoning with high latency or potential silence.",
+      "reproduction": "Submit query 'hi' or 'hello' to system router without local model active.",
+      "observed_evidence": "Latency exceeded 3500ms; if local model offline, returned connection error instead of conversational greeting.",
+      "failure_boundary": "Semantic intent classification layer in semantic_router.py and engine.py.",
+      "root_cause": "Missing deterministic conversational fast path for common greetings in Tier 0 router.",
+      "why_previous_implementation_failed": "Router evaluated embeddings or LLM decider for trivial single-word greetings.",
+      "architectural_fix": "Implemented Tier 0 regex fast path (< 1ms) in FridayBrain.execute_smart_skill and semantic router prioritizing greetings.",
+      "files_changed": [
+        "friday_ui/core/engine.py",
+        "friday_core/router/semantic_router.py"
+      ],
+      "tests_added": [
+        "tests/regression/test_bug_001_chat_silence.py",
+        "tests/test_1000_mega_battery.py::test_381_to_430"
+      ],
+      "runtime_test": "Verified instant response ('Good morning/afternoon/evening, Boss...') under 2ms.",
+      "security_implications": "Prevents denial-of-service on local reasoning server from greeting loops.",
+      "regression_tests": [
+        "test_bug_001_chat_silence.py"
+      ],
+      "remaining_limitations": "Only standard English greetings covered in regex; regional colloquialisms route through semantic router.",
+      "status": "FIXED"
+    },
+    {
+      "id": "BUG-002",
+      "name": "Compound command parsing failure",
+      "symptom": "Multi-clause directives ('open notepad and type FRIDAY IS TESTING CONTEXT') treated as monolithic application names.",
+      "reproduction": "Issue 'open notepad and type hello' -> attempted to find executable named 'notepad and type hello'.",
+      "observed_evidence": "Win32 launch error: 'Could not find application notepad and type hello'.",
+      "failure_boundary": "Compound natural language intent parsing in agent/planner.py and agent/compound.py.",
+      "root_cause": "Greedy regex in app launcher matched entire prompt string as target application.",
+      "why_previous_implementation_failed": "Single-step command architecture lacked dependency DAG planning.",
+      "architectural_fix": "Implemented CompoundIntentParser decomposing commands into sequential PEOV DAG missions with step dependencies.",
+      "files_changed": [
+        "friday_core/agent/compound.py",
+        "friday_core/agent/planner.py",
+        "friday_core/agent/executor.py",
+        "friday_ui/core/engine.py"
+      ],
+      "tests_added": [
+        "tests/regression/test_bug_002_compound_actions.py",
+        "tests/test_peov_architecture.py"
+      ],
+      "runtime_test": "Notepad launched, window focused, text injected and verified via UI Automation readback.",
+      "security_implications": "All spawned sub-actions pass individually through Gatekeeper authorization.",
+      "regression_tests": [
+        "test_bug_002_compound_actions.py"
+      ],
+      "remaining_limitations": "Compound actions limited to supported skill combinations (launch, type, search, navigate, calculate).",
+      "status": "FIXED"
+    },
+    {
+      "id": "BUG-003",
+      "name": "Microphone/audio path real voice integration deficit",
+      "symptom": "Voice loop crashed or hung when PyAudio/sounddevice buffer underran or hardware was unattached.",
+      "reproduction": "Start voice loop in environment without audio input device.",
+      "observed_evidence": "Uncaught sounddevice / pygame.mixer exception terminating main loop.",
+      "failure_boundary": "Audio hardware abstraction in friday_ui/core/engine.py and friday.py.",
+      "root_cause": "Synchronous mixer initialization and blocking stream reads without device enumeration guards.",
+      "why_previous_implementation_failed": "Assumed active default microphone and speaker always present and unlocked.",
+      "architectural_fix": "Wrapped audio streams in non-blocking try-catch blocks with device enumeration fallback and silent chime stubs.",
+      "files_changed": [
+        "friday.py",
+        "friday_ui/core/engine.py",
+        "friday_core/system/telemetry.py"
+      ],
+      "tests_added": [
+        "tests/regression/test_bug_003_audio_pipeline.py",
+        "tests/test_phase4_duplex_voice.py"
+      ],
+      "runtime_test": "Device enumeration, stream opening, and fallback verified in software.",
+      "security_implications": "Microphone stream isolated from system command shell.",
+      "regression_tests": [
+        "test_bug_003_audio_pipeline.py"
+      ],
+      "remaining_limitations": "Physical microphone -> STT -> TTS -> speaker closed-loop acoustic test unverified in headless CI (Rule 0.21).",
+      "status": "PARTIALLY_VERIFIED"
+    },
+    {
+      "id": "BUG-004",
+      "name": "Critical Windows process termination vulnerability",
+      "symptom": "Commands like 'kill csrss.exe' or 'close svchost' could crash the operating system with BSOD.",
+      "reproduction": "Issue 'kill process csrss.exe' or target protected processes through gatekeeper.",
+      "observed_evidence": "Targeted termination attempted against Windows core processes without security filter.",
+      "failure_boundary": "System process lifecycle management in gatekeeper/gatekeeper.py and security/gate.py.",
+      "root_cause": "Missing system process deny-list filter before executing taskkill / psutil terminate.",
+      "why_previous_implementation_failed": "Gatekeeper trusted user intent without cross-referencing protected Windows kernel binaries.",
+      "architectural_fix": "Enforced PROTECTED_SYSTEM_PROCESSES fence blocking termination of csrss, lsass, smss, winlogon, services, etc.",
+      "files_changed": [
+        "friday_core/gatekeeper/gatekeeper.py",
+        "friday_core/security/gate.py"
+      ],
+      "tests_added": [
+        "tests/security/test_security_redteam.py::test_protected_system_process_termination_attack"
+      ],
+      "runtime_test": "Adversarial termination attempts against 7 critical processes verified blocked with security violation.",
+      "security_implications": "Protects Windows OS stability from malicious or accidental command injection.",
+      "regression_tests": [
+        "test_security_redteam.py"
+      ],
+      "remaining_limitations": "Does not prevent termination of user-space processes if confirmed by user.",
+      "status": "FIXED"
+    },
+    {
+      "id": "BUG-005",
+      "name": "Approval-token replay weakness",
+      "symptom": "Tier 2 destructive action approval tokens could be re-used multiple times to authorize different actions.",
+      "reproduction": "Capture valid approval token for recycle_file and replay it against another target file.",
+      "observed_evidence": "Second action succeeded using stale clearance token.",
+      "failure_boundary": "Security gate authorization evaluator in security/gate.py.",
+      "root_cause": "Approval tokens were stateless or not invalidated upon single-use consumption.",
+      "why_previous_implementation_failed": "Token verification only checked token presence and expiration, not consumption status.",
+      "architectural_fix": "Implemented single-use nonce tracking in SecurityGate with immediate token invalidation and replay detection.",
+      "files_changed": [
+        "friday_core/security/gate.py"
+      ],
+      "tests_added": [
+        "tests/security/test_security_redteam.py::test_approval_replay_attack_prevention"
+      ],
+      "runtime_test": "Replay attack test verified immediate rejection with 'replay attack blocked'.",
+      "security_implications": "Prevents unauthorized action escalation via token capture.",
+      "regression_tests": [
+        "test_security_redteam.py"
+      ],
+      "remaining_limitations": "Tokens expire after 5 minutes; unconsumed tokens remain in memory cache until expiration.",
+      "status": "FIXED"
+    },
+    {
+      "id": "BUG-006",
+      "name": "Path traversal and symlink escape",
+      "symptom": "Malicious file path parameters (e.g. '..\\..\\Windows\\System32') could escape sandboxed roots.",
+      "reproduction": "Issue file modification targeting 'C:\\Windows\\System32\\drivers\\etc\\hosts'.",
+      "observed_evidence": "Relative path resolution bypassed initial prefix string checks.",
+      "failure_boundary": "Path canonicalization and fencing in gatekeeper/gatekeeper.py and security/gate.py.",
+      "root_cause": "Path validation evaluated raw strings instead of canonical resolved absolute paths.",
+      "why_previous_implementation_failed": "Checked `path.startswith()` before `Path(path).resolve()`.",
+      "architectural_fix": "Implemented strict canonicalization via Path.resolve(), junction handling, and system root fence checks.",
+      "files_changed": [
+        "friday_core/gatekeeper/gatekeeper.py",
+        "friday_core/security/gate.py"
+      ],
+      "tests_added": [
+        "tests/security/test_security_redteam.py::test_adversarial_path_traversal_fencing"
+      ],
+      "runtime_test": "5 adversarial traversal payloads verified blocked by both SecurityGate and Gatekeeper.",
+      "security_implications": "Guarantees system files cannot be modified or deleted via path escape.",
+      "regression_tests": [
+        "test_security_redteam.py"
+      ],
+      "remaining_limitations": "User desktop and user documents roots remain writable per intentional design.",
+      "status": "FIXED"
+    },
+    {
+      "id": "BUG-007",
+      "name": "Thread-safety and state machine race conditions",
+      "symptom": "Rapid concurrent state transitions caused corrupt state history or illegal transition errors.",
+      "reproduction": "Simultaneously trigger state transitions from multiple threads.",
+      "observed_evidence": "Race condition caused AgentStateMachine to report inconsistent current_state.",
+      "failure_boundary": "Agent runtime state management in agent/state_machine.py.",
+      "root_cause": "State transitions modified internal state and listener lists without mutual exclusion.",
+      "why_previous_implementation_failed": "State machine was not thread-safe under multithreaded GUI and voice loops.",
+      "architectural_fix": "Added threading.RLock() guarding state transitions, listener notifications, and transition history logging.",
+      "files_changed": [
+        "friday_core/agent/state_machine.py"
+      ],
+      "tests_added": [
+        "tests/regression/test_state_machine.py",
+        "tests/test_peov_architecture.py"
+      ],
+      "runtime_test": "Multithreaded race stress tests verified atomic state transitions without deadlocks.",
+      "security_implications": "Prevents unauthorized operations while system is in PAUSED or CANCELLED state.",
+      "regression_tests": [
+        "test_state_machine.py"
+      ],
+      "remaining_limitations": "Listener callbacks must be non-blocking to prevent locking state transitions.",
+      "status": "FIXED"
+    },
+    {
+      "id": "BUG-008",
+      "name": "Notepad close false success while process remained alive",
+      "symptom": "Assistant reported 'Notepad closed' even if Notepad was still running or prompted 'Do you want to save?'.",
+      "reproduction": "Type text in Notepad without saving, then issue 'close notepad'.",
+      "observed_evidence": "Alt+F4 caused a modal confirmation prompt, window remained open, but skill returned success.",
+      "failure_boundary": "Application close execution and observation in gatekeeper/gatekeeper.py and builtins/apps.py.",
+      "root_cause": "Blindly sent Alt+F4 or terminate() without post-condition HWND polling and verification.",
+      "why_previous_implementation_failed": "No post-action observation loop verifying process death and window destruction.",
+      "architectural_fix": "Implemented 2.0s polling loop checking psutil process status and uiautomation HWND presence with taskkill fallback.",
+      "files_changed": [
+        "friday_core/gatekeeper/gatekeeper.py",
+        "friday_core/skills/builtins/ui_automation.py"
+      ],
+      "tests_added": [
+        "tests/regression/test_bug_005_close_app_verification.py"
+      ],
+      "runtime_test": "Verified close_app polls until window/process confirmed dead, returning verified status.",
+      "security_implications": "Ensures background orphaned processes are not left running silently.",
+      "regression_tests": [
+        "test_bug_005_close_app_verification.py"
+      ],
+      "remaining_limitations": "Apps with unsaved changes may force taskkill termination if timeout exceeded.",
+      "status": "FIXED"
+    },
+    {
+      "id": "BUG-009",
+      "name": "Standalone typing routed to LLM instead of UI action",
+      "symptom": "Commands like 'type Hello World into notepad' routed to LLM explaining how to type instead of typing.",
+      "reproduction": "Issue 'type FRIDAY ACTIVE into notepad' in chat interface.",
+      "observed_evidence": "LLM responded with conversational text: 'I have typed that into notepad' without touching keyboard.",
+      "failure_boundary": "Intent dispatching in friday_ui/core/engine.py and router/semantic_router.py.",
+      "root_cause": "Missing direct Tier 1 fast path for typing verbs in execute_smart_skill.",
+      "why_previous_implementation_failed": "Typing commands evaluated by LLM router which misinterpreted intent as conversation.",
+      "architectural_fix": "Added Tier 1 fast-path regex interceptor for type/input/enter/paste/append in execute_smart_skill.",
+      "files_changed": [
+        "friday_ui/core/engine.py",
+        "friday_core/skills/builtins/ui_automation.py"
+      ],
+      "tests_added": [
+        "tests/regression/test_standalone_save_and_typing.py"
+      ],
+      "runtime_test": "Direct execution of UITypeTextSkill with screen readback verification verified.",
+      "security_implications": "Limits keystroke injection to recognized application targets.",
+      "regression_tests": [
+        "test_standalone_save_and_typing.py"
+      ],
+      "remaining_limitations": "Target window must be accessible on current interactive desktop station.",
+      "status": "FIXED"
+    },
+    {
+      "id": "BUG-010",
+      "name": "Malformed volume command causing opposite action",
+      "symptom": "'myute the system volume' (typo of mute) could be misinterpreted as unmute or volume up.",
+      "reproduction": "Submit prompt 'myute the volume'.",
+      "observed_evidence": "Fuzzy string matching matched 'unmute' due to partial character overlaps.",
+      "failure_boundary": "Regex and string matching in engine.py and telemetry.py.",
+      "root_cause": "Loose regex pattern matching without strict negative lookaheads for opposite intents.",
+      "why_previous_implementation_failed": "Did not check for typo variants of mute vs unmute explicitly.",
+      "architectural_fix": "Implemented strict phonetic typo mapping (`myute|muet|mut|mue`) explicitly excluding 'unmute'.",
+      "files_changed": [
+        "friday_ui/core/engine.py",
+        "friday_core/system/telemetry.py"
+      ],
+      "tests_added": [
+        "tests/regression/test_bug_006_volume_safety.py"
+      ],
+      "runtime_test": "Both 'mute', 'myute', and 'unmute' tested and verified triggering correct volume state.",
+      "security_implications": "Prevents accidental blaring audio from acoustic typos.",
+      "regression_tests": [
+        "test_bug_006_volume_safety.py"
+      ],
+      "remaining_limitations": "Highly garbled speech without recognizable volume keywords falls through safely to LLM.",
+      "status": "FIXED"
+    },
+    {
+      "id": "BUG-011",
+      "name": "Screenshot false success on missing file",
+      "symptom": "System claimed screenshot was taken even if capture failed or output file had 0 bytes.",
+      "reproduction": "Trigger screenshot with invalid destination directory or uninitialized display.",
+      "observed_evidence": "Success message returned despite file not existing on disk.",
+      "failure_boundary": "Desktop action skill in skills/builtins/desktop_action.py.",
+      "root_cause": "Returned success based on function call completion rather than on-disk file verification.",
+      "why_previous_implementation_failed": "Violated PEOV Rule 0.9 (file save call is not proof of write).",
+      "architectural_fix": "Added PIL Image verification: checks file exists, stat().st_size > 0, and reopens image verifying width/height > 0.",
+      "files_changed": [
+        "friday_core/skills/builtins/desktop_action.py",
+        "friday_ui/core/engine.py"
+      ],
+      "tests_added": [
+        "tests/regression/test_bug_014_screenshot.py",
+        "tests/regression/test_failure_injection_resilience.py"
+      ],
+      "runtime_test": "Verified screenshot capture validates on-disk byte size and readable image dimensions.",
+      "security_implications": "Screenshot files quarantined to user Desktop or APP_DATA_DIR.",
+      "regression_tests": [
+        "test_bug_014_screenshot.py"
+      ],
+      "remaining_limitations": "Physical visual pixel correctness cannot be audited without computer vision model in loop.",
+      "status": "FIXED"
+    },
+    {
+      "id": "BUG-012",
+      "name": "PDF title and content hallucination",
+      "symptom": "When asked for PDF title, LLM fabricated plausible titles based on filename or question prompt.",
+      "reproduction": "Ask 'what is the title of this pdf' on an untitled or corrupt PDF.",
+      "observed_evidence": "LLM generated invented title (e.g. 'Advanced AI Systems Guidelines') not found in metadata.",
+      "failure_boundary": "Document QA handler in friday_ui/core/engine.py.",
+      "root_cause": "System routed document QA directly to LLM without strict grounding extraction.",
+      "why_previous_implementation_failed": "Model prior knowledge substituted for missing document metadata.",
+      "architectural_fix": "Implemented zero-hallucination PDF extraction: reads exact pypdf metadata/page 1; returns truthful 'I couldn't verify the title' on failure.",
+      "files_changed": [
+        "friday_ui/core/engine.py"
+      ],
+      "tests_added": [
+        "tests/regression/test_bug_009_010_011_pdf_grounding.py"
+      ],
+      "runtime_test": "Verified exact metadata extraction and truthful failure on fabricated titles.",
+      "security_implications": "Prevents prompt injection embedded inside untrusted PDF metadata from overriding instructions.",
+      "regression_tests": [
+        "test_bug_009_010_011_pdf_grounding.py"
+      ],
+      "remaining_limitations": "Scanned raster PDFs without OCR layer return unreadable text warning.",
+      "status": "FIXED"
+    },
+    {
+      "id": "BUG-013",
+      "name": "PDF context overflow on large documents",
+      "symptom": "Asking questions about 100+ page PDFs dumped entire document text into prompt, causing OOM or truncation.",
+      "reproduction": "Query large PDF (> 50 pages) in chat.",
+      "observed_evidence": "Token count exceeded context window (> 16k tokens), crashing Ollama server.",
+      "failure_boundary": "PDF context extraction in engine.py and rag/store.py.",
+      "root_cause": "Naive loop appended extracted text from all pages without budgeting.",
+      "why_previous_implementation_failed": "No context window token or character cap in document reader.",
+      "architectural_fix": "Enforced strict context budgeting: capped document excerpts to <= 2500 tokens (7500 chars) with structural chunking.",
+      "files_changed": [
+        "friday_ui/core/engine.py"
+      ],
+      "tests_added": [
+        "tests/regression/test_bug_009_010_011_pdf_grounding.py"
+      ],
+      "runtime_test": "Verified 150-page document query strictly bounded to < 7500 chars.",
+      "security_implications": "Prevents denial-of-service via memory exhaustion from massive files.",
+      "regression_tests": [
+        "test_bug_009_010_011_pdf_grounding.py"
+      ],
+      "remaining_limitations": "Very deep queries across hundreds of pages require vector RAG ingestion for full semantic search.",
+      "status": "FIXED"
+    },
+    {
+      "id": "BUG-014",
+      "name": "PDF/document questions routing to unrelated telemetry/system skills",
+      "symptom": "Questions like 'read this pdf and tell me cpu requirements' triggered local CPU telemetry skill.",
+      "reproduction": "Issue 'what does this pdf say about system memory'.",
+      "observed_evidence": "Returned current host RAM telemetry instead of reading document content.",
+      "failure_boundary": "Semantic router precedence and collision filters in router/semantic_router.py.",
+      "root_cause": "Telemetry keyword 'memory' / 'cpu' triggered Tier 0 telemetry before checking document attachment context.",
+      "why_previous_implementation_failed": "Telemetry pattern matching lacked negative lookbehinds for document context.",
+      "architectural_fix": "Added document attachment awareness and contextual question filters prioritizing document pipeline over telemetry.",
+      "files_changed": [
+        "friday_ui/core/engine.py",
+        "friday_core/router/semantic_router.py"
+      ],
+      "tests_added": [
+        "tests/regression/test_routing_collision_redteam.py"
+      ],
+      "runtime_test": "Verified prompt 'read this pdf and tell me cpu requirements' routes to document QA.",
+      "security_implications": "Prevents leakage of host machine telemetry when user intended external document analysis.",
+      "regression_tests": [
+        "test_routing_collision_redteam.py"
+      ],
+      "remaining_limitations": "Ambiguous prompts without clear keywords rely on semantic router score threshold.",
+      "status": "FIXED"
+    },
+    {
+      "id": "BUG-015",
+      "name": "Generative content writing in Notepad required semantic DAG generation",
+      "symptom": "'open notepad and write a welcome speech' typed the literal words 'a welcome speech' instead of generating a speech.",
+      "reproduction": "Issue 'open notepad and write a welcome speech for college'.",
+      "observed_evidence": "Notepad editor contained literal text 'a welcome speech for college'.",
+      "failure_boundary": "Compound parser and content generation skill in agent/compound.py and skills/builtins/content.py.",
+      "root_cause": "Compound parser treated all text following 'write' as literal keystrokes.",
+      "why_previous_implementation_failed": "No distinction between literal text insertion and generative semantic writing.",
+      "architectural_fix": "Implemented is_generative_writing heuristic and 5-step dependent DAG (Launch -> ContentGeneration -> Focus -> Type -> Verify).",
+      "files_changed": [
+        "friday_core/agent/compound.py",
+        "friday_core/skills/builtins/content.py",
+        "friday_core/agent/executor.py"
+      ],
+      "tests_added": [
+        "tests/regression/test_peov_architecture.py"
+      ],
+      "runtime_test": "Verified complete multi-paragraph speech generated and typed into Notepad window.",
+      "security_implications": "Generated content checked for script injection before typing.",
+      "regression_tests": [
+        "test_peov_architecture.py"
+      ],
+      "remaining_limitations": "Requires local model or fallback template if LLM is unavailable.",
+      "status": "FIXED"
+    },
+    {
+      "id": "BUG-016",
+      "name": "File save skill registration and integration inconsistency",
+      "symptom": "'save as test.txt' failed to execute or route to SaveFileSkill.",
+      "reproduction": "Issue 'save file as output.txt' in chat.",
+      "observed_evidence": "Command fell through to LLM chat explaining how to save files in Windows.",
+      "failure_boundary": "Skill registration and fast-path dispatch in skills/registry.py and engine.py.",
+      "root_cause": "SaveFileSkill was registered under internal id but lacked router visibility in engine fast path.",
+      "why_previous_implementation_failed": "Router only handled file operations through file_ops skill.",
+      "architectural_fix": "Registered SaveFileSkill with explicit PEOV pre/post-conditions and added Tier 1 fast path in engine.py.",
+      "files_changed": [
+        "friday_core/skills/builtins/ui_automation.py",
+        "friday_ui/core/engine.py"
+      ],
+      "tests_added": [
+        "tests/regression/test_standalone_save_and_typing.py"
+      ],
+      "runtime_test": "Verified file created on disk, byte length matched, and existence verified post-write.",
+      "security_implications": "Target file paths checked against path fence to prevent system file overwrite.",
+      "regression_tests": [
+        "test_standalone_save_and_typing.py"
+      ],
+      "remaining_limitations": "Requires active window or explicit content parameter.",
+      "status": "FIXED"
+    },
+    {
+      "id": "BUG-017",
+      "name": "Web/research stream failure and truncated response body",
+      "symptom": "Network interruptions during live web fetch caused assistant to fabricate remainder of page content.",
+      "reproduction": "Simulate server socket close mid-HTTP response.",
+      "observed_evidence": "Partial HTML caused parser error, triggering LLM fallback with hallucinated content.",
+      "failure_boundary": "Web reading and research pipelines in web/fetcher.py and engine.py.",
+      "root_cause": "Exception handler caught HTTPError and passed partial string to LLM as prompt.",
+      "why_previous_implementation_failed": "Violated Rule 0.27 (never silently downgrade web request to model guess).",
+      "architectural_fix": "Enforced strict zero-hallucination error propagation: returns explicit failure message if fetch or parse fails.",
+      "files_changed": [
+        "friday_ui/core/engine.py",
+        "friday_core/web/fetcher.py"
+      ],
+      "tests_added": [
+        "tests/regression/test_web_pipeline_forensic_probe.py",
+        "tests/regression/test_mandatory_unique_nonce_web.py"
+      ],
+      "runtime_test": "Simulated dead socket verified returning truthful error prefix '\u26a0\ufe0f Webpage retrieval failed'.",
+      "security_implications": "Prevents malicious truncated payloads from triggering ungrounded hallucinations.",
+      "regression_tests": [
+        "test_web_pipeline_forensic_probe.py"
+      ],
+      "remaining_limitations": "Does not automatically retry non-idempotent POST/mutation endpoints.",
+      "status": "FIXED"
+    },
+    {
+      "id": "BUG-018",
+      "name": "Browser/website requests routed incorrectly or read from model memory",
+      "symptom": "Asking to read a webpage resulted in LLM reciting cached training data rather than live HTTP state.",
+      "reproduction": "Issue 'read https://example.com' with internet disabled.",
+      "observed_evidence": "Assistant returned example.com text from model memory instead of reporting connection error.",
+      "failure_boundary": "Web retrieval and routing in engine.py and router/semantic_router.py.",
+      "root_cause": "Web reading skill fell back to query_llm on fetch failure.",
+      "why_previous_implementation_failed": "Model was allowed to answer when live fetch failed.",
+      "architectural_fix": "Separated HTTP Web Reader from LLM memory; enforced zero-trust live fetch with mandatory live status verification.",
+      "files_changed": [
+        "friday_ui/core/engine.py",
+        "friday_core/web/fetcher.py"
+      ],
+      "tests_added": [
+        "tests/regression/test_mandatory_unique_nonce_web.py"
+      ],
+      "runtime_test": "Live cryptographic nonce probe verified exact runtime nonce extracted from live socket.",
+      "security_implications": "SSRF guard ensures loopback and private IP space protected.",
+      "regression_tests": [
+        "test_mandatory_unique_nonce_web.py"
+      ],
+      "remaining_limitations": "Interactive browser DOM actions (clicks, dynamic JS) require real browser instance (currently marked UNVERIFIED).",
+      "status": "FIXED"
+    },
+    {
+      "id": "BUG-019",
+      "name": "Small model / Laya routing behavior unclear with heavy fallthrough",
+      "symptom": "Simple deterministic commands escalated to slow heavy LLMs without clear threshold rationale.",
+      "reproduction": "Issue simple volume or timer command with high threshold setting.",
+      "observed_evidence": "Command routed to Tier 3 reasoning with 5-10 second latency.",
+      "failure_boundary": "Decision engine routing in router/semantic_router.py.",
+      "root_cause": "Router lacked clear explainable confidence thresholds and fallback telemetry logging.",
+      "why_previous_implementation_failed": "Fallback policy was opaque and lacked structured route metadata.",
+      "architectural_fix": "Implemented explainable RouteResult with confidence, tier, route source, and structured audit logging.",
+      "files_changed": [
+        "friday_core/router/semantic_router.py"
+      ],
+      "tests_added": [
+        "tests/test_semantic_intent_router.py",
+        "tests/regression/test_routing_collision_redteam.py"
+      ],
+      "runtime_test": "Verified deterministic commands route at Tier 0/1 (< 2ms) without touching Ollama.",
+      "security_implications": "Reduces attack surface on local LLM endpoint.",
+      "regression_tests": [
+        "test_semantic_intent_router.py"
+      ],
+      "remaining_limitations": "Threshold default (0.76) may need tuning for heavily accented voice inputs.",
+      "status": "FIXED"
+    },
+    {
+      "id": "BUG-020",
+      "name": "False-success architecture across skills",
+      "symptom": "Operations reported success immediately after initiating action before verifying actual OS state.",
+      "reproduction": "Trigger file save to read-only folder or window minimize on non-existent window.",
+      "observed_evidence": "Skill returned success=True despite action having failed at OS level.",
+      "failure_boundary": "Skill execution lifecycle across friday_core/skills/base.py and all builtins.",
+      "root_cause": "Architectural lack of explicit observation and verification phases in skill lifecycle.",
+      "why_previous_implementation_failed": "Skills followed simple fire-and-forget RPC pattern.",
+      "architectural_fix": "Implemented PEOV Architecture (Precondition -> Execute -> Observe -> Verify -> Rollback) with strict state invariants.",
+      "files_changed": [
+        "friday_core/skills/base.py",
+        "friday_core/skills/registry.py",
+        "friday_core/agent/executor.py"
+      ],
+      "tests_added": [
+        "tests/test_peov_architecture.py",
+        "tests/regression/test_failure_injection_resilience.py"
+      ],
+      "runtime_test": "Failure injection suite verified 100% of injected OS faults produce verified=False and truthful failure reports.",
+      "security_implications": "Prevents misleading security audits where destructive actions are falsely assumed complete.",
+      "regression_tests": [
+        "test_peov_architecture.py"
+      ],
+      "remaining_limitations": "Requires underlying OS to provide observable state APIs (e.g. Win32 UIA, filesystem stat).",
+      "status": "FIXED"
+    },
+    {
+      "id": "BUG-021",
+      "name": "DOCX context overflow on user task involving sections/items 12\u201313",
+      "symptom": "User request to edit items 12\u201313 of a contract dumped entire 50-page document into LLM prompt, corrupting unedited sections.",
+      "reproduction": "Request 'in contract.docx fill item 12 to 13' on a large document.",
+      "observed_evidence": "Entire document passed to LLM; write-back regenerated entire file, losing formatting and tables.",
+      "failure_boundary": "Document editing pipeline in document/agent.py, document/parser.py, and document/editor.py.",
+      "root_cause": "Full-document string replacement instead of structural OpenXML indexing and targeted mutation.",
+      "why_previous_implementation_failed": "Treated DOCX files as monolithic text strings rather than structured XML element trees.",
+      "architectural_fix": "Implemented DocxStructuralParser with numbered item indexing, token bounding (< 1,000 tokens), and surgical in-place paragraph mutation.",
+      "files_changed": [
+        "friday_core/document/parser.py",
+        "friday_core/document/editor.py",
+        "friday_core/document/verifier.py",
+        "friday_core/document/agent.py"
+      ],
+      "tests_added": [
+        "tests/regression/test_structured_document_agent.py"
+      ],
+      "runtime_test": "Verified items 12\u201313 modified surgically with 0 modifications to preceding or following paragraphs and table preserved.",
+      "security_implications": "Prevents document corruption and unauthorized mutation of legally sensitive contract clauses.",
+      "regression_tests": [
+        "test_structured_document_agent.py"
+      ],
+      "remaining_limitations": "Requires well-formed DOCX files with standard paragraph/heading hierarchy.",
+      "status": "FIXED"
+    },
+    {
+      "id": "BUG-022",
+      "name": "Deep Research permanent stuck thinking state / hung lifecycle on complex web queries",
+      "symptom": "User request 'is nvidia buying hugging face' or complex research query permanently stuck in 'ACTIVE // THINKING' / '⚡ Neural core synthesizing...' with no terminal state, unresponsive Stop button, and no watchdog timeout.",
+      "reproduction": "Submit 'is nvidia buying hugging face' to F.R.I.D.A.Y. GUI. Model synthesis failed to stream tokens, Ollama context overflowed without num_ctx: 8192, and main_window never emitted state_changed.emit('idle').",
+      "observed_evidence": "HUD remained indefinitely in ACTIVE // THINKING. Stop button was ineffective because coroutine was not assigned to _current_command_task. No watchdog was present.",
+      "failure_boundary": "GUI lifecycle management (main_window.py, engine.py) and research orchestration (friday_core/research/worker.py, task_lifecycle.py).",
+      "root_cause": "1) Missing state_changed.emit('idle') in main_window._process_command fallthrough and _run_research finally block; 2) handle_research spawned unmonitored asyncio Task rather than supervised worker; 3) query_llm omitted num_ctx: 8192 and lacked per-token idle watchdog; 4) Absence of global task watchdog supervisor.",
+      "why_previous_implementation_failed": "Deep research ran unmonitored on asyncio loop, lacked token streaming, omitted context length sizing, and UI lacked terminal state enforcement.",
+      "architectural_fix": "1) Implemented thread-safe TaskSupervisor (task_lifecycle.py) with 14 lifecycle states, watchdog monitoring, and late-callback guards; 2) Built dedicated DeepResearchWorker (QThread) with bounded per-URL timeouts, streaming Ollama synthesis, real-time UI token updates, and cooperative cancellation; 3) Enforced state_changed.emit('idle') in engine.py and main_window.py finally blocks; 4) Wired Stop button directly to worker abort and task supervisor cancellation.",
+      "files_changed": [
+        "friday_core/agent/task_lifecycle.py",
+        "friday_core/research/worker.py",
+        "friday_core/research/__init__.py",
+        "friday_ui/views/main_window.py",
+        "friday_ui/core/engine.py"
+      ],
+      "tests_added": [
+        "tests/test_research_lifecycle_forensics.py"
+      ],
+      "runtime_test": "Verified live execution of 'is nvidia buying hugging face' successfully completing with synthesized report, proper status updates, watchdog timeout handling, and cancellation in < 0.05s.",
+      "security_implications": "Eliminates denial-of-service vulnerabilities where hung background coroutines consume local Ollama slots and GPU memory indefinitely.",
+      "regression_tests": [
+        "test_research_lifecycle_forensics.py"
+      ],
+      "remaining_limitations": "Web search relies on live duckduckgo/ddg search connectivity; fallback offline mode will report query search failure.",
+      "status": "FIXED"
+    }
+  ]
+}

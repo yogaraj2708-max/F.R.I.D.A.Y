@@ -1,0 +1,35 @@
+{
+  "title": "F.R.I.D.A.Y. 3.0 Vision Cancellation & UI Responsiveness Matrix",
+  "generated_at": "2026-09-27T21:23:00Z",
+  "cancellation_checkpoints": [
+    {
+      "phase": "Image Ingestion / File Read",
+      "mechanism": "Async file read and validation check",
+      "behavior_on_cancel": "Buffer freed, file handle closed, returns immediately",
+      "status": "PASS"
+    },
+    {
+      "phase": "Preprocessing / Bounded Lanczos Downscaling",
+      "mechanism": "PIL in-memory processing bounded to < 100ms",
+      "behavior_on_cancel": "Discard in-memory PIL image, return immediately",
+      "status": "PASS"
+    },
+    {
+      "phase": "VLM Inference (Ollama HTTP Post)",
+      "mechanism": "asyncio.CancelledError handling in httpx client",
+      "behavior_on_cancel": "HTTP connection closed, client context manager exited, returns CANCELLED",
+      "status": "PASS"
+    },
+    {
+      "phase": "Main Agent Synthesis",
+      "mechanism": "brain.abort_generation() & tts.cancel_event",
+      "behavior_on_cancel": "Streaming halted, speech stopped, UI returned to idle",
+      "status": "PASS"
+    }
+  ],
+  "gui_responsiveness": {
+    "thread_model": "QThread / asyncio event loop separation",
+    "main_gui_thread_blocked": false,
+    "user_stop_button_functional": true
+  }
+}

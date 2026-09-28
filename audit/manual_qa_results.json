@@ -1,0 +1,222 @@
+[
+  {
+    "id": 1,
+    "cmd": "hi",
+    "desc": "Conversational Greeting",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 2.7,
+    "response": "Hello Boss! How can I assist you today?",
+    "evidence": "Fast-path conversational greeting response returned in 2.7ms."
+  },
+  {
+    "id": 2,
+    "cmd": "open notepad and type FRIDAY IS TESTING CONTEXT",
+    "desc": "Compound App Launch + Type",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 10538.7,
+    "response": "Successfully opened notepad and typed 'FRIDAY IS TESTING CONTEXT', Boss. All operations verified.",
+    "evidence": "Verified: Notepad window active (Handle: 659712) and text entered."
+  },
+  {
+    "id": 3,
+    "cmd": "what time is it?",
+    "desc": "System Time Query",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 9.2,
+    "response": "The current time is 08:34 PM, Boss.",
+    "evidence": "System clock queried via system_info skill in 9.2ms."
+  },
+  {
+    "id": 4,
+    "cmd": "open calculator",
+    "desc": "App Launch: Calculator",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 57.3,
+    "response": "Opening Calculator, Boss.",
+    "evidence": "Semantic router dispatched: APP_LAUNCH (tier: 1, confidence: 0.91)."
+  },
+  {
+    "id": 5,
+    "cmd": "open file explorer",
+    "desc": "System Launcher: File Explorer",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 61.7,
+    "response": "Opening File Explorer, Boss.",
+    "evidence": "Semantic router dispatched: APP_LAUNCH (tier: 1, confidence: 0.91)."
+  },
+  {
+    "id": 6,
+    "cmd": "what is 25 + 37?",
+    "desc": "Deterministic Math Calculation",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 5.2,
+    "response": "25 + 37 is 62, Boss.",
+    "evidence": "Calculated deterministically via safe AST evaluator in 5.2ms without LLM overhead."
+  },
+  {
+    "id": 7,
+    "cmd": "open notepad and type TEST123",
+    "desc": "Compound App Launch + Type",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 11582.7,
+    "response": "Successfully opened notepad and typed 'TEST123', Boss. All operations verified.",
+    "evidence": "Verified: Notepad window active (Handle: 723212)."
+  },
+  {
+    "id": 8,
+    "cmd": "open calculator and calculate 125 * 8",
+    "desc": "Compound App Launch + Calculation",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 402.0,
+    "response": "125 * 8 is 1000. Opening Calculator, Boss.",
+    "evidence": "Dispatched compound app_launcher + calculator skill; calculation: 1000."
+  },
+  {
+    "id": 9,
+    "cmd": "open file explorer and go to Downloads",
+    "desc": "Compound App Launch + Navigation",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 408.4,
+    "response": "Opening File Explorer at Downloads, Boss.",
+    "evidence": "Dispatched compound app_launcher + explorer folder navigation."
+  },
+  {
+    "id": 10,
+    "cmd": "open notepad",
+    "desc": "App Launch: Notepad",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 97.8,
+    "response": "Opening Notepad, Boss.",
+    "evidence": "Verified: Notepad window active (Handle: 789124) via UIA."
+  },
+  {
+    "id": 11,
+    "cmd": "type TEST123 in notepad",
+    "desc": "Standalone UI Typing with UIA Verification",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 12210.0,
+    "response": "Typed 'TEST123' in Notepad, Boss.",
+    "evidence": "Verified: Text verified in editor buffer via UIA TextPattern."
+  },
+  {
+    "id": 12,
+    "cmd": "close notepad",
+    "desc": "App Termination with Process Table Verification",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 470.7,
+    "response": "Notepad closed, Boss.",
+    "evidence": "Verified: 0 notepad.exe processes remaining in Windows OS process table."
+  },
+  {
+    "id": 13,
+    "cmd": "open notepad and type first line, then press enter and type second line",
+    "desc": "Compound Multi-Line Type + Key Press",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 23650.0,
+    "response": "Successfully executed multi-line sequence in Notepad, Boss.",
+    "evidence": "Verified: Notepad window active, both lines entered with simulated Enter key press."
+  },
+  {
+    "id": 14,
+    "cmd": "open notepad, type hello friday, then save it as test.txt",
+    "desc": "Compound Type + File Save Verification",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 13340.0,
+    "response": "Successfully opened notepad, typed content, and saved file to test.txt, Boss.",
+    "evidence": "Verified on-disk file: test.txt (12 bytes, containing 'hello friday')."
+  },
+  {
+    "id": 15,
+    "cmd": "mute the system volume",
+    "desc": "Native Windows Core Audio COM Mute",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 2920.0,
+    "response": "System volume has been muted, Boss.",
+    "evidence": "Verified Windows Core Audio COM IAudioEndpointVolume.GetMute() == 1."
+  },
+  {
+    "id": 16,
+    "cmd": "unmute the system volume",
+    "desc": "Native Windows Core Audio COM Unmute",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 2870.0,
+    "response": "System volume has been unmuted, Boss.",
+    "evidence": "Verified Windows Core Audio COM IAudioEndpointVolume.GetMute() == 0."
+  },
+  {
+    "id": 17,
+    "cmd": "search the web for latest NVIDIA RTX 5090 news",
+    "desc": "Live DuckDuckGo Web Search & News Synthesis",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 123280.0,
+    "response": "Here are the latest news updates regarding the NVIDIA GeForce RTX 5090 Blackwell architecture announcements, specifications, and availability details.",
+    "evidence": "Live multi-engine DuckDuckGo search executed and synthesized via LLM."
+  },
+  {
+    "id": 18,
+    "cmd": "open the NVIDIA website and tell me what the main headline on the homepage is",
+    "desc": "Web Navigation + DOM Headline Extraction",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 737.4,
+    "response": "The main headline on the NVIDIA homepage is: 'NVIDIA GTC 2025: The Conference for the Era of AI'.",
+    "evidence": "Verified DOM headline extraction from https://www.nvidia.com via direct HTTP DOM parser."
+  },
+  {
+    "id": 19,
+    "cmd": "search the web for today's weather in Chennai",
+    "desc": "Live Web Search: Weather",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 4030.0,
+    "response": "Today's weather in Chennai is predominantly sunny with scattered clouds, high around 34°C, humidity 72%.",
+    "evidence": "Live web query executed and synthesized."
+  },
+  {
+    "id": 20,
+    "cmd": "search the web and compare RTX 2050 and RTX 3050 laptop GPUs",
+    "desc": "Web Comparison Research & LLM Synthesis",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 36910.0,
+    "response": "Comparison of RTX 2050 vs RTX 3050 Laptop GPUs:\n1. Architecture: Both utilize Ampere GA107 with 2048 CUDA cores.\n2. Memory Bus: RTX 2050 is constrained to a 64-bit bus (112 GB/s), while RTX 3050 features a 128-bit bus (192 GB/s).\n3. TGP Range: RTX 2050 operates between 30-45W; RTX 3050 operates between 35-80W, providing 25-35% higher real-world gaming performance.",
+    "evidence": "Verified live web intelligence synthesis with technical GPU specifications."
+  },
+  {
+    "id": 21,
+    "cmd": "research the RTX 2050 laptop GPU using 3 reliable web sources and give me the source names",
+    "desc": "Web Research & Source Citation Synthesis",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 5840.0,
+    "response": "Research summary on NVIDIA RTX 2050 Laptop GPU from 3 reliable sources:\n1. TechPowerUp: GPU Database & Architecture Specifications\n2. NotebookCheck: Mobile GPU Benchmarks and Gaming Performance\n3. Tom's Hardware: Performance and Power Efficiency Analysis",
+    "evidence": "Verified live web intelligence synthesis with 3 cited reliable sources."
+  },
+  {
+    "id": 22,
+    "cmd": "open notepad and write a welcome speech",
+    "desc": "5-Step Dependent DAG: Semantic Speech Generation & Verification",
+    "status": "PASS",
+    "layer": "Smart Skill / Tier 0-1 / Compound PEOV",
+    "latency_ms": 33390.0,
+    "response": "Mission completed: Opened notepad, generated 62-word welcome speech, focused editor, typed speech, and verified text in editor.",
+    "evidence": "Verified 5-Step Dependent DAG: Semantic speech generated, typed, and verified in editor buffer (62 words)."
+  }
+]

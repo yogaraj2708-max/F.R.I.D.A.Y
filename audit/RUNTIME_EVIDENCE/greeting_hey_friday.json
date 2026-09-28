@@ -1,0 +1,14 @@
+{
+  "trace_id": "trace-bb-9f4cfc6b",
+  "category": "Greeting",
+  "user_command": "hey friday",
+  "latency_ms": 0.04,
+  "response": "Good evening, Boss. Systems are nominal and I am standing by at 10:02 PM. How can I assist you today?",
+  "expected_keywords": [
+    "nominal",
+    "good",
+    "assist"
+  ],
+  "keywords_observed": true,
+  "verdict": "PASS"
+}

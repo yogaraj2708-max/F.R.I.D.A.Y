@@ -1,0 +1,14 @@
+{
+  "configured_setting_key": "model",
+  "configured_setting_value": "deepseek-r1:8b",
+  "resolved_main_agent_model": "deepseek-r1:8b",
+  "is_hardcoded": false,
+  "hardcoded_models_rejected": [
+    "deepseek-r1:8b",
+    "llama3.2:1b"
+  ],
+  "provider": "ollama",
+  "ollama_host": "http://localhost:11434",
+  "model_capability_state": "UNAVAILABLE",
+  "timestamp": "2026-09-27T11:37:14.626975+00:00"
+}

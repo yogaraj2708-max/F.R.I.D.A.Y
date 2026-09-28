@@ -1,0 +1,35 @@
+{
+  "audit_target": "PDF UI Freeze Baseline Forensic Measurement",
+  "timestamp": "2026-09-26T10:28:54",
+  "pdf_file": "Single_Phase_3_Phase_Transformer_Centum_Visual_Guide.pdf",
+  "pdf_path": "C:\\Users\\Admin\\Downloads\\Single_Phase_3_Phase_Transformer_Centum_Visual_Guide.pdf",
+  "total_document_pages": 24,
+  "baseline_flaws": {
+    "synchronous_gui_read_duration_s": 0.1441,
+    "pages_extracted_before_truncation": 12,
+    "pages_silently_dropped": 12,
+    "extracted_char_count": 7500,
+    "total_document_char_count": 14458,
+    "truncation_percentage": 48.13,
+    "stream_tokens_tested": 1500,
+    "total_setmarkdown_duration_s": 12.811,
+    "avg_setmarkdown_ms": 8.531,
+    "max_single_token_freeze_ms": 24.472,
+    "frame_freeze_events_over_15ms": 106,
+    "event_loop_starvation_ratio": 99.89
+  },
+  "resource_usage": {
+    "ram_before_mb": 51.06,
+    "ram_after_mb": 78.92,
+    "ram_delta_mb": 27.86,
+    "cpu_percent": 25.1
+  },
+  "root_causes_identified": [
+    "Root Cause A: Synchronous pypdf.PdfReader and page.extract_text() executed on Qt GUI thread in chat_view.py _submit_prompt()",
+    "Root Cause B: Arbitrary 7500 char cutoff silently drops pages 13-24 of the 24-page PDF without user notification",
+    "Root Cause C: ChatBubble.append_token calls setMarkdown() on every single streamed token chunk, causing O(N^2) markdown re-parsing and layout reflows",
+    "Root Cause D: GUI event loop starved for up to 25+ ms per token during deep reasoning generation, triggering Windows Not Responding state",
+    "Root Cause E: No background QThread worker, no progress state machine, no cancellation propagation"
+  ],
+  "verdict": "CONFIRMED_VULNERABLE"
+}

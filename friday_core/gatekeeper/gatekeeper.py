@@ -42,9 +42,15 @@ ALLOWED_PATH_ROOTS = [
 ]
 
 TIER_0_ACTIONS = {"get_telemetry", "get_weather", "get_time", "get_date", "calculate", "list_files", "status"}
-TIER_1_ACTIONS = {"open_app", "open_url", "open_file", "organize_files", "adjust_volume", "screenshot", "lock_workstation", "save_note"}
+TIER_1_ACTIONS = {"open_app", "close_app", "open_url", "open_file", "organize_files", "adjust_volume", "screenshot", "lock_workstation", "save_note"}
 TIER_2_ACTIONS = {"delete_file", "move_file", "kill_process", "write_file", "change_setting"}
 TIER_3_ACTIONS = {"format_drive", "shell_exec", "elevate_admin", "shutdown", "restart", "download_and_exec", "registry_write"}
+
+PROTECTED_SYSTEM_PROCESSES = {
+    "csrss.exe", "lsass.exe", "services.exe", "smss.exe", "winlogon.exe",
+    "wininit.exe", "explorer.exe", "svchost.exe", "dwm.exe", "spoolsv.exe",
+    "runtimebroker.exe", "taskhostw.exe", "sihost.exe", "system.exe", "system"
+}
 
 class ActionGatekeeper:
     """Security Gatekeeper enforcing authorization and safety policies."""
@@ -260,25 +266,39 @@ class ActionGatekeeper:
                 requires_confirmation=True
             )
 
-        # 4. Rate Limiting for Destructive Actions
-        if tier >= 2:
-            if not self.check_rate_limit():
-                res = ActionResult(
-                    success=False,
-                    message="Security Rate Limit: Exceeded maximum allowed destructive actions per minute (3/60s). Operation halted.",
-                    tier=tier,
-                    audit_id=audit_id
-                )
-                self.log_audit(intent, res)
-                return res
-
-        # 5. Path Fencing for File Operations
+        # 4. Fencing for File Operations & System Processes
         if intent.action in ["delete_file", "move_file", "write_file", "organize_files"]:
             safe, path_msg = self.is_path_safe(intent.target)
             if not safe:
                 res = ActionResult(
                     success=False,
                     message=f"Path Security Violation: {path_msg}",
+                    tier=tier,
+                    audit_id=audit_id
+                )
+                self.log_audit(intent, res)
+                return res
+
+        if intent.action == "kill_process":
+            p_name = intent.target.lower().strip()
+            if not p_name.endswith(".exe"):
+                p_name += ".exe"
+            if p_name in PROTECTED_SYSTEM_PROCESSES or intent.target.lower().strip() in PROTECTED_SYSTEM_PROCESSES:
+                res = ActionResult(
+                    success=False,
+                    message=f"Security Violation: Target process '{intent.target}' is a protected Windows system process and cannot be terminated.",
+                    tier=tier,
+                    audit_id=audit_id
+                )
+                self.log_audit(intent, res)
+                return res
+
+        # 5. Rate Limiting for Destructive Actions
+        if tier >= 2:
+            if not self.check_rate_limit():
+                res = ActionResult(
+                    success=False,
+                    message="Security Rate Limit: Exceeded maximum allowed destructive actions per minute (3/60s). Operation halted.",
                     tier=tier,
                     audit_id=audit_id
                 )
@@ -321,15 +341,170 @@ class ActionGatekeeper:
                 success = self._send_to_recycle_bin(intent.target)
                 message = f"Moved '{intent.target}' to Recycle Bin." if success else f"Failed to recycle '{intent.target}'."
 
+            elif action == "close_app":
+                if not IS_WINDOWS:
+                    success = False
+                    message = "Application termination requires Windows host."
+                else:
+                    target_raw = (intent.target or "").strip()
+                    clean_target = target_raw.lower().replace(".exe", "").strip()
+
+                    app_aliases = {
+                        "notepad": ["notepad.exe"],
+                        "notes": ["notepad.exe"],
+                        "calc": ["calculatorapp.exe", "calculator.exe", "calc.exe"],
+                        "calculator": ["calculatorapp.exe", "calculator.exe", "calc.exe"],
+                        "wordpad": ["wordpad.exe"],
+                        "word": ["winword.exe"],
+                        "excel": ["excel.exe"],
+                        "chrome": ["chrome.exe"],
+                        "edge": ["msedge.exe"],
+                        "explorer": ["explorer.exe"],
+                        "file explorer": ["explorer.exe"]
+                    }
+                    candidate_exes = app_aliases.get(clean_target, [f"{clean_target}.exe"])
+
+                    # Protected Process Guard
+                    is_protected = False
+                    for exe in candidate_exes:
+                        if exe in PROTECTED_SYSTEM_PROCESSES and clean_target not in ("explorer", "file explorer"):
+                            is_protected = True
+                            success = False
+                            message = f"Security Violation: Target process '{exe}' is a protected Windows core process and cannot be terminated."
+                            logger.error(f"[Gatekeeper] BLOCKED CLOSE ON PROTECTED PROCESS: {exe}")
+                            break
+
+                    if not is_protected:
+                        if clean_target in ("explorer", "file explorer"):
+                            closed_any = False
+                            try:
+                                import uiautomation as auto
+                                windows = auto.GetRootControl().GetChildren()
+                                for w in windows:
+                                    if w.ClassName == "CabinetWClass" or "file explorer" in w.Name.lower():
+                                        w.SendKeys("{Alt}{F4}")
+                                        closed_any = True
+                                time.sleep(0.5)
+                            except Exception:
+                                pass
+                            success = True
+                            message = "File Explorer window closed and verified." if closed_any else "File Explorer is already closed."
+                        else:
+                            # 1. Locate target processes
+                            import psutil
+                            matched_procs = []
+                            for p in psutil.process_iter(['pid', 'name']):
+                                try:
+                                    pname = p.info['name'].lower()
+                                    if any(pname == cand or pname.replace(".exe", "") == clean_target for cand in candidate_exes):
+                                        matched_procs.append(p)
+                                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                                    continue
+
+                            # Also locate UI app window
+                            win = None
+                            try:
+                                import uiautomation as auto
+                                win = auto.WindowControl(searchDepth=2, SubName=clean_target.title())
+                                if not win.Exists(0, 0):
+                                    win = auto.WindowControl(searchDepth=2, ClassName=clean_target.title())
+                                if not win.Exists(0, 0) and clean_target == "notepad":
+                                    win = auto.WindowControl(searchDepth=2, SubName="Notepad")
+                            except Exception:
+                                pass
+
+                            # If psutil didn't match candidate exe name but window exists, grab process from window PID
+                            if not matched_procs and win and win.Exists(0, 0):
+                                try:
+                                    win_pid = win.ProcessId
+                                    if win_pid:
+                                        p_win = psutil.Process(win_pid)
+                                        matched_procs.append(p_win)
+                                except Exception:
+                                    pass
+
+                            if not matched_procs and (win is None or not win.Exists(0, 0)):
+                                # Truly already closed: zero processes and zero windows
+                                success = True
+                                message = f"Application '{target_raw.title()}' is already closed."
+                            else:
+                                # 2. Request termination (graceful window close first)
+                                if win and win.Exists(0, 0):
+                                    try:
+                                        win.SendKeys("{Alt}{F4}")
+                                        time.sleep(0.2)
+                                    except Exception:
+                                        pass
+
+                                for p in matched_procs:
+                                    try:
+                                        p.terminate()
+                                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                                        pass
+
+                                # 3. Wait / Observe with Polling (up to 2.0s)
+                                t0 = time.time()
+                                all_gone = False
+                                while time.time() - t0 < 2.0:
+                                    alive = []
+                                    for p in matched_procs:
+                                        try:
+                                            if p.is_running() and p.status() != psutil.STATUS_ZOMBIE:
+                                                alive.append(p)
+                                        except (psutil.NoSuchProcess, psutil.AccessDenied):
+                                            pass
+                                    win_alive = win.Exists(0, 0) if win else False
+                                    if not alive and not win_alive:
+                                        all_gone = True
+                                        break
+                                    time.sleep(0.15)
+
+                                # Force kill if still lingering
+                                if not all_gone:
+                                    for p in matched_procs:
+                                        try:
+                                            if p.is_running():
+                                                p.kill()
+                                        except Exception:
+                                            pass
+                                    # Fallback taskkill for Windows store/UWP packaged apps
+                                    for exe in candidate_exes:
+                                        try:
+                                            subprocess.run(["taskkill", "/F", "/T", "/IM", exe], capture_output=True, timeout=2.0)
+                                        except Exception:
+                                            pass
+                                    time.sleep(0.3)
+
+                                # 4. Rigorous Postcondition Verification Check
+                                alive_final = [p for p in matched_procs if p.is_running()]
+                                win_still_open = False
+                                try:
+                                    if win and win.Exists(0, 0):
+                                        win_still_open = True
+                                except Exception:
+                                    pass
+
+                                if not alive_final and not win_still_open:
+                                    success = True
+                                    message = f"Application '{target_raw.title()}' closed and verified terminated."
+                                else:
+                                    success = False
+                                    message = f"Failed to close '{target_raw.title()}': Target process or window is still running."
+
             elif action == "kill_process":
                 if IS_WINDOWS:
-                    p_name = intent.target
+                    p_name = intent.target.lower().strip()
                     if not p_name.endswith(".exe"):
                         p_name += ".exe"
-                    cmd = ["taskkill", "/F", "/IM", p_name]
-                    proc = subprocess.run(cmd, capture_output=True, text=True)
-                    success = proc.returncode == 0
-                    message = f"Process '{p_name}' terminated." if success else f"Could not terminate '{p_name}': {proc.stderr.strip()}"
+                    if p_name in PROTECTED_SYSTEM_PROCESSES or intent.target.lower().strip() in PROTECTED_SYSTEM_PROCESSES:
+                        success = False
+                        message = f"Security Violation: Target process '{intent.target}' is a protected Windows system process and cannot be terminated."
+                        logger.error(f"[Gatekeeper] BLOCKED CRITICAL SYSTEM KILL: {intent.target}")
+                    else:
+                        cmd = ["taskkill", "/F", "/IM", p_name]
+                        proc = subprocess.run(cmd, capture_output=True, text=True)
+                        success = proc.returncode == 0
+                        message = f"Process '{p_name}' terminated." if success else f"Could not terminate '{p_name}': {proc.stderr.strip()}"
                 else:
                     success = False
                     message = "Process control requires Windows host."
@@ -340,9 +515,15 @@ class ActionGatekeeper:
                 message = f"Adjusted volume: {intent.target}."
 
             elif action == "screenshot":
-                safe_launch("ms-screenclip:")
-                success = True
-                message = "Snipping tool activated."
+                from friday_core.skills.builtins.desktop_action import capture_and_save_screenshot
+                target_p = Path(intent.target) if intent.target and os.path.exists(intent.target) else None
+                shot_path = capture_and_save_screenshot(target_dir=target_p)
+                if shot_path and os.path.exists(shot_path):
+                    success = True
+                    message = f"Screenshot captured and saved to '{shot_path}'."
+                else:
+                    success = False
+                    message = "Screenshot capture failed."
 
             elif action == "lock_workstation":
                 if IS_WINDOWS:

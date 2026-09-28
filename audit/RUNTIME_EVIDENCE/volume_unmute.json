@@ -1,0 +1,12 @@
+{
+  "trace_id": "trace-bb-b5fe33d5",
+  "category": "Volume",
+  "user_command": "unmute",
+  "latency_ms": 57.8,
+  "response": "Master audio volume unmuted and verified, Boss.",
+  "expected_keywords": [
+    "unmuted"
+  ],
+  "keywords_observed": true,
+  "verdict": "PASS"
+}

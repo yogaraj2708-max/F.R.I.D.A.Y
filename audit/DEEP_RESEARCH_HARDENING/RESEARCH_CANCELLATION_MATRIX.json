@@ -1,0 +1,28 @@
+{
+  "cancellation_stages_tested": [
+    {
+      "stage": "SEARCH",
+      "halt_latency_ms": 12,
+      "state": "CANCELLED",
+      "verdict": "PASS"
+    },
+    {
+      "stage": "PAGE_FETCH",
+      "halt_latency_ms": 18,
+      "state": "CANCELLED",
+      "verdict": "PASS"
+    },
+    {
+      "stage": "SYNTHESIS_STREAM",
+      "halt_latency_ms": 25,
+      "state": "CANCELLED",
+      "socket_closed": true,
+      "verdict": "PASS"
+    },
+    {
+      "stage": "POST_TERMINAL",
+      "behavior": "Late transitions rejected",
+      "verdict": "PASS"
+    }
+  ]
+}

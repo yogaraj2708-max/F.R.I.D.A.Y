@@ -1,0 +1,16 @@
+{
+  "audit_target": "Controlled Test Provider Hang Injection & Recovery",
+  "timestamp": "2026-09-26T19:16:34.425847+00:00",
+  "task_id": "task_1790450194074_27532e",
+  "test_scenario": "Simulated infinite Ollama prefill or socket freeze",
+  "injected_fault": "Infinite socket read / 0 bytes received",
+  "boundary_defense": "Streaming chunk watchdog + TaskSupervisor idle watchdog",
+  "configured_timeout_sec": 0.25,
+  "observed_duration_sec": 0.351,
+  "watchdog_stall_detected": true,
+  "terminal_state": "TIMED_OUT",
+  "terminal_reason": "Idle timeout exceeded (0.4s > 0.25s without heartbeat in SYNTHESIS)",
+  "hud_state_final": "idle",
+  "ui_remained_responsive": true,
+  "verdict": "PASS_HANG_RECOVERED"
+}

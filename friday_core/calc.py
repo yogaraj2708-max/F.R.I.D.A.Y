@@ -121,6 +121,9 @@ def safe_calculate(cmd: str) -> Optional[str]:
             break
 
     clean_expr = cmd.strip().lower()
+    clean_expr = re.sub(r"\b(?:please|boss|friday)\b", "", clean_expr).strip()
+    clean_expr = re.sub(r"[\?\.!,=]+$", "", clean_expr).strip()
+
     # Word forms first, longest first so "multiplied by" is not half-eaten by "by".
     for word, symbol in (
         ("multiplied by", "*"),
@@ -137,6 +140,7 @@ def safe_calculate(cmd: str) -> Optional[str]:
     # nonsense and made unrelated sentences look like maths.
     clean_expr = re.sub(r"(?<=[\d\s)])\s*x\s*(?=[\d(])", "*", clean_expr)
     clean_expr = clean_expr.replace("^", "**")
+    clean_expr = re.sub(r"[\?\.!,=]+$", "", clean_expr).strip()
 
     # Quick heuristic check for math characters
     if not any(c in clean_expr for c in "+-*/%()0123456789"):

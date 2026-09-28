@@ -1,0 +1,52 @@
+{
+  "audit_phase": "MEMORY_RAG_ZERO_TRUST_HARDENING",
+  "component": "MemoryStore & PersistentMemoryManager",
+  "lifecycle_stages": [
+    {
+      "stage": "CREATE",
+      "action": "set_preference / record_episode / index_semantic_fact",
+      "verification": "Immediate SQLite row readback; item.value == stored value",
+      "version_initial": 1,
+      "status": "PASS"
+    },
+    {
+      "stage": "RETRIEVE",
+      "action": "get_preference / get_preference_item / search",
+      "verification": "Filtered by session_id, scope, domain, retention_status='active'",
+      "ordering": "ORDER BY updated_at DESC, version DESC LIMIT 1",
+      "status": "PASS"
+    },
+    {
+      "stage": "UPDATE",
+      "action": "set_preference with existing key",
+      "verification": "Version incremented (v1 -> v2); previous record marked historical or updated",
+      "stale_prevention": "Latest timestamp and version prioritized",
+      "status": "PASS"
+    },
+    {
+      "stage": "CONFLICT_DETECTION",
+      "action": "detect_conflicts",
+      "verification": "Checks active records with different values; reports discrepancy without silent merging",
+      "status": "PASS"
+    },
+    {
+      "stage": "DELETE",
+      "action": "delete_preference / delete_memory_item",
+      "verification": "SQL DELETE executed -> committed -> SELECT check confirms row absent",
+      "zombie_check": "If row still found, returns False and raises alert",
+      "status": "PASS"
+    },
+    {
+      "stage": "PERSISTENCE_RESTART",
+      "action": "Close store connection -> instantiate fresh store instance -> retrieve",
+      "verification": "All confirmed memories recovered identically; deleted memories remain absent",
+      "status": "PASS"
+    },
+    {
+      "stage": "CONCURRENCY",
+      "action": "Multi-threaded simultaneous read/write/delete",
+      "verification": "RLock synchronization prevents SQLite database locked errors",
+      "status": "PASS"
+    }
+  ]
+}

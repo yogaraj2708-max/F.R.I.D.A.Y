@@ -1,0 +1,19 @@
+{
+  "trace_id": "trace-web-018-c5c8ed7b",
+  "test_id": "TEST-WEB-018",
+  "user_text": "read http://127.0.0.1:59999",
+  "router_result": "TIER_1_FAST_PATH_WEB",
+  "selected_skill": "web_reading",
+  "url": "http://127.0.0.1:59999",
+  "method": "GET",
+  "timestamp": "2026-09-25T16:29:17Z",
+  "status_code": 0,
+  "headers": {},
+  "response_length": 0,
+  "raw_body_hash": "",
+  "parser": "socket_connect_guard",
+  "parsed_result": "Connection refused",
+  "answer_source": "ERROR_OBSERVER",
+  "final_output": "\u26a0\ufe0f Webpage retrieval failed for 'http://127.0.0.1:59999': All connection attempts failed",
+  "verdict": "PASS"
+}

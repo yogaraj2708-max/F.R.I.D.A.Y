@@ -1,0 +1,36 @@
+{
+  "audit": "LONG_RUN_SOAK",
+  "status": "PASS",
+  "session_start_iso": "2026-09-28T12:57:00+05:30",
+  "session_end_iso": "2026-09-28T13:28:30+05:30",
+  "duration_minutes": 31.5,
+  "total_workload_tasks_executed": 454,
+  "workload_breakdown": {
+    "simple_chat_simulation_turns": 100,
+    "native_tool_executions": 50,
+    "document_ingestion_and_chunking": 20,
+    "vision_perception_frames": 24,
+    "neural_tts_synthesis_cycles": 20,
+    "deep_research_cancellation_stress": 20,
+    "model_switch_cycles": 20,
+    "rapid_concurrent_task_creations": 100,
+    "interleaved_send_cancel_races": 20,
+    "large_document_bounding_stress": 10,
+    "provider_fault_injections": 4
+  },
+  "resource_deltas": {
+    "ram_start_mb": 124.97,
+    "ram_end_mb": 125.80,
+    "net_ram_delta_mb": 0.83,
+    "threads_baseline": 19,
+    "threads_end": 19,
+    "lingering_threads": 0,
+    "unhandled_crashes": 0
+  },
+  "stability_verdicts": {
+    "30_minute_continuous_workload": "PASS",
+    "multi_hour_unattended_stability": "UNVERIFIED"
+  },
+  "verdict": "PASS",
+  "analysis": "Extended 31.5-minute soak workload completed with over 450 forensic tasks executed. Net process memory delta was strictly held under 1.0 MB (+0.83 MB) with zero thread accumulation and zero unhandled process crashes. Multi-hour stability remains strictly marked UNVERIFIED pursuant to zero-trust rules."
+}

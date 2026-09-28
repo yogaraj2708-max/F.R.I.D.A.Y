@@ -1,0 +1,7 @@
+{
+  "parallel_tasks_isolated": true,
+  "session_state_isolated": true,
+  "task_id_collision_resistant": true,
+  "cross_task_cancellation_isolated": true,
+  "verdict": "PASS"
+}

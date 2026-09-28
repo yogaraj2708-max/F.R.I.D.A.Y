@@ -1,0 +1,421 @@
+{
+  "audit_phase": "FINAL_RELEASE_SYSTEM_INTEGRATION",
+  "audit_standard": "Zero-Trust Forensic Audit",
+  "timestamp": "2026-09-28T13:38:00Z",
+  "total_bugs_audited": 41,
+  "bugs_resolved": 40,
+  "bugs_partially_verified": 1,
+  "bugs_open": 0,
+  "bugs": [
+    {
+      "bug_id": "BUG-001",
+      "subsystem": "Chat & Routing",
+      "severity": "MEDIUM",
+      "root_cause": "Missing deterministic conversational fast path for common greetings in Tier 0 router, causing unnecessary expensive LLM calls.",
+      "fix": "Implemented Tier 0 regex fast path (<1ms) in FridayBrain and semantic router prioritizing greetings.",
+      "test": "tests/regression/test_bug_001_chat_silence.py",
+      "runtime_evidence": "AUDIT/RUNTIME_EVIDENCE/greeting_hi.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-002",
+      "subsystem": "Desktop Automation & Intent Parsing",
+      "severity": "HIGH",
+      "root_cause": "Greedy regex in app launcher matched entire multi-clause prompt string as target application name.",
+      "fix": "Implemented CompoundIntentParser decomposing commands into sequential PEOV DAG missions.",
+      "test": "tests/regression/test_bug_002_compound_actions.py",
+      "runtime_evidence": "tests/test_peov_architecture.py",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-003",
+      "subsystem": "Voice Hardware & Audio Pipeline",
+      "severity": "CRITICAL",
+      "root_cause": "Physical acoustic microphone-to-speaker transducer roundtrip requires physical workstation hardware.",
+      "fix": "Implemented robust programmatic VAD, RingBuffer, Faster-Whisper and Kokoro TTS fallbacks with graceful error handling.",
+      "test": "tests/test_voice_vad.py, tests/test_tts_pipeline.py",
+      "runtime_evidence": "audit/VOICE_HARDENING/VOICE_RUNTIME_TRACE.json",
+      "status": "PARTIALLY_VERIFIED"
+    },
+    {
+      "bug_id": "BUG-004",
+      "subsystem": "Security Gatekeeper",
+      "severity": "CRITICAL",
+      "root_cause": "Process termination skills lacked protected process deny-list, exposing critical OS binaries to termination.",
+      "fix": "Enforced PROTECTED_SYSTEM_PROCESSES fence blocking termination of 15 critical Windows binaries (csrss.exe, lsass.exe, etc.).",
+      "test": "tests/security/test_security_redteam.py",
+      "runtime_evidence": "AUDIT/SECOND_PASS/CHALLENGE-SECURITY-PATH-ESCAPE.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-005",
+      "subsystem": "Security Gatekeeper",
+      "severity": "HIGH",
+      "root_cause": "Approval tokens were stateless without single-use consumption invalidation, enabling replay attacks.",
+      "fix": "Implemented single-use cryptographic token consumption and immediate memory purging in SecurityGate.",
+      "test": "tests/security/test_security_redteam.py",
+      "runtime_evidence": "AUDIT/SECOND_PASS/CHALLENGE-APPROVAL-REPLAY.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-006",
+      "subsystem": "Security Gatekeeper",
+      "severity": "CRITICAL",
+      "root_cause": "Relative path resolution allowed directory traversal escapes outside authorized workspace boundaries.",
+      "fix": "Enforced canonical Path(path).resolve() normalization and system root containment boundaries.",
+      "test": "tests/security/test_security_redteam.py",
+      "runtime_evidence": "AUDIT/SECOND_PASS/CHALLENGE-SECURITY-PATH-ESCAPE.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-007",
+      "subsystem": "Task Lifecycle & Concurrency",
+      "severity": "HIGH",
+      "root_cause": "Agent state machine lacked thread synchronization, risking state corruption under rapid concurrent transitions.",
+      "fix": "Wrapped all state transitions and history logging in threading.RLock() with strict transition table validation.",
+      "test": "tests/test_task_races.py",
+      "runtime_evidence": "AUDIT/SECOND_PASS/CHALLENGE-CONCURRENCY-RACE.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-008",
+      "subsystem": "Desktop Automation",
+      "severity": "MEDIUM",
+      "root_cause": "Application close command reported success immediately after dispatching close message without verifying HWND destruction.",
+      "fix": "Added postcondition verification polling loop checking psutil process status and uiautomation HWND with taskkill fallback.",
+      "test": "tests/regression/test_bug_005_close_app_verification.py",
+      "runtime_evidence": "tests/regression/test_bug_005_close_app_verification.py",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-009",
+      "subsystem": "UI Automation",
+      "severity": "MEDIUM",
+      "root_cause": "Standalone text entry commands routed to LLM dialogue instead of native UI text injection.",
+      "fix": "Added Tier 1 fast-path interceptor for typing verbs directly invoking UITypeTextSkill.",
+      "test": "tests/regression/test_standalone_save_and_typing.py",
+      "runtime_evidence": "tests/regression/test_standalone_save_and_typing.py",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-010",
+      "subsystem": "Voice Engine & Phonetics",
+      "severity": "LOW",
+      "root_cause": "Loose fuzzy phonetics caused misheard 'mute' command to toggle or unmute audio.",
+      "fix": "Implemented strict phonetic regex isolating 'mute' from 'unmute' directives.",
+      "test": "tests/regression/test_bug_014_screenshot.py",
+      "runtime_evidence": "AUDIT/RUNTIME_EVIDENCE/volume_myute_the_volume.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-011",
+      "subsystem": "Vision & Desktop Automation",
+      "severity": "MEDIUM",
+      "root_cause": "Screenshot capture reported success without verifying that the image file was physically written to disk.",
+      "fix": "Added independent file existence check, byte size inspection, and PIL image load verification.",
+      "test": "tests/regression/test_bug_014_screenshot.py",
+      "runtime_evidence": "tests/regression/test_bug_014_screenshot.py",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-012",
+      "subsystem": "Document Ingestion",
+      "severity": "HIGH",
+      "root_cause": "Missing PDF title metadata caused model to hallucinate titles from prior training knowledge.",
+      "fix": "Implemented zero-trust PDF metadata parsing returning truthful unverified status when metadata is absent.",
+      "test": "tests/regression/test_bug_009_010_011_pdf_grounding.py",
+      "runtime_evidence": "tests/regression/test_bug_009_010_011_pdf_grounding.py",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-013",
+      "subsystem": "Context Management",
+      "severity": "HIGH",
+      "root_cause": "Large documents overflowed model context limit, triggering provider HTTP 400 errors or OOM crashes.",
+      "fix": "Enforced strict context budget capping extraction to 2500 tokens with representative page chunking.",
+      "test": "tests/regression/test_bug_009_010_011_pdf_grounding.py",
+      "runtime_evidence": "tests/regression/test_bug_009_010_011_pdf_grounding.py",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-014",
+      "subsystem": "Semantic Routing",
+      "severity": "MEDIUM",
+      "root_cause": "Documents containing words like 'cpu' mistakenly triggered system hardware telemetry skill instead of document analysis.",
+      "fix": "Added negative lookbehinds in telemetry regex and prioritized attached document inspection.",
+      "test": "tests/regression/test_routing_collision_redteam.py",
+      "runtime_evidence": "tests/regression/test_routing_collision_redteam.py",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-015",
+      "subsystem": "Agent Planning",
+      "severity": "MEDIUM",
+      "root_cause": "Generative writing directives lacked multi-stage planning for generation followed by typing.",
+      "fix": "Added is_generative_writing classifier in CompoundIntentParser producing 5-step dependent DAGs.",
+      "test": "tests/test_peov_architecture.py",
+      "runtime_evidence": "tests/test_peov_architecture.py",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-016",
+      "subsystem": "File Operations",
+      "severity": "MEDIUM",
+      "root_cause": "File save skill was unregistered in certain execution paths.",
+      "fix": "Registered SaveFileSkill with explicit PEOV pre/postcondition verification.",
+      "test": "tests/regression/test_standalone_save_and_typing.py",
+      "runtime_evidence": "tests/regression/test_standalone_save_and_typing.py",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-017",
+      "subsystem": "Web & Research",
+      "severity": "HIGH",
+      "root_cause": "Truncated HTTP streams failed silently, leading LLM to hallucinate missing page contents.",
+      "fix": "Enforced zero-hallucination error propagation: aborted HTTP streams return structured failure notice.",
+      "test": "tests/test_research_network_failures.py",
+      "runtime_evidence": "AUDIT/WEB_EVIDENCE/TEST-WEB-017.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-018",
+      "subsystem": "Web & Research",
+      "severity": "HIGH",
+      "root_cause": "Web queries occasionally answered from model internal memory rather than live network extraction.",
+      "fix": "Enforced live DOM fetching via httpx with unique nonce verification.",
+      "test": "tests/test_web.py",
+      "runtime_evidence": "AUDIT/WEB_EVIDENCE/TEST-WEB-001.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-019",
+      "subsystem": "Routing & Observability",
+      "severity": "MEDIUM",
+      "root_cause": "Model routing decisions were opaque without confidence metrics or telemetry logging.",
+      "fix": "Implemented RouteResult dataclass with structured confidence score, tier assignment, and audit logs.",
+      "test": "tests/test_semantic_intent_router.py",
+      "runtime_evidence": "AUDIT/PERFORMANCE/LATENCY_BENCHMARK.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-020",
+      "subsystem": "Verification & Tool Plumbing",
+      "severity": "HIGH",
+      "root_cause": "Skills returned success immediately after calling OS APIs without checking physical side-effects.",
+      "fix": "Enforced PEOV (Precondition, Execute, Observe, Verify, Rollback) architecture across all skills.",
+      "test": "tests/test_peov_architecture.py",
+      "runtime_evidence": "AUDIT/SECOND_PASS/CHALLENGE-FALSE-SUCCESS.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-021",
+      "subsystem": "Document Editing",
+      "severity": "HIGH",
+      "root_cause": "DOCX edits rewrote entire document, corrupting complex formatting, headers, and tables.",
+      "fix": "Built DocxStructuralParser with numbered item indexing and surgical in-place paragraph mutation.",
+      "test": "tests/test_docx_hardening.py",
+      "runtime_evidence": "AUDIT/DOCUMENT_EVIDENCE/DOC-TEST-001.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-022",
+      "subsystem": "Deep Research & Task Lifecycle",
+      "severity": "CRITICAL",
+      "root_cause": "Deep research query on complex topics hung indefinitely in 'ACTIVE // THINKING' due to missing terminal state reset, un-supervised coroutine, un-cancellable worker, and socket keep-alive stall.",
+      "fix": "Refactored research into thread-safe DeepResearchWorker(QThread) managed by TaskSupervisor with watchdog timeouts, GUI stop-button cancellation, streaming signals, and guaranteed idle state resets in finally blocks.",
+      "test": "tests/test_research_lifecycle_forensics.py",
+      "runtime_evidence": "AUDIT/RUNTIME_EVIDENCE/RESEARCH_HANG_FIXED.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-VOICE-001",
+      "subsystem": "Voice / STT / Agent Dispatch",
+      "severity": "CRITICAL",
+      "root_cause": "Legacy voice loop routed spoken utterances to execute_smart_skill bypassing query_llm, creating divergent tool architectures for voice vs chat.",
+      "fix": "Replaced execute_smart_skill with direct await query_llm(stream_to_ui=True, stream_to_speech=True), achieving 100% architectural parity.",
+      "test": "tests/test_voice_tool_integration.py",
+      "runtime_evidence": "audit/VOICE_HARDENING/VOICE_RUNTIME_TRACE.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-VOICE-002",
+      "subsystem": "Voice Engine / Interruption",
+      "severity": "HIGH",
+      "root_cause": "Voice loop slept while TTS was speaking, preventing acoustic barge-in interruption.",
+      "fix": "Integrated VoiceInterruptionController checking microphone RMS frame energy against baseline threshold, stopping TTS immediately upon speech onset.",
+      "test": "tests/test_voice_continuous_mode.py",
+      "runtime_evidence": "audit/VOICE_HARDENING/VOICE_RUNTIME_TRACE.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-VOICE-003",
+      "subsystem": "Voice Engine / TTS Sanitization",
+      "severity": "HIGH",
+      "root_cause": "Internal model thoughts (<think>...</think>) and tool fences ([TOOL: ...]) leaked to spoken audio.",
+      "fix": "Implemented strict regex sanitization stripping thinking blocks, tool traces, code fences, and emojis prior to TTS synthesis.",
+      "test": "tests/test_tts_pipeline.py",
+      "runtime_evidence": "audit/VOICE_HARDENING/VOICE_RUNTIME_TRACE.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-VOICE-004",
+      "subsystem": "Voice VAD / Noise Filtering",
+      "severity": "MEDIUM",
+      "root_cause": "Pre-roll audio buffer inclusion caused brief transient key clicks (<50ms) to pass duration threshold (>200ms).",
+      "fix": "Calculated speech duration strictly between speech onset and offset timestamps, discarding transient clicks.",
+      "test": "tests/test_voice_vad.py",
+      "runtime_evidence": "audit/VOICE_HARDENING/VOICE_RUNTIME_TRACE.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-VOICE-005",
+      "subsystem": "Voice Concurrency / PortAudio",
+      "severity": "HIGH",
+      "root_cause": "Stopping voice loop while reader thread was blocked inside PyAudio stream.read() triggered use-after-close C panic.",
+      "fix": "Added reader synchronization event waiting up to 3.0s for clean thread exit before closing PortAudio stream.",
+      "test": "tests/test_voice_resource_cleanup.py",
+      "runtime_evidence": "audit/VOICE_HARDENING/VOICE_RUNTIME_TRACE.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-VOICE-006",
+      "subsystem": "Voice Deduplication",
+      "severity": "MEDIUM",
+      "root_cause": "Acoustic speaker rebounds caused immediate duplicate execution of voice commands.",
+      "fix": "Implemented TranscriptDeduplicator with 2.5s temporal suppression window and punctuation normalization.",
+      "test": "tests/test_stt_deduplication.py",
+      "runtime_evidence": "audit/VOICE_HARDENING/VOICE_RUNTIME_TRACE.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-VOICE-007",
+      "subsystem": "Voice / TTS Fallback",
+      "severity": "HIGH",
+      "root_cause": "TTS synthesis failure or missing audio device caused text response to disappear or left HUD in permanent SPEAKING state.",
+      "fix": "Wrapped TTS invocation in try/finally blocks guaranteeing assistant text bubble is committed to UI and state resets to idle.",
+      "test": "tests/test_voice_failure_recovery.py",
+      "runtime_evidence": "audit/VOICE_HARDENING/VOICE_RUNTIME_TRACE.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-MEM-001",
+      "subsystem": "Memory Subsystem",
+      "severity": "CRITICAL",
+      "root_cause": "Circular import between friday_core.memory.manager and skill registry via mission_store prevented memory module initialization.",
+      "fix": "Lazy-imported mission_store inside get_task_memory() and protected annotations with TYPE_CHECKING.",
+      "test": "tests/test_phase8_memory.py",
+      "runtime_evidence": "audit/MEMORY_RAG_HARDENING/MEMORY_RUNTIME_TRACE.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-MEM-002",
+      "subsystem": "Memory & RAG",
+      "severity": "HIGH",
+      "root_cause": "Python blindly injected vector knowledge snippets into user prompts before the Main Agent Model could evaluate intent.",
+      "fix": "Eliminated unprompted knowledge injection; Main Agent Model is now the sole decision-maker via query_knowledge_base tool.",
+      "test": "tests/test_rag.py",
+      "runtime_evidence": "audit/MEMORY_RAG_HARDENING/MEMORY_RUNTIME_TRACE.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-MEM-003",
+      "subsystem": "Agent Tool Bridge",
+      "severity": "HIGH",
+      "root_cause": "Main Agent Model had no native OpenAPI tool schema to query local RAG knowledge base on demand.",
+      "fix": "Added query_knowledge_base OpenAPI schema and dispatch handler in AgentToolBridge.",
+      "test": "tests/test_agent_tools_plumbing.py",
+      "runtime_evidence": "audit/MEMORY_RAG_HARDENING/MEMORY_RUNTIME_TRACE.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-MEM-004",
+      "subsystem": "RAG Storage & SQLite",
+      "severity": "MEDIUM",
+      "root_cause": "Database rebuild failed with Windows file lock error (WinError 32) when PRAGMA failed on a corrupt DB file.",
+      "fix": "Restructured connection context manager with outer try/finally guaranteeing conn.close() and explicit garbage collection.",
+      "test": "tests/test_memory_failure_recovery.py",
+      "runtime_evidence": "audit/MEMORY_RAG_HARDENING/MEMORY_RUNTIME_TRACE.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-MEM-005",
+      "subsystem": "Knowledge Segregation",
+      "severity": "MEDIUM",
+      "root_cause": "Lack of knowledge domain segregation allowed cross-domain contamination between Project, Personal, Tech, and Research data.",
+      "fix": "Added KnowledgeDomain enum, domain indexing, schema migration, and strict domain query filtering.",
+      "test": "tests/test_knowledge_ingestion.py",
+      "runtime_evidence": "audit/MEMORY_RAG_HARDENING/MEMORY_RUNTIME_TRACE.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-MEM-006",
+      "subsystem": "Knowledge Ingestion",
+      "severity": "MEDIUM",
+      "root_cause": "Re-ingesting the same file created duplicate chunks in vector database, bloating results and wasting context.",
+      "fix": "Added SHA-256 doc_hash and content_hash computation preventing duplicate chunk insertions.",
+      "test": "tests/test_knowledge_ingestion.py",
+      "runtime_evidence": "audit/MEMORY_RAG_HARDENING/MEMORY_RUNTIME_TRACE.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-MEM-007",
+      "subsystem": "Memory Management",
+      "severity": "MEDIUM",
+      "root_cause": "Updating a memory fact did not increment versioning, creating risks of stale memory dominance.",
+      "fix": "Implemented auto-version increment (v1 -> v2) and marked superseded records historical.",
+      "test": "tests/test_memory_stale_data.py",
+      "runtime_evidence": "audit/MEMORY_RAG_HARDENING/MEMORY_RUNTIME_TRACE.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-MEM-008",
+      "subsystem": "Memory Deletion",
+      "severity": "HIGH",
+      "root_cause": "Memory deletion claimed success without checking physical absence in the database.",
+      "fix": "Added immediate readback verification after SQL DELETE; returns True only if absence is confirmed.",
+      "test": "tests/test_memory_deletion.py",
+      "runtime_evidence": "audit/MEMORY_RAG_HARDENING/MEMORY_DELETION_VERIFICATION.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-PERF-001",
+      "subsystem": "Telemetry & HUD Event Loop",
+      "severity": "HIGH",
+      "root_cause": "Synchronous psutil.cpu_percent(interval=0.1) in get_cpu_info blocked thread for 100ms, starving Qt event loop.",
+      "fix": "Migrated to non-blocking psutil.cpu_percent(interval=None) with initial priming. Latency dropped from 100.86ms to 0.06ms.",
+      "test": "tests/test_performance_baseline.py",
+      "runtime_evidence": "audit/PERFORMANCE_SOAK_HARDENING/PERFORMANCE_BASELINE.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-PERF-002",
+      "subsystem": "Calculation & Assertions",
+      "severity": "MEDIUM",
+      "root_cause": "safe_calculate return type discrepancy between raw float and natural language string in verification assertions.",
+      "fix": "Standardized assertions to verify natural language response while ensuring zero eval() injection vulnerability.",
+      "test": "tests/test_performance_baseline.py",
+      "runtime_evidence": "audit/PERFORMANCE_SOAK_HARDENING/PERFORMANCE_BASELINE.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-PERF-003",
+      "subsystem": "Vision Context Caching",
+      "severity": "MEDIUM",
+      "root_cause": "ImageContextManager registration method signature discrepancy in test fixtures.",
+      "fix": "Bound registration directly to store_context(ImageContext) with verified FIFO 20-slot eviction capacity.",
+      "test": "tests/test_cache_growth.py, tests/test_vision_soak.py",
+      "runtime_evidence": "audit/PERFORMANCE_SOAK_HARDENING/CACHE_GROWTH.json",
+      "status": "RESOLVED"
+    },
+    {
+      "bug_id": "BUG-PERF-004",
+      "subsystem": "Deep Research Worker Lifecycle",
+      "severity": "MEDIUM",
+      "root_cause": "DeepResearchWorker constructor requires TaskRecord from TaskSupervisor; direct invocation caused un-supervised workers.",
+      "fix": "Integrated worker creation through task_supervisor.create_task(), guaranteeing supervision and clean cancellation.",
+      "test": "tests/test_research_soak.py, tests/test_thread_leaks.py",
+      "runtime_evidence": "audit/PERFORMANCE_SOAK_HARDENING/THREAD_GROWTH.json",
+      "status": "RESOLVED"
+    }
+  ]
+}

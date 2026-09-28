@@ -1,0 +1,12 @@
+{
+  "trace_id": "trace-bb-10d69aa5",
+  "category": "Calculator",
+  "user_command": "what is sqrt(144)",
+  "latency_ms": 0.41,
+  "response": "The answer is 12.",
+  "expected_keywords": [
+    "12"
+  ],
+  "keywords_observed": true,
+  "verdict": "PASS"
+}

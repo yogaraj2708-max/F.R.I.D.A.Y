@@ -1,0 +1,17 @@
+{
+  "limits": {
+    "max_subqueries": 4,
+    "max_sources_crawled": 5,
+    "max_chars_per_source": 1800,
+    "max_chars_synthesis_context": 6000,
+    "max_synthesis_prompt_chars": 8000,
+    "num_predict_tokens": 1024
+  },
+  "sanitization": {
+    "script_tags_stripped": true,
+    "style_tags_stripped": true,
+    "nav_footer_stripped": true,
+    "html_entities_decoded": true
+  },
+  "verdict": "PASS"
+}

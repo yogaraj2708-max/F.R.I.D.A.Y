@@ -1,0 +1,104 @@
+{
+  "execution_timestamp": 1790583635.5754538,
+  "execution_date": "2026-09-28 13:50:35",
+  "total_missions": 15,
+  "passed": 15,
+  "failed": 0,
+  "missions": {
+    "m1_main_model": {
+      "status": "PASS",
+      "configured_model": "qwen3.5:9b",
+      "resolved_model": "qwen3.5:9b",
+      "model_agnostic_architecture": true,
+      "notes": "Verified qwen3.5:9b as current active model without hardcoding."
+    },
+    "m2_chat_calculation": {
+      "status": "PASS",
+      "basic_chat_tool_trigger": "ZERO_TOOLS",
+      "calc_query": "2 + 2",
+      "calc_result": "The answer is 4.",
+      "notes": "Arithmetic evaluation executed without unnecessary external tool dispatch."
+    },
+    "m3_web_failure_recovery": {
+      "status": "PASS",
+      "offline_dns_handled_fail_closed": true,
+      "raw_response": "[Security Blocked: DNS resolution or URL validation failed: [Errno 11001] getaddrinfo failed]",
+      "zero_fabricated_events": true
+    },
+    "m4_deep_research_cancellation": {
+      "status": "PASS",
+      "terminal_state": "TaskState.CANCELLED",
+      "worker_halted": true,
+      "zombie_workers": 0
+    },
+    "m5_document_operations": {
+      "status": "PASS",
+      "file_type_detected": "DocumentType.TXT",
+      "surgical_edit_verified": true,
+      "corrupt_file_rejected_fail_closed": true
+    },
+    "m6_vision_integration": {
+      "status": "PASS",
+      "image_context_stored": "vis_test_01",
+      "cache_bounds_enforced": true,
+      "chat_isolation_verified": true
+    },
+    "m7_desktop_automation": {
+      "status": "PASS",
+      "benign_app_launch_authorized": true,
+      "shell_injection_blocked": true,
+      "risk_gate_authoritative": true
+    },
+    "m8_voice_tts_lifecycle": {
+      "status": "PASS",
+      "neural_tts_synthesis_bytes": 89048,
+      "empty_input_fallback_graceful": true,
+      "chime_audio_functional": true
+    },
+    "m9_memory_rag_injection_defense": {
+      "status": "PASS",
+      "preference_created_and_retrieved": true,
+      "prompt_injection_confined_to_data": true,
+      "zero_instruction_hijacking": true
+    },
+    "m10_security_guardrails": {
+      "status": "PASS",
+      "ssrf_cloud_metadata_blocked": true,
+      "path_traversal_blocked": true,
+      "protected_process_kill_blocked": true,
+      "destructive_command_blocked": true
+    },
+    "m11_lifecycle_and_replanning": {
+      "status": "PASS",
+      "lifecycle_transitions_verified": true,
+      "tool_rejection_provenance_verified": true,
+      "terminal_state_reached": true
+    },
+    "m12_multitool_model_switching": {
+      "status": "PASS",
+      "multi_tool_chain_executed": true,
+      "model_switch_cache_purged": true,
+      "model_switch_roundtrip_restored": true
+    },
+    "m13_context_concurrency": {
+      "status": "PASS",
+      "context_bounded_under_limit": true,
+      "concurrent_sessions_isolated": true
+    },
+    "m14_resources_and_teardown": {
+      "status": "PASS",
+      "rss_mb": 347.23,
+      "active_threads": 26,
+      "child_processes": 0,
+      "zero_orphan_processes": true
+    },
+    "m15_end_to_end_adversarial": {
+      "status": "PASS",
+      "multi_subsystem_mission_completed": true,
+      "calculated_metric": "The answer is 1000.",
+      "verified_in_document": true,
+      "adversarial_attack_blocked": true,
+      "security_authoritative": true
+    }
+  }
+}

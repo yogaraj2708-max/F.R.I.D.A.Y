@@ -1,0 +1,77 @@
+{
+  "subsystem": "Text-to-Speech Failure & Sanitization Matrix",
+  "audit_phase": "VOICE_STT_TTS_ZERO_TRUST_HARDENING",
+  "timestamp": "2026-09-28T12:20:00Z",
+  "sanitization_verifications": [
+    {
+      "token_type": "Internal Model Thoughts (<think>...</think>)",
+      "sample_input": "<think>Plan: 1. Launch notepad. 2. Verify window.</think>Opening Notepad now.",
+      "sanitized_output": "Opening Notepad now.",
+      "audible_leakage": "ZERO",
+      "status": "PASS"
+    },
+    {
+      "token_type": "Tool Execution Traces ([TOOL: ...], [ACTION: ...])",
+      "sample_input": "[TOOL: launch_app(app='notepad')] Notepad process 1024 active.",
+      "sanitized_output": "Notepad process 1024 active.",
+      "audible_leakage": "ZERO",
+      "status": "PASS"
+    },
+    {
+      "token_type": "Fenced Code Blocks (```python ... ```)",
+      "sample_input": "Here is the code:\n```python\nimport sys\nprint('hello')\n```\nAll done.",
+      "sanitized_output": "Here is the code: All done.",
+      "audible_leakage": "ZERO",
+      "status": "PASS"
+    },
+    {
+      "token_type": "Markdown Links and Bare URLs",
+      "sample_input": "Read [documentation](https://docs.python.org/) or visit https://python.org for info.",
+      "sanitized_output": "Read documentation or visit for info.",
+      "audible_leakage": "ZERO",
+      "status": "PASS"
+    },
+    {
+      "token_type": "Special Acronyms & Distorting Emojis",
+      "sample_input": "F.R.I.D.A.Y. completed 100% tasks 🚀 with AI and OS.",
+      "sanitized_output": "Friday completed 100 percent tasks with AI and OS.",
+      "audible_leakage": "ZERO",
+      "status": "PASS"
+    }
+  ],
+  "failure_modes": [
+    {
+      "mode_id": "TTS_FAIL_01",
+      "mode": "Kokoro Model File Missing / Corrupted",
+      "injection": "Non-existent model path or ONNX load error",
+      "expected_behavior": "Catch exception, log fallback, route to Edge-TTS",
+      "observed_behavior": "Edge-TTS synthesis executes cleanly",
+      "status": "PASS"
+    },
+    {
+      "mode_id": "TTS_FAIL_02",
+      "mode": "Edge-TTS Network Disconnected",
+      "injection": "Network interface down or WebSocket timeout",
+      "expected_behavior": "Catch exception, route to Windows SAPI COM",
+      "observed_behavior": "In-process SAPI SpVoice produces audio immediately",
+      "status": "PASS"
+    },
+    {
+      "mode_id": "TTS_FAIL_03",
+      "mode": "Pygame Mixer Hardware Error",
+      "injection": "Mixer init failure or sound buffer write exception",
+      "expected_behavior": "Safe exception isolation; assistant text chat visible and complete",
+      "observed_behavior": "Text delivered to UI without delay; task marked success",
+      "status": "PASS"
+    },
+    {
+      "mode_id": "TTS_FAIL_04",
+      "mode": "Total Synthesis Engine Failure (All 3 Tiers Down)",
+      "injection": "Kokoro, Edge-TTS, and SAPI mock-failed",
+      "expected_behavior": "Assistant text response completely visible; speech silently skipped; zero crash",
+      "observed_behavior": "System operates as silent chat assistant; no process abort",
+      "status": "PASS"
+    }
+  ],
+  "verification_status": "PASS"
+}

@@ -1,0 +1,18 @@
+{
+  "verified_tool_execution": false,
+  "tool_call_provenance": {
+    "status": "NO_TOOL_EXECUTED",
+    "provenance": "FABRICATED_OR_UNVERIFIED"
+  },
+  "provenance_standard": {
+    "required_fields": [
+      "tool_name",
+      "tool_call_id",
+      "execution_status",
+      "source_urls",
+      "retrieved_at",
+      "trace_id"
+    ],
+    "enforcement_rule": "Every tool result injected into LLM context MUST originate from a registered dispatcher execution with verifiable HTTP/runtime trace. Synthesized or hallucinated tool results without provenance are rejected."
+  }
+}

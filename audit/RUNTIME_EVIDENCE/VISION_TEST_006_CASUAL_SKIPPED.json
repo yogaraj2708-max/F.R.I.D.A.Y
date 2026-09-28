@@ -1,0 +1,8 @@
+{
+  "test_id": "VISION-TEST-006",
+  "description": "Image attached but non-visual intent ('hello') -> vision model skipped",
+  "duration_s": 23.5,
+  "vision_model_invoked": false,
+  "expected_invoked": false,
+  "verdict": "PASS"
+}

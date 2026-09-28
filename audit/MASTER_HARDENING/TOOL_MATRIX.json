@@ -1,0 +1,159 @@
+{
+  "total_tools": 14,
+  "tools": [
+    {
+      "name": "web_search",
+      "schema_type": "function",
+      "required_args": ["query"],
+      "risk_level": "LOW_RISK",
+      "handler": "engine.py:dispatch_agent_tool -> direct multi-tier web search (DDGS/HTML/Wikipedia/Grokipedia)",
+      "timeout_s": 15.0,
+      "cancellation_aware": true,
+      "verification": "VERIFIED if results contain non-empty URLs and snippets; REJECTED if connection fails.",
+      "status": "PASS"
+    },
+    {
+      "name": "calculate",
+      "schema_type": "function",
+      "required_args": ["expression"],
+      "risk_level": "LOW_RISK",
+      "handler": "engine.py:dispatch_agent_tool -> Safe math eval",
+      "timeout_s": 5.0,
+      "cancellation_aware": true,
+      "verification": "VERIFIED against parsed numeric result; REJECTED on syntax/math error.",
+      "status": "PASS"
+    },
+    {
+      "name": "system_telemetry",
+      "schema_type": "function",
+      "required_args": [],
+      "risk_level": "LOW_RISK",
+      "handler": "engine.py:dispatch_agent_tool -> psutil hardware metrics",
+      "timeout_s": 5.0,
+      "cancellation_aware": true,
+      "verification": "VERIFIED with live CPU/RAM/Battery metrics.",
+      "status": "PASS"
+    },
+    {
+      "name": "read_document",
+      "schema_type": "function",
+      "required_args": ["file_path"],
+      "risk_level": "MEDIUM_RISK",
+      "handler": "engine.py:dispatch_agent_tool -> pypdf/docx parser",
+      "timeout_s": 30.0,
+      "cancellation_aware": true,
+      "verification": "VERIFIED with extracted char count and page map; REJECTED on corrupted/unreadable stream.",
+      "status": "PASS"
+    },
+    {
+      "name": "analyze_image",
+      "schema_type": "function",
+      "required_args": ["image_path"],
+      "risk_level": "LOW_RISK",
+      "handler": "engine.py:dispatch_agent_tool -> vision_client.analyze_image_structured",
+      "timeout_s": 45.0,
+      "cancellation_aware": true,
+      "verification": "VERIFIED with structured scene description and visible text; REJECTED on decode failure.",
+      "status": "PASS"
+    },
+    {
+      "name": "launch_app",
+      "schema_type": "function",
+      "required_args": ["app_name"],
+      "risk_level": "MEDIUM_RISK",
+      "handler": "engine.py:dispatch_agent_tool -> launcher.launch_application",
+      "timeout_s": 10.0,
+      "cancellation_aware": false,
+      "verification": "VERIFIED if target window exists via UIA search within timeout.",
+      "status": "PASS"
+    },
+    {
+      "name": "type_text",
+      "schema_type": "function",
+      "required_args": ["text"],
+      "risk_level": "LOW_RISK",
+      "handler": "engine.py:dispatch_agent_tool -> ui_automation.UITypeTextSkill",
+      "timeout_s": 15.0,
+      "cancellation_aware": false,
+      "verification": "VERIFIED if target text observed in active editor or confirmed injected.",
+      "status": "PASS"
+    },
+    {
+      "name": "weather",
+      "schema_type": "function",
+      "required_args": ["location"],
+      "risk_level": "LOW_RISK",
+      "handler": "engine.py:dispatch_agent_tool -> wttr.in retrieval",
+      "timeout_s": 10.0,
+      "cancellation_aware": true,
+      "verification": "VERIFIED with live forecast string.",
+      "status": "PASS"
+    },
+    {
+      "name": "system_time_date",
+      "schema_type": "function",
+      "required_args": [],
+      "risk_level": "LOW_RISK",
+      "handler": "engine.py:dispatch_agent_tool -> datetime.now()",
+      "timeout_s": 1.0,
+      "cancellation_aware": true,
+      "verification": "VERIFIED with local system time and timezone.",
+      "status": "PASS"
+    },
+    {
+      "name": "web_fetch",
+      "schema_type": "function",
+      "required_args": ["url"],
+      "risk_level": "LOW_RISK",
+      "handler": "engine.py:dispatch_agent_tool -> safe_fetch_page_text",
+      "timeout_s": 15.0,
+      "cancellation_aware": true,
+      "verification": "VERIFIED if content contains clean readable text; REJECTED on HTTP 4xx/5xx or SSRF block.",
+      "status": "PASS"
+    },
+    {
+      "name": "inspect_ui",
+      "schema_type": "function",
+      "required_args": ["app_name"],
+      "risk_level": "LOW_RISK",
+      "handler": "engine.py:dispatch_agent_tool -> ui_automation.find_app_window inspection",
+      "timeout_s": 10.0,
+      "cancellation_aware": false,
+      "verification": "VERIFIED with window title and state inspection.",
+      "status": "PASS"
+    },
+    {
+      "name": "click_control",
+      "schema_type": "function",
+      "required_args": ["control_name"],
+      "risk_level": "MEDIUM_RISK",
+      "handler": "engine.py:dispatch_agent_tool -> ui_automation control click",
+      "timeout_s": 10.0,
+      "cancellation_aware": false,
+      "verification": "VERIFIED upon successful invocation of UIA Invoke or Click pattern.",
+      "status": "PASS"
+    },
+    {
+      "name": "timer",
+      "schema_type": "function",
+      "required_args": ["seconds"],
+      "risk_level": "LOW_RISK",
+      "handler": "engine.py:dispatch_agent_tool -> timer_manager.create_timer",
+      "timeout_s": 5.0,
+      "cancellation_aware": true,
+      "verification": "VERIFIED upon countdown registration and confirmation chime.",
+      "status": "PASS"
+    },
+    {
+      "name": "deep_research",
+      "schema_type": "function",
+      "required_args": ["topic"],
+      "risk_level": "LOW_RISK",
+      "handler": "engine.py:dispatch_agent_tool -> research pipeline",
+      "timeout_s": 120.0,
+      "cancellation_aware": true,
+      "verification": "VERIFIED with multi-source synthesis, provenance citations, and structured findings.",
+      "status": "PASS"
+    }
+  ]
+}

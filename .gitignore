@@ -46,3 +46,9 @@ Thumbs.db
 desktop.ini
 .DS_Store
 scratch/
+scratch_probe_*
+@AutomationLog.txt
+sample_ui_test.txt
+thank_you_sister.txt
+*.friday_bak
+

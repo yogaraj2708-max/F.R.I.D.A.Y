@@ -1,0 +1,89 @@
+{
+  "subsystem": "deep_research",
+  "pipeline": "USER_GOAL -> QueryDecomposer -> Multi-Vector Crawling -> Page Fetching -> SSRF Guard -> Deduplication -> SourceCrossChecker -> DeepResearchSynthesizer -> Streaming LLM Synthesis -> Verification -> Markdown Dossier",
+  "configured_model": "qwen3.5:9b (dynamic resolution via settings)",
+  "search_tiers": [
+    {"tier": 1, "provider": "DuckDuckGo Search (ddgs library)", "status": "AVAILABLE"},
+    {"tier": 2, "provider": "Direct DuckDuckGo HTML POST parser", "status": "AVAILABLE"},
+    {"tier": 3, "provider": "Wikipedia Live Encyclopedia Search", "status": "AVAILABLE"},
+    {"tier": 4, "provider": "Grokipedia AI live summary lookup", "status": "AVAILABLE"}
+  ],
+  "context_bounds": {
+    "max_search_vectors": 4,
+    "max_results_per_vector": 4,
+    "max_deep_read_sources": 5,
+    "max_chars_per_page": 1800,
+    "max_sources_in_synthesis": 8,
+    "max_chars_per_snippet": 800,
+    "max_synthesis_prompt_context_tokens": 4096,
+    "max_predict_tokens": 1024
+  },
+  "verification_points": [
+    {
+      "checkpoint": "Real network retrieval & synthesis",
+      "requirement": "Actual HTTP response captured with non-zero body, valid Content-Type, and completed dossier via configured model.",
+      "status": "PASS",
+      "evidence": "AUDIT/RUNTIME_EVIDENCE/RESEARCH_HANG_FIXED.json (10 sources, 922 tokens, qwen3.5:9b)"
+    },
+    {
+      "checkpoint": "No fabricated sources / zero-source fail-closed",
+      "requirement": "Zero sources discovered must transition to FAILED and refuse to hallucinate ungrounded dossiers.",
+      "status": "PASS",
+      "evidence": "tests/test_phase11_deep_research.py::TestDeepResearchForensicsAndHardening::test_worker_zero_sources_fails_closed_without_hallucination"
+    },
+    {
+      "checkpoint": "SSRF & Redirect Guard",
+      "requirement": "Rejects loopback (127.0.0.1, localhost), private networks (10.0.0.0/8, 192.168.0.0/16), and cloud metadata (169.254.169.254) before HTTP connection.",
+      "status": "PASS",
+      "evidence": "tests/test_phase11_deep_research.py::TestDeepResearchForensicsAndHardening::test_ssrf_guard_in_fetch_page_content"
+    },
+    {
+      "checkpoint": "Context bounding & HTML sanitization",
+      "requirement": "Scripts, styles, and tags stripped; output strictly capped to max_chars.",
+      "status": "PASS",
+      "evidence": "tests/test_phase11_deep_research.py::TestDeepResearchForensicsAndHardening::test_fetch_page_content_malformed_html_and_bounding"
+    },
+    {
+      "checkpoint": "HTTP 500 & socket timeout recovery",
+      "requirement": "Page fetch socket timeouts and HTTP 500 errors fail safe to None without crashing.",
+      "status": "PASS",
+      "evidence": "tests/test_phase11_deep_research.py::TestDeepResearchForensicsAndHardening::test_fetch_page_content_http_500_and_timeout"
+    },
+    {
+      "checkpoint": "Blocked / binary content rejection",
+      "requirement": "Non-HTML/text MIME types (PDF, binaries) rejected cleanly.",
+      "status": "PASS",
+      "evidence": "tests/test_phase11_deep_research.py::TestDeepResearchForensicsAndHardening::test_fetch_page_content_blocked_or_binary_content"
+    },
+    {
+      "checkpoint": "Source deduplication",
+      "requirement": "Duplicate URLs across multi-angle query vectors are deduplicated to prevent redundant scraping.",
+      "status": "PASS",
+      "evidence": "tests/test_phase11_deep_research.py::TestDeepResearchForensicsAndHardening::test_worker_deduplicates_sources"
+    },
+    {
+      "checkpoint": "Network outage recovery",
+      "requirement": "Network unreachable errors handled cleanly with backoff and graceful failure reporting.",
+      "status": "PASS",
+      "evidence": "tests/test_phase11_deep_research.py::TestDeepResearchForensicsAndHardening::test_worker_network_error_fails_closed"
+    },
+    {
+      "checkpoint": "No silent model replacement",
+      "requirement": "If synthesis fails or model returns non-200, system does NOT silently switch to llama3.2:1b; transparently reports status and compiles deterministic source claims.",
+      "status": "PASS",
+      "evidence": "tests/test_phase11_deep_research.py::TestDeepResearchForensicsAndHardening::test_worker_synthesis_failure_falls_back_honestly_without_silent_replacement"
+    },
+    {
+      "checkpoint": "Cooperative cancellation",
+      "requirement": "Operator cancellation request closes active HTTP sockets immediately and halts worker thread safely.",
+      "status": "PASS",
+      "evidence": "AUDIT/RUNTIME_EVIDENCE/RESEARCH_CANCEL.json & tests/test_research_lifecycle_forensics.py::test_03_cooperative_cancellation_within_bound"
+    },
+    {
+      "checkpoint": "Watchdog timeout supervision",
+      "requirement": "Tasks exceeding idle or absolute deadlines automatically tripped to TIMED_OUT; late callbacks rejected.",
+      "status": "PASS",
+      "evidence": "AUDIT/RUNTIME_EVIDENCE/RESEARCH_TIMEOUT.json & tests/test_research_lifecycle_forensics.py::test_02_watchdog_timeout_trips_to_timed_out"
+    }
+  ]
+}

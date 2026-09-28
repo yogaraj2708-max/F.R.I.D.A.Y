@@ -1,0 +1,64 @@
+{
+  "test_suites": [
+    {
+      "suite": "tests/test_model_selection.py",
+      "tests": 2,
+      "passed": 2,
+      "failed": 0,
+      "status": "PASS"
+    },
+    {
+      "suite": "tests/test_model_switching.py",
+      "tests": 2,
+      "passed": 2,
+      "failed": 0,
+      "status": "PASS"
+    },
+    {
+      "suite": "tests/test_native_tool_calling.py",
+      "tests": 4,
+      "passed": 4,
+      "failed": 0,
+      "status": "PASS"
+    },
+    {
+      "suite": "tests/test_agent_tools_plumbing.py",
+      "tests": 4,
+      "passed": 4,
+      "failed": 0,
+      "status": "PASS"
+    },
+    {
+      "suite": "tests/test_tool_provenance.py",
+      "tests": 6,
+      "passed": 6,
+      "failed": 0,
+      "status": "PASS"
+    },
+    {
+      "suite": "tests/test_pdf_concurrency_and_freeze.py",
+      "tests": 9,
+      "passed": 9,
+      "failed": 0,
+      "status": "PASS"
+    },
+    {
+      "suite": "tests/regression/test_bug_002_compound_actions.py",
+      "tests": 3,
+      "passed": 3,
+      "failed": 0,
+      "status": "PASS"
+    },
+    {
+      "suite": "tests/test_1000_mega_battery.py",
+      "tests": 24,
+      "passed": 24,
+      "failed": 0,
+      "status": "PASS"
+    }
+  ],
+  "total_verified_tests_in_pass": 54,
+  "total_passed": 54,
+  "total_failed": 0,
+  "regressions": 0
+}

@@ -1,0 +1,198 @@
+{
+  "audit_subsystem": "F.R.I.D.A.Y. 3.0 UI Accessibility Matrix",
+  "evaluated_at": "2026-09-27T22:10:00Z",
+  "wcag_compliance": "WCAG 2.1 AA Compliant",
+  "screen_reader_friendly": true,
+  "controls": [
+    {
+      "view": "Application Shell",
+      "control": "NavigationPanel",
+      "objectName": "navigationPanel",
+      "accessibleName": "Main Navigation",
+      "keyboardFocusable": true,
+      "tabOrder": 1,
+      "tooltip": "Navigate application views",
+      "status": "PASS"
+    },
+    {
+      "view": "Chat View",
+      "control": "Prompt Input",
+      "objectName": "chat_input",
+      "accessibleName": "Type a message or command",
+      "keyboardFocusable": true,
+      "tabOrder": 2,
+      "tooltip": "Press Ctrl + Space to summon floating command bar",
+      "status": "PASS"
+    },
+    {
+      "view": "Chat View",
+      "control": "Send Button",
+      "objectName": "send_button",
+      "accessibleName": "Send directive",
+      "keyboardFocusable": true,
+      "tabOrder": 3,
+      "tooltip": "Send directive (Enter) or halt response (Esc)",
+      "status": "PASS"
+    },
+    {
+      "view": "Chat View",
+      "control": "Stop Button",
+      "objectName": "stop_button",
+      "accessibleName": "Stop generation",
+      "keyboardFocusable": true,
+      "tabOrder": 4,
+      "tooltip": "Immediately stop vocal playback and generation (Esc)",
+      "status": "PASS"
+    },
+    {
+      "view": "Chat View",
+      "control": "Attachment Button",
+      "objectName": "attachment_button",
+      "accessibleName": "Attach File",
+      "keyboardFocusable": true,
+      "tabOrder": 5,
+      "tooltip": "Attach File(s) or Image for Analysis",
+      "status": "PASS"
+    },
+    {
+      "view": "Chat View",
+      "control": "Microphone Button",
+      "objectName": "mic_button",
+      "accessibleName": "Toggle Microphone",
+      "keyboardFocusable": true,
+      "tabOrder": 6,
+      "tooltip": "Toggle Voice Dictation (Ctrl+M)",
+      "status": "PASS"
+    },
+    {
+      "view": "Chat View",
+      "control": "Session Selector",
+      "objectName": "session_selector",
+      "accessibleName": "Select conversation session",
+      "keyboardFocusable": true,
+      "tabOrder": 7,
+      "tooltip": "Switch active conversation session",
+      "status": "PASS"
+    },
+    {
+      "view": "Chat View",
+      "control": "Model Selector",
+      "objectName": "model_selector",
+      "accessibleName": "Select active AI model",
+      "keyboardFocusable": true,
+      "tabOrder": 8,
+      "tooltip": "Switch active LLM core model",
+      "status": "PASS"
+    },
+    {
+      "view": "Chat View",
+      "control": "New Session Button",
+      "objectName": "new_session_button",
+      "accessibleName": "Create new session",
+      "keyboardFocusable": true,
+      "tabOrder": 9,
+      "tooltip": "Start fresh chat conversation",
+      "status": "PASS"
+    },
+    {
+      "view": "Chat View",
+      "control": "Delete Session Button",
+      "objectName": "delete_session_button",
+      "accessibleName": "Delete current session",
+      "keyboardFocusable": true,
+      "tabOrder": 10,
+      "tooltip": "Delete active chat session",
+      "status": "PASS"
+    },
+    {
+      "view": "Research View",
+      "control": "Research Query Input",
+      "objectName": "research_input",
+      "accessibleName": "Research target query",
+      "keyboardFocusable": true,
+      "tabOrder": 11,
+      "tooltip": "Enter topic for autonomous deep research",
+      "status": "PASS"
+    },
+    {
+      "view": "Research View",
+      "control": "Research Depth Dropdown",
+      "objectName": "research_depth_combo",
+      "accessibleName": "Research depth selector",
+      "keyboardFocusable": true,
+      "tabOrder": 12,
+      "tooltip": "Select investigation crawl depth",
+      "status": "PASS"
+    },
+    {
+      "view": "Research View",
+      "control": "Start Research Button",
+      "objectName": "research_start_btn",
+      "accessibleName": "Start deep research",
+      "keyboardFocusable": true,
+      "tabOrder": 13,
+      "tooltip": "Dispatch multi-stage web crawlers",
+      "status": "PASS"
+    },
+    {
+      "view": "Documents View",
+      "control": "Document Filter Input",
+      "objectName": "doc_search_input",
+      "accessibleName": "Filter documents",
+      "keyboardFocusable": true,
+      "tabOrder": 14,
+      "tooltip": "Filter workspace document list",
+      "status": "PASS"
+    },
+    {
+      "view": "Documents View",
+      "control": "Browse File Button",
+      "objectName": "browse_doc_btn",
+      "accessibleName": "Browse file dialog",
+      "keyboardFocusable": true,
+      "tabOrder": 15,
+      "tooltip": "Select local document for ingestion",
+      "status": "PASS"
+    },
+    {
+      "view": "Documents View",
+      "control": "Ingest Document Button",
+      "objectName": "ingest_btn",
+      "accessibleName": "Ingest document to vector database",
+      "keyboardFocusable": true,
+      "tabOrder": 16,
+      "tooltip": "Commit document to semantic vector store",
+      "status": "PASS"
+    },
+    {
+      "view": "Settings View",
+      "control": "Category List",
+      "objectName": "settings_category_list",
+      "accessibleName": "Settings categories",
+      "keyboardFocusable": true,
+      "tabOrder": 17,
+      "tooltip": "Select settings category pane",
+      "status": "PASS"
+    },
+    {
+      "view": "Settings View",
+      "control": "Save Settings Button",
+      "objectName": "save_settings_btn",
+      "accessibleName": "Save settings to disk",
+      "keyboardFocusable": true,
+      "tabOrder": 18,
+      "tooltip": "Persist settings updates",
+      "status": "PASS"
+    },
+    {
+      "view": "Settings View",
+      "control": "Restore Defaults Button",
+      "objectName": "restore_defaults_btn",
+      "accessibleName": "Restore default settings",
+      "keyboardFocusable": true,
+      "tabOrder": 19,
+      "tooltip": "Reset settings to system defaults",
+      "status": "PASS"
+    }
+  ]
+}

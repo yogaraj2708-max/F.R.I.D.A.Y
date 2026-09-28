@@ -1,0 +1,32 @@
+{
+  "trace_id": "trace-notepad-replan-002",
+  "session_id": "test_session",
+  "main_model": "llama3.2:1b",
+  "prompt": "Open Notepad and type hello.",
+  "turn_1": {
+    "model": "llama3.2:1b",
+    "emitted_tool_call": "launch_app",
+    "arguments": {
+      "app_name": "notepad"
+    },
+    "execution_status": "SUCCESS",
+    "verification_status": "VERIFIED"
+  },
+  "turn_2": {
+    "model": "llama3.2:1b",
+    "emitted_tool_call": "type_text",
+    "arguments": {
+      "app_name": "notepad",
+      "text": "hello"
+    },
+    "execution_status": "SUCCESS",
+    "verification_status": "VERIFIED"
+  },
+  "turn_3": {
+    "model": "llama3.2:1b",
+    "final_answer": "Notepad has been launched and 'hello' was typed into the active window."
+  },
+  "python_sequence_hardcoded": false,
+  "model_autonomous_replan": true,
+  "executed_at": "2026-09-27T11:37:14.652331+00:00"
+}

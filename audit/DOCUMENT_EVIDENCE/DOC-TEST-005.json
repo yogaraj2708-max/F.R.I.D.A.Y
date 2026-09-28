@@ -1,0 +1,9 @@
+{
+  "trace_id": "trace-doc-005-4cbf5ea3",
+  "test_id": "DOC-TEST-005",
+  "file": "c:\\Users\\Admin\\OneDrive\\Documents\\jarvis voice\\scratch\\docx_forensic_workspace\\defense_procurement_contract.docx",
+  "reopen_success": true,
+  "xml_tree_valid": true,
+  "file_size_bytes": 37338,
+  "verdict": "PASS"
+}

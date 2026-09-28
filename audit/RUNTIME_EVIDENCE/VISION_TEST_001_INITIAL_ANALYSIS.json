@@ -1,0 +1,20 @@
+{
+  "test_id": "VISION-TEST-001",
+  "description": "Initial Image Attachment -> qwen2.5vl:3b analysis -> ImageContext -> main model reply",
+  "duration_s": 94.23,
+  "vision_model_invoked": true,
+  "selected_vision_model": "qwen2.5vl:3b",
+  "image_id_created": "image_context_001",
+  "context_description": "The image is a screenshot of a diagnostic panel for a computer system. The panel displays various system metrics and options for troubleshooting.",
+  "context_visible_text": [
+    "F.R.I.D.A.Y Core Diagnostics Panel",
+    "Alert 99.4% Memory",
+    "Active Process: IronManTelemetry.exe",
+    "CPU Frequency: 4.8 GHz | RAM: 63.8 GB/64 GB",
+    "Purge Memory",
+    "Restart Service"
+  ],
+  "main_model": "deepseek-r1:8b",
+  "main_model_reply_preview": "Alright, Boss. F.R.I.D.A.Y. has rendered a detailed analysis of the provided image.\n\nBased on the verified context:\n\n1.  **Panel Identification:** This is the *F.R.I.D.A.Y Core Diagnostics Panel*. It appears to be a primary system monitoring interfac",
+  "verdict": "PASS"
+}

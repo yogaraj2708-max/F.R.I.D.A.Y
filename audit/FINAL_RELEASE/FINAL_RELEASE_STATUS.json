@@ -1,0 +1,66 @@
+{
+  "release_gate": {
+    "release_ready": "NO",
+    "version": "3.0.0-RC1",
+    "git_commit": "4f41375f1dd5744990fe94db93a8a7890ce84e89",
+    "build_timestamp": "2026-09-28T14:12:30Z",
+    "main_agent_model": "qwen3.5:9b",
+    "provider": "Ollama Local API",
+    "architecture_compliance": "Model-Agnostic, Zero-Trust Native Tool Loop"
+  },
+  "metrics": {
+    "full_regression_suite": {
+      "total": 803,
+      "passed": 797,
+      "failed": 6,
+      "skipped": 0,
+      "errors": 0,
+      "duration_sec": 972.35
+    },
+    "smoke_certification": {
+      "total": 13,
+      "passed": 13,
+      "failed": 0
+    },
+    "security_certification": {
+      "total": 32,
+      "passed": 32,
+      "failed": 0,
+      "critical_issues": 0,
+      "high_issues": 0
+    },
+    "integration_missions": {
+      "total": 15,
+      "passed": 15,
+      "failed": 0
+    },
+    "knowledge_graph": {
+      "nodes": 5632,
+      "edges": 10468,
+      "communities": 315
+    }
+  },
+  "subsystem_status": {
+    "chat_ui": "PASS",
+    "main_model_resolution": "PASS",
+    "native_tools": "PASS",
+    "deep_research": "PASS",
+    "document_qa_and_editing": "PASS",
+    "vision_specialist": "PASS",
+    "desktop_automation": "PASS",
+    "voice_stt_tts_software": "PASS",
+    "voice_hardware_acoustic_loop": "UNVERIFIED",
+    "browser_dom_automation": "BLOCKED",
+    "scanned_paper_ocr": "UNVERIFIED",
+    "memory_persistence_rag": "PASS",
+    "performance_and_latency": "PASS",
+    "task_lifecycle": "PASS",
+    "resource_governance": "PASS",
+    "persistence": "PASS",
+    "clean_shutdown": "PASS",
+    "soak_4h_continuous": "UNVERIFIED",
+    "packaged_build_clean_vm": "UNVERIFIED"
+  },
+  "blockers_count": 5,
+  "recommendation": "BLOCK RELEASE until physical voice acoustic hardware loop, browser DOM automation scope, scanned OCR, clean VM deployment, and 4h continuous soak are physically completed."
+}

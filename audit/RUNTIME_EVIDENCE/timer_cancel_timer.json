@@ -1,0 +1,13 @@
+{
+  "trace_id": "trace-bb-17763f6e",
+  "category": "Timer",
+  "user_command": "cancel timer",
+  "latency_ms": 0.92,
+  "response": "Active timers have been cancelled, Boss.",
+  "expected_keywords": [
+    "cancelled",
+    "timer"
+  ],
+  "keywords_observed": true,
+  "verdict": "PASS"
+}

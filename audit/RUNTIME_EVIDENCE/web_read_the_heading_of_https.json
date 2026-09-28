@@ -1,0 +1,12 @@
+{
+  "trace_id": "trace-bb-86894fb0",
+  "category": "Web",
+  "user_command": "read the heading of https://example.com",
+  "latency_ms": 335.74,
+  "response": "The main heading on 'https://example.com' is: \"Example Domain\", Boss.",
+  "expected_keywords": [
+    "example domain"
+  ],
+  "keywords_observed": true,
+  "verdict": "PASS"
+}

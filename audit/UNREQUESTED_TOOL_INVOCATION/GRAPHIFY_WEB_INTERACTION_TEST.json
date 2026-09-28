@@ -1,0 +1,29 @@
+{
+  "ATTACHMENT_BRAIN": {
+    "query": "this is your brain",
+    "has_graphify_attachments": true,
+    "preflight_model": "llama3.2:1b",
+    "tool_calls_returned": [
+      "function=Function(name='system_telemetry', arguments={'required': [''], 'type': 'object'})"
+    ],
+    "web_search_invoked": false
+  },
+  "SIMPLE_CHAT": {
+    "query": "Hi",
+    "has_graphify_attachments": false,
+    "preflight_model": "llama3.2:1b",
+    "tool_calls_returned": [
+      "function=Function(name='web_search', arguments={'query': 'Boss'})"
+    ],
+    "web_search_invoked": true
+  },
+  "CURRENT_WEB_QUERY": {
+    "query": "What's happening with NVIDIA right now?",
+    "has_graphify_attachments": false,
+    "preflight_model": "llama3.2:1b",
+    "tool_calls_returned": [
+      "function=Function(name='system_telemetry', arguments={})"
+    ],
+    "web_search_invoked": false
+  }
+}

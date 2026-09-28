@@ -1,0 +1,74 @@
+{
+  "metadata": {
+    "title": "F.R.I.D.A.Y. 3.0 Failure Mode & Resilience Matrix",
+    "version": "3.0.0"
+  },
+  "scenarios": [
+    {
+      "subsystem": "Web Retrieval",
+      "fault": "HTTP 404 / 500 / Connection Refused / Timeout",
+      "expected_behavior": "Return explicit failure message with status code; NEVER substitute LLM memory.",
+      "verified": true
+    },
+    {
+      "subsystem": "Web Retrieval",
+      "fault": "SSRF attempt targeting 127.0.0.1 or 169.254.169.254",
+      "expected_behavior": "Immediate rejection by SSRF Guard before opening socket.",
+      "verified": true
+    },
+    {
+      "subsystem": "Document Agent",
+      "fault": "Ambiguous target (Item 12 in multiple sections)",
+      "expected_behavior": "Halt execution and request user clarification; zero guessing.",
+      "verified": true
+    },
+    {
+      "subsystem": "Document Agent",
+      "fault": "Corrupted or non-existent DOCX file",
+      "expected_behavior": "Return error prefix; original file untouched.",
+      "verified": true
+    },
+    {
+      "subsystem": "Windows UI Automation",
+      "fault": "Target application window absent on desktop",
+      "expected_behavior": "Precondition check fails; report window not found; no keyboard events fired.",
+      "verified": true
+    },
+    {
+      "subsystem": "Windows Process Management",
+      "fault": "Kill request targeting csrss.exe / lsass.exe",
+      "expected_behavior": "Security Gate violation blocked; process untouched.",
+      "verified": true
+    },
+    {
+      "subsystem": "Security Gate",
+      "fault": "Replay of previously used clearance token",
+      "expected_behavior": "Single-use nonce lookup fails; action blocked.",
+      "verified": true
+    },
+    {
+      "subsystem": "Compound Missions",
+      "fault": "Step 2 fails in a 5-step mission",
+      "expected_behavior": "Mission halts; rollback handlers executed; truthful error reported.",
+      "verified": true
+    },
+    {
+      "subsystem": "Local Neural Reasoning",
+      "fault": "Ollama service down or socket refused",
+      "expected_behavior": "Graceful fallback notice advising user service is offline; no unhandled crash.",
+      "verified": true
+    },
+    {
+      "subsystem": "Deep Research Task Lifecycle",
+      "fault": "Web research provider stall / infinite socket hang",
+      "expected_behavior": "Task watchdog detects elapsed deadline, aborts worker, transitions to TIMED_OUT, and emits idle to UI HUD.",
+      "verified": true
+    },
+    {
+      "subsystem": "Deep Research Task Lifecycle",
+      "fault": "Operator hits Stop button mid-synthesis",
+      "expected_behavior": "Worker cooperative abort triggered, task supervisor marks CANCELLED within <1ms, chat bubble finalized, HUD reset to idle.",
+      "verified": true
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "subsystem": "voice_and_audio",
+  "stt_engine": "SpeechRecognition with Google Online STT primary and local offline Whisper fallback",
+  "tts_engine": "FridayVoiceEngine (Kokoro-ONNX neural TTS with Windows SAPI fallback)",
+  "verification_points": [
+    {
+      "feature": "Text input independent of microphone state",
+      "behavior": "Typed user messages execute immediately without waiting for acoustic loop or microphone buffers.",
+      "status": "PASS",
+      "evidence": "friday_ui/views/main_window.py:handle_user_command"
+    },
+    {
+      "feature": "HUD state locking during LLM generation",
+      "behavior": "Voice loop standby signals do not clobber 'ACTIVE // THINKING' state to 'ACTIVE // LISTENING'.",
+      "status": "PASS",
+      "evidence": "friday_ui/core/engine.py:4762-4767 and main_window.py:413-415"
+    },
+    {
+      "feature": "TTS failure does not delete chat bubble text",
+      "behavior": "Assistant text remains fully visible in ChatView regardless of whether TTS succeeds or fails.",
+      "status": "PASS",
+      "evidence": "tests/test_agent_tools_plumbing.py"
+    },
+    {
+      "feature": "Speech cancellation on user stop",
+      "behavior": "Stop button immediately terminates audio playback and clears phrase queue.",
+      "status": "PASS",
+      "evidence": "tests/test_voice_engine.py::TestVoiceEngineParsing::test_speech_cancellation"
+    }
+  ]
+}

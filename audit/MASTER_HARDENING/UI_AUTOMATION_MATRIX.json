@@ -1,0 +1,31 @@
+{
+  "subsystem": "ui_automation",
+  "technology": "Windows UI Automation (pywinauto / uiautomation)",
+  "hierarchy": "UIA Native Controls -> Win32 Window Class -> Keyboard / Focus Automation",
+  "verification_points": [
+    {
+      "action": "launch_app (Notepad)",
+      "behavior": "Finds existing window or launches via launcher; verifies window presence via UIA search.",
+      "status": "PASS",
+      "evidence": "tests/test_peov_architecture.py"
+    },
+    {
+      "action": "type_text (Notepad)",
+      "behavior": "Activates window, sets focus to DocumentControl or EditControl, types text, verifies observed content.",
+      "status": "PASS",
+      "evidence": "tests/regression/test_bug_002_compound_actions.py::test_compound_runtime_execution"
+    },
+    {
+      "action": "inspect_ui (Window inspection)",
+      "behavior": "Verifies visible title and state of target desktop application.",
+      "status": "PASS",
+      "evidence": "tests/test_tool_provenance.py::test_ui_tool_provenance"
+    },
+    {
+      "action": "Compound mission execution (Calculator + Explorer + Notepad)",
+      "behavior": "Decomposes compound prompt, plans DAG, executes each step with postcondition verification.",
+      "status": "PASS",
+      "evidence": "tests/regression/test_bug_002_compound_actions.py"
+    }
+  ]
+}

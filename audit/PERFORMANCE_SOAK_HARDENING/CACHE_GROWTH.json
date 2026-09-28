@@ -1,0 +1,32 @@
+{
+  "audit": "CACHE_GROWTH",
+  "status": "PASS",
+  "caches_audited": {
+    "image_context_cache": {
+      "policy": "FIFO_EVICTION",
+      "max_limit_per_session": 20,
+      "test_insertions": 30,
+      "retained_count": 20,
+      "eviction_verified": true,
+      "deduplication_by_path": true
+    },
+    "working_memory_cache": {
+      "policy": "SLIDING_WINDOW",
+      "max_turns": 20,
+      "test_turns": 50,
+      "retained_turns": 20,
+      "overflow_prevention": true
+    },
+    "model_capability_cache": {
+      "policy": "INVALIDATION_ON_MODEL_SWITCH",
+      "invalidation_trigger": "settings_change:model",
+      "verified_empty_after_switch": true
+    },
+    "vector_hybrid_index": {
+      "policy": "EPHEMERAL_PER_QUERY_REINDEX_OR_BOUNDED",
+      "bm25_reindex_memory_leak": false
+    }
+  },
+  "verdict": "BOUNDED",
+  "analysis": "All internal caches operate under strict deterministic capacity limits and eviction/invalidation policies. Zero unbounded cache growth detected across long sessions and repeated workflows."
+}

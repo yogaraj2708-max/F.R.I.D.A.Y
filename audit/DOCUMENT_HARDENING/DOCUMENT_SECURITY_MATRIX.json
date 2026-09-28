@@ -1,0 +1,92 @@
+[
+  {
+    "vector_id": "SEC-01",
+    "threat_category": "Path Traversal",
+    "payload_example": "../../secret.env",
+    "enforcement_point": "validate_file_path() & agent_bridge.risk_gate()",
+    "expected_action": "Reject immediately without opening file descriptor",
+    "actual_result": "Access blocked: Directory traversal ('..') is prohibited.",
+    "status": "PASS"
+  },
+  {
+    "vector_id": "SEC-02",
+    "threat_category": "Windows Reverse Traversal",
+    "payload_example": "..\\..\\passwords.txt",
+    "enforcement_point": "validate_file_path()",
+    "expected_action": "Normalize path separators and block",
+    "actual_result": "Access blocked: Directory traversal ('..') is prohibited.",
+    "status": "PASS"
+  },
+  {
+    "vector_id": "SEC-03",
+    "threat_category": "UNC Network Share Injection",
+    "payload_example": "\\\\attacker-ip\\share\\payload.pdf",
+    "enforcement_point": "validate_file_path() & agent_bridge.risk_gate()",
+    "expected_action": "Block UNC paths starting with \\\\ or //",
+    "actual_result": "Access blocked: UNC network paths are prohibited.",
+    "status": "PASS"
+  },
+  {
+    "vector_id": "SEC-04",
+    "threat_category": "Protected Windows System Hive Access",
+    "payload_example": "C:\\Windows\\System32\\config\\SAM",
+    "enforcement_point": "is_sensitive_path()",
+    "expected_action": "Block access to system registry hives and security logs",
+    "actual_result": "Access blocked: Path targets protected system files.",
+    "status": "PASS"
+  },
+  {
+    "vector_id": "SEC-05",
+    "threat_category": "Unix Shadow / Passwd Probing",
+    "payload_example": "/etc/shadow",
+    "enforcement_point": "is_sensitive_path()",
+    "expected_action": "Block access to Unix credential files",
+    "actual_result": "Access blocked: Path targets protected system files.",
+    "status": "PASS"
+  },
+  {
+    "vector_id": "SEC-06",
+    "threat_category": "SSH Private Key Exfiltration",
+    "payload_example": "C:/Users/Admin/.ssh/id_rsa",
+    "enforcement_point": "is_sensitive_path()",
+    "expected_action": "Block access to RSA/ED25519 identity files",
+    "actual_result": "Access blocked: Path targets protected system files.",
+    "status": "PASS"
+  },
+  {
+    "vector_id": "SEC-07",
+    "threat_category": "Environment File Exfiltration",
+    "payload_example": "C:/project/.env",
+    "enforcement_point": "is_sensitive_path()",
+    "expected_action": "Block access to secret .env files",
+    "actual_result": "Access blocked: Path targets protected system files.",
+    "status": "PASS"
+  },
+  {
+    "vector_id": "SEC-08",
+    "threat_category": "Symlink / Junction Escape",
+    "payload_example": "Symlink pointing to C:\\Windows\\System32",
+    "enforcement_point": "os.path.realpath() resolution in validate_file_path()",
+    "expected_action": "Resolve symlink to canonical path and re-verify against sensitive targets",
+    "actual_result": "Access blocked: Symlink resolves to protected system files.",
+    "status": "PASS"
+  },
+  {
+    "vector_id": "SEC-09",
+    "threat_category": "False-Positive Name Collision",
+    "payload_example": "C:/docs/sample.docx or sample.pdf",
+    "enforcement_point": "is_sensitive_path() exact component matcher",
+    "expected_action": "Allow legitimate files containing 'sam' substring while still blocking exact SAM registry file",
+    "actual_result": "Authorized and parsed without false positive rejection",
+    "status": "PASS"
+  },
+  {
+    "vector_id": "SEC-10",
+    "threat_category": "Arbitrary Edit Write Traversal",
+    "payload_example": "edit_document(file_path='../../system_config.json')",
+    "enforcement_point": "UnifiedDocumentEditor -> validate_file_path()",
+    "expected_action": "Block edit execution before staging or writing",
+    "actual_result": "Access blocked by security gate",
+    "status": "PASS"
+  }
+]

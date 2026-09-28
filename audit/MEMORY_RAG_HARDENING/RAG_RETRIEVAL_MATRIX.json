@@ -1,0 +1,48 @@
+{
+  "audit_phase": "MEMORY_RAG_ZERO_TRUST_HARDENING",
+  "retrieval_benchmarks": [
+    {
+      "query_type": "Exact Keyword / Code Identifier",
+      "query": "WAL mode SQLite concurrent",
+      "dense_vector_score": 0.58,
+      "bm25_score": 0.95,
+      "hybrid_score": 0.765,
+      "top_match": "specs.txt",
+      "retrieval_latency_ms": 4.2,
+      "status": "PASS"
+    },
+    {
+      "query_type": "High-Level Conceptual",
+      "query": "How do generators save memory lazily in Python?",
+      "dense_vector_score": 0.72,
+      "bm25_score": 0.65,
+      "hybrid_score": 0.685,
+      "top_match": "python_tips.txt",
+      "retrieval_latency_ms": 5.1,
+      "status": "PASS"
+    },
+    {
+      "query_type": "Domain-Filtered Query (TECHNICAL)",
+      "query": "CUDA inference",
+      "target_domain": "TECHNICAL",
+      "returned_chunks": 1,
+      "cross_domain_leakage": 0,
+      "retrieval_latency_ms": 3.8,
+      "status": "PASS"
+    },
+    {
+      "query_type": "Irrelevant / Negative Query",
+      "query": "unrelated alien biology recipe",
+      "max_hybrid_score": 0.02,
+      "filtered_out": true,
+      "returned_chunks": 0,
+      "status": "PASS"
+    }
+  ],
+  "alpha_fusion_weight": 0.5,
+  "top_k_bounds": {
+    "min_k": 1,
+    "default_k": 3,
+    "max_k": 10
+  }
+}

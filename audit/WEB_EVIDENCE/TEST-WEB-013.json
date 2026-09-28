@@ -1,0 +1,24 @@
+{
+  "trace_id": "trace-web-013-8841a2de",
+  "test_id": "TEST-WEB-013",
+  "user_text": "read http://127.0.0.1:58800/type_mismatch",
+  "router_result": "TIER_1_FAST_PATH_WEB",
+  "selected_skill": "web_reading",
+  "url": "http://127.0.0.1:58800/type_mismatch",
+  "method": "GET",
+  "timestamp": "2026-09-25T16:29:14Z",
+  "status_code": 200,
+  "headers": {
+    "server": "BaseHTTP/0.6 Python/3.11.9",
+    "date": "Fri, 25 Sep 2026 16:29:14 GMT",
+    "content-type": "text/html",
+    "content-length": "10"
+  },
+  "response_length": 10,
+  "raw_body_hash": "3d5ccb0cef4d3fd8b2474faf2038fbbb654c5c4e992aef8df4a48e8a3372d362",
+  "parser": "lxml.html",
+  "parsed_result": "Binary payload stripped safely",
+  "answer_source": "LIVE_HTTP_RESPONSE",
+  "final_output": "Content extracted from http://127.0.0.1:58800/type_mismatch:\nSummary: \"\ufffdPNG\"",
+  "verdict": "PASS"
+}

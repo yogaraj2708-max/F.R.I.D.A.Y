@@ -1,0 +1,24 @@
+{
+  "audit_phase": "MEMORY_RAG_ZERO_TRUST_HARDENING",
+  "vector_stores": [
+    {
+      "name": "RAGEngine (RAG 2.0)",
+      "db_path": "%APPDATA%/Friday/friday_rag_2.db",
+      "journal_mode": "WAL",
+      "lock_mechanism": "threading.RLock()",
+      "integrity_check": "PRAGMA integrity_check -> 'ok'",
+      "corruption_recovery": "rebuild_database() safely truncates/rebuilds tables",
+      "restart_consistency": "Identical similarity scores and rankings across process restart",
+      "status": "PASS"
+    },
+    {
+      "name": "FridayVectorStore (Local UI KB)",
+      "db_path": "%APPDATA%/Friday/friday_vectors.db",
+      "journal_mode": "WAL",
+      "lock_mechanism": "Thread-safe connection context",
+      "integrity_check": "PRAGMA integrity_check -> 'ok'",
+      "deletion_verification": "delete_document() verified absent via SELECT readback",
+      "status": "PASS"
+    }
+  ]
+}

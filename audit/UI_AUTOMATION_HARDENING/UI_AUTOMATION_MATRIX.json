@@ -1,0 +1,101 @@
+{
+  "version": "3.0.0",
+  "subsystem": "DESKTOP_UI_AUTOMATION_COMPUTER_CONTROL",
+  "audit_standard": "ZERO_TRUST_FORENSIC_HARDENING",
+  "priority_hierarchy": [
+    {
+      "tier": 1,
+      "name": "SEMANTIC_UIA",
+      "mechanism": "Windows UIAutomation COM Patterns (Invoke, Toggle, SelectionItem, Value, Text)",
+      "is_primary": true
+    },
+    {
+      "tier": 2,
+      "name": "WIN32_CONTROLS",
+      "mechanism": "Win32 Window Messages (BM_CLICK, WM_SETTEXT, WM_GETTEXT)",
+      "is_primary": false
+    },
+    {
+      "tier": 3,
+      "name": "KEYBOARD_SHORTCUTS",
+      "mechanism": "Windows SendInput Key Sequences & Accelerated Mnemonic Navigation",
+      "is_primary": false
+    },
+    {
+      "tier": 4,
+      "name": "VISION_ASSISTED",
+      "mechanism": "Multimodal Visual Bounding Box Localization with Grounding Verification",
+      "is_primary": false
+    },
+    {
+      "tier": 5,
+      "name": "COORDINATE_FALLBACK",
+      "mechanism": "Physical Desktop Coordinate Injection (Strict Final Fallback Only)",
+      "is_primary": false
+    }
+  ],
+  "supported_actions": {
+    "launch_app": {
+      "parameters": ["app_name", "timeout", "task_id"],
+      "preconditions": ["Security Gate clearance", "Resolve executable / Shell URI safely"],
+      "postconditions": ["HWND must exist", "Window must be visible", "PID verified", "Interactive desktop attached"],
+      "readback_mechanism": "ui_inspector.inspect_window"
+    },
+    "inspect_ui": {
+      "parameters": ["app_name", "hwnd", "max_elements", "wake_window", "task_id"],
+      "preconditions": ["Target window must exist", "Interactive desktop attached"],
+      "postconditions": ["Extracts window title, PID, process name, HWND, controls with type, name, automation ID, rect, states, values"],
+      "readback_mechanism": "UIA Visual Tree Traversal + Win32 EnumWindows Fallback"
+    },
+    "click_control": {
+      "parameters": ["control_name", "automation_id", "app_name", "control_type", "task_id"],
+      "preconditions": ["Target window in foreground", "Control identified", "Control enabled", "Control not stale"],
+      "postconditions": ["Post-action UI inspection", "State alteration verified (e.g. selection, value change, window state)"],
+      "readback_mechanism": "ui_inspector.inspect_window post-action comparison"
+    },
+    "type_text": {
+      "parameters": ["text", "app_name", "control_name", "mode", "clear_first", "task_id"],
+      "preconditions": ["Target window verified in foreground", "Target control is editable", "Control not stale"],
+      "postconditions": ["Text read back via TextPattern or ValuePattern", "Verified match against injected text"],
+      "readback_mechanism": "TextPattern.DocumentRange.GetText(-1) / ValuePattern.Value"
+    },
+    "cancel_task": {
+      "parameters": ["task_id"],
+      "preconditions": ["Task active or queued"],
+      "postconditions": ["Task flagged as CANCELLED", "Subsequent actions refused immediately"],
+      "readback_mechanism": "is_cancelled() barrier check"
+    }
+  },
+  "verified_applications": [
+    {
+      "name": "Notepad (Windows 11 Modern WinUI 3)",
+      "activation": "shell:AppsFolder\\Microsoft.WindowsNotepad_8wekyb3d8bbwe!App",
+      "primary_control": "DocumentControl (RichEditD2DPT)",
+      "verified_operations": ["launch_app", "inspect_ui", "type_text", "readback_verification", "multi_line_type"]
+    },
+    {
+      "name": "Calculator (Windows 11 Modern)",
+      "activation": "calc.exe / ms-calculator:",
+      "primary_control": "ButtonControl / TextControl (CalculatorResults)",
+      "verified_operations": ["launch_app", "inspect_ui", "click_control (7, +, 5, =)", "display_readback (Display is 12)"]
+    },
+    {
+      "name": "File Explorer",
+      "activation": "explorer.exe",
+      "primary_control": "CabinetWClass",
+      "verified_operations": ["launch_app", "inspect_ui", "window_title_verification"]
+    },
+    {
+      "name": "Microsoft Edge Browser",
+      "activation": "msedge.exe",
+      "primary_control": "Chrome_WidgetWin_1",
+      "verified_operations": ["inspect_ui", "tab_control_detection"]
+    },
+    {
+      "name": "F.R.I.D.A.Y. Application Dashboard",
+      "activation": "python -m friday_ui.main",
+      "primary_control": "FridayMainWindow",
+      "verified_operations": ["inspect_ui", "accessibility_identifiers_15_of_15"]
+    }
+  ]
+}

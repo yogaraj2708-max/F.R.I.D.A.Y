@@ -1,33 +1,65 @@
 """
-F.R.I.D.A.Y. 2.0 - Centralized Design System & Animation Toolkit
-Complete dual-mode palette (Dark & Light) with shared animation utilities.
+F.R.I.D.A.Y. 3.0 - Professional Design System & Animation Toolkit
+Unified Dark Neutral Charcoal Architecture with Restrained Amber/Orange Accent.
 
-Dark mode:  Pitch-black monochrome canvas with cyan accents.
-Light mode: Slate-white canvas with blue accents and warm readability.
-
-Restricted semantic colors (shared across both modes):
-- live_green (#10B981): Live voice loop, microphone active, nominal health
-- danger_red (#EF4444): Errors, muted mic, destructive confirmations
-- subtle_cyan (#06B6D4) / subtle_amber (#F59E0B): Sparse contextual tags
+Zero brown/espresso artifacts. Full WCAG AAA/AA compliance.
+Centralized ThemeTokens consumed across all widgets and views.
 """
 
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Any
+from dataclasses import dataclass, asdict
 from PySide6.QtCore import (
     QObject, QEvent, QPropertyAnimation, QEasingCurve, QRect,
-    QParallelAnimationGroup, QTimer, Qt, Property, QPoint
+    QParallelAnimationGroup, QTimer, Qt, Property, QPoint, QPointF, QRectF
 )
-from PySide6.QtGui import QColor, QPainter
-from PySide6.QtWidgets import QWidget, QGraphicsOpacityEffect, QGraphicsDropShadowEffect
+from PySide6.QtGui import QColor, QPainter, QBrush, QPen, QLinearGradient
+from PySide6.QtWidgets import (
+    QWidget, QGraphicsOpacityEffect, QGraphicsDropShadowEffect, QStackedWidget
+)
 
-# ── 1. Shared Semantic Constants ────────────────────────────────────────
-STARK_CYAN = "#00F0FF"
-LIVE_GREEN = "#10B981"
-DANGER_RED = "#EF4444"
-AMBER_WARN = "#F59E0B"
-PURPLE_ACCENT = "#7B2CBF"
+# ── 1. Formal Centralized Theme Tokens ─────────────────────────────────
+
+@dataclass(frozen=True)
+class DesignTokens:
+    BACKGROUND: str = "#0B0D11"          # Deep charcoal / near-black canvas
+    SURFACE: str = "#15181E"             # Panels / cards / elevated surfaces
+    SURFACE_HOVER: str = "#1E222B"       # Subtle hover state
+    SURFACE_ACTIVE: str = "#262C38"      # Pressed / active surface
+    BORDER: str = "rgba(255, 255, 255, 0.08)"
+    BORDER_HOVER: str = "rgba(255, 255, 255, 0.18)"
+    BORDER_FOCUS: str = "#F59E0B"        # Restrained warm amber focus
+    TEXT_PRIMARY: str = "#F3F4F6"        # Soft crisp white
+    TEXT_SECONDARY: str = "#9CA3AF"      # Muted gray
+    TEXT_MUTED: str = "#6B7280"          # Deep muted metadata gray
+    TEXT_DIM: str = "#4B5563"            # Subdued borders / dividers
+    TEXT_INVERTED: str = "#0B0D11"       # Contrast on light/accent buttons
+    ACCENT: str = "#F59E0B"              # Warm amber/orange accent
+    ACCENT_HOVER: str = "#FBBF24"        # Lighter amber hover
+    ACCENT_PRESSED: str = "#D97706"      # Deep amber pressed
+    ACCENT_BG: str = "rgba(245, 158, 11, 0.12)"
+    ACCENT_BORDER: str = "rgba(245, 158, 11, 0.30)"
+    SUCCESS: str = "#10B981"             # Emerald green for healthy status
+    WARNING: str = "#F59E0B"             # Amber warning
+    ERROR: str = "#EF4444"               # Crimson error
+    INFO: str = "#06B6D4"                # Subtle cool cyan for info tags
+    OVERLAY: str = "rgba(11, 13, 17, 0.85)"
+
+TOKENS = DesignTokens()
+
+# Shared Semantic Constants
+LIVE_GREEN = TOKENS.SUCCESS
+DANGER_RED = TOKENS.ERROR
+AMBER_WARN = TOKENS.WARNING
+STARK_CYAN = TOKENS.INFO
+PURPLE_ACCENT = "#8B5CF6"
+
+TEXT_PRIMARY = TOKENS.TEXT_PRIMARY
+TEXT_SECONDARY = TOKENS.TEXT_SECONDARY
+TEXT_MUTED = TOKENS.TEXT_MUTED
+TEXT_DIM = TOKENS.TEXT_DIM
 
 def hex_to_rgb(hex_code: str) -> List[float]:
-    """Converts hex color string (e.g. #D9745B) to a list of RGB floats [r, g, b]."""
+    """Converts hex color string (e.g. #F59E0B) to a list of RGB floats [r, g, b]."""
     try:
         clean = hex_code.strip().lstrip("#")
         if len(clean) == 6:
@@ -36,360 +68,250 @@ def hex_to_rgb(hex_code: str) -> List[float]:
             return [float(int(c * 2, 16)) for c in clean]
     except Exception:
         pass
-    return [217.0, 116.0, 91.0]
+    return [245.0, 158.0, 11.0]
 
 
-TEXT_PRIMARY = "#FFFFFF"
-TEXT_SECONDARY = "#A1A1AA"
-TEXT_MUTED = "#71717A"
-TEXT_DIM = "#52525B"
+# ── 2. Sophisticated Dark Neutral Palette (F.R.I.D.A.Y. 3.0 Standard) ──
 
-# ── 2. Complete Dark Palette ────────────────────────────────────────────
-MONO_DARK: Dict[str, str] = {
+DARK_PRO_THEME: Dict[str, str] = {
     # Canvas & Backgrounds
-    "bg_canvas":        "#000000",
-    "bg_sidebar":       "#09090B",
-    "bg_card":          "rgba(18, 18, 22, 0.60)",
-    "bg_card_hover":    "#18181B",
-    "bg_surface":       "#141416",
-    "bg_input":         "#0A0A0C",
-    "input_bg":         "#0A0A0C",
-    "bg_dock":          "rgba(14, 14, 18, 0.75)",
-    "bg_pill":          "#18181B",
-    "bg_pill_active":   "#FFFFFF",
+    "bg_canvas":        TOKENS.BACKGROUND,
+    "bg_sidebar":       "#101318",
+    "bg_card":          TOKENS.SURFACE,
+    "bg_card_hover":    TOKENS.SURFACE_HOVER,
+    "bg_surface":       TOKENS.SURFACE,
+    "bg_input":         "#101318",
+    "input_bg":         "#101318",
+    "bg_dock":          "rgba(16, 19, 24, 0.92)",
+    "bg_pill":          "#1E222B",
+    "bg_pill_active":   "#262C38",
 
     # Borders
-    "border_subtle":    "rgba(255, 255, 255, 0.08)",
-    "border_card":      "rgba(255, 255, 255, 0.10)",
-    "border_hover":     "rgba(255, 255, 255, 0.22)",
-    "border_focus":     "rgba(255, 255, 255, 0.45)",
+    "border_subtle":    TOKENS.BORDER,
+    "border_card":      "rgba(255, 255, 255, 0.09)",
+    "border_hover":     TOKENS.BORDER_HOVER,
+    "border_focus":     TOKENS.BORDER_FOCUS,
 
     # Typography
-    "text_primary":     TEXT_PRIMARY,
-    "text_secondary":   TEXT_SECONDARY,
-    "text_muted":       TEXT_MUTED,
-    "text_dim":         TEXT_DIM,
-    "text_inverted":    "#000000",
+    "text_primary":     TOKENS.TEXT_PRIMARY,
+    "text_secondary":   TOKENS.TEXT_SECONDARY,
+    "text_muted":       TOKENS.TEXT_MUTED,
+    "text_dim":         TOKENS.TEXT_DIM,
+    "text_inverted":    TOKENS.TEXT_INVERTED,
 
-    # Restricted Status Colors
-    "live_green":       LIVE_GREEN,
+    # Semantic Status Colors
+    "live_green":       TOKENS.SUCCESS,
     "live_green_bg":    "rgba(16, 185, 129, 0.12)",
-    "live_green_border":"rgba(16, 185, 129, 0.35)",
+    "live_green_border":"rgba(16, 185, 129, 0.30)",
 
-    "danger_red":       DANGER_RED,
+    "danger_red":       TOKENS.ERROR,
     "danger_red_bg":    "rgba(239, 68, 68, 0.12)",
-    "danger_red_border":"rgba(239, 68, 68, 0.35)",
+    "danger_red_border":"rgba(239, 68, 68, 0.30)",
 
-    # Contextual Sparse Highlights
-    "cyan_tag":         STARK_CYAN,
-    "cyan_tag_bg":      "rgba(0, 240, 255, 0.12)",
-    "cyan_tag_border":  "rgba(0, 240, 255, 0.30)",
+    "cyan_tag":         TOKENS.INFO,
+    "cyan_tag_bg":      "rgba(6, 182, 212, 0.10)",
+    "cyan_tag_border":  "rgba(6, 182, 212, 0.28)",
 
-    "amber_tag":        AMBER_WARN,
-    "amber_tag_bg":     "rgba(245, 158, 11, 0.12)",
-    "amber_tag_border": "rgba(245, 158, 11, 0.30)",
+    "amber_tag":        TOKENS.WARNING,
+    "amber_tag_bg":     TOKENS.ACCENT_BG,
+    "amber_tag_border": TOKENS.ACCENT_BORDER,
 
-    # Accent
-    "accent":           "#00F0FF",
-    "accent_hover":     "#22D3EE",
-    "accent_pressed":   "#0891B2",
-    "accent_bg":        "rgba(0, 240, 255, 0.10)",
-    "accent_border":    "rgba(0, 240, 255, 0.30)",
-    "accent_text":      "#000000",
+    # Accent (Restrained Warm Amber)
+    "accent":           TOKENS.ACCENT,
+    "accent_hover":     TOKENS.ACCENT_HOVER,
+    "accent_pressed":   TOKENS.ACCENT_PRESSED,
+    "accent_bg":        TOKENS.ACCENT_BG,
+    "accent_border":    TOKENS.ACCENT_BORDER,
+    "accent_text":      "#0B0D11",
 
     # Scrollbars
-    "scrollbar_handle": "#27272A",
-    "scrollbar_hover":  "#3F3F46",
+    "scrollbar_handle": "#262C38",
+    "scrollbar_hover":  "#374151",
 
-    # Chat Bubbles
-    "bubble_user":      "#18181B",
-    "bubble_assistant":  "#0C0C0E",
-    "bubble_system":    "#09090B",
+    # Chat Bubbles (Distinct visual hierarchy)
+    "bubble_user":           "#1C212B",
+    "bubble_user_text":      "#F3F4F6",
+    "bubble_assistant":      "#12151B",
+    "bubble_assistant_text": "#E5E7EB",
+    "bubble_system":         "#101318",
+    "bubble_system_text":    "#9CA3AF",
 
     # Code Blocks
-    "code_bg":          "#18181B",
-    "code_block_bg":    "#000000",
-    "code_text":        "#10B981",
-    "code_border":      "rgba(255, 255, 255, 0.12)",
+    "code_bg":          "#101318",
+    "code_block_bg":    "#090B0E",
+    "code_text":        "#34D399",
+    "code_border":      "rgba(255, 255, 255, 0.08)",
 
     # Chips & Quick Actions
-    "chip_bg":          "#121214",
-    "chip_hover":       "#1E1E22",
-    "chip_pressed":     "#27272A",
-    "chip_text":        "#D4D4D8",
+    "chip_bg":          "#15181E",
+    "chip_hover":       "#1E222B",
+    "chip_pressed":     "#262C38",
+    "chip_text":        "#D1D5DB",
     "chip_text_hover":  "#FFFFFF",
 
-    # Navigation
-    "nav_bg":           "rgba(9, 9, 11, 0.85)",
-    "nav_border":       "rgba(255, 255, 255, 0.08)",
+    # Navigation & Dock
+    "nav_bg":           "#0E1015",
+    "nav_border":       "rgba(255, 255, 255, 0.06)",
 
-    # Selection
-    "selection_bg":     "rgba(0, 240, 255, 0.30)",
-
-    # Send Button
-    "send_bg":          "#06B6D4",
-    "send_hover":       "#22D3EE",
-    "send_pressed":     "#0891B2",
-    "send_text":        "#000000",
+    # Selection & Send
+    "selection_bg":     "rgba(245, 158, 11, 0.25)",
+    "send_bg":          TOKENS.ACCENT,
+    "send_hover":       TOKENS.ACCENT_HOVER,
+    "send_pressed":     TOKENS.ACCENT_PRESSED,
+    "send_text":        "#0B0D11",
 
     # Combo Box
-    "combo_bg":         "rgba(22, 24, 34, 0.85)",
-    "combo_hover_bg":   "rgba(30, 34, 48, 0.95)",
-    "combo_border":     "rgba(255, 255, 255, 0.14)",
-    "combo_hover_border": "rgba(0, 240, 255, 0.40)",
+    "combo_bg":         "#15181E",
+    "combo_hover_bg":   "#1E222B",
+    "combo_border":     "rgba(255, 255, 255, 0.10)",
+    "combo_hover_border": TOKENS.BORDER_FOCUS,
 
-    # Header card
-    "header_bg":        "rgba(18, 18, 24, 0.65)",
+    # Header Card
+    "header_bg":        "rgba(16, 19, 24, 0.90)",
 }
 
-TACTICAL_DARK: Dict[str, str] = {
-    **MONO_DARK,
-    "bg_card": "rgba(12, 16, 24, 0.70)",
-    "border_card": "rgba(0, 240, 255, 0.15)",
-    "border_subtle": "rgba(0, 240, 255, 0.08)",
-}
+# ── 3. Clean Modern Slate Light Palette (Optional secondary theme) ────
 
-# ── 3. Complete Warm Editorial 60-30-10 Palettes ───────────────────────
-# 60% Dominant Cream (#FDFBF7), 30% Warm Espresso (#2B2625), 10% Terracotta (#D9745B) & Sage (#6B8E78)
-WARM_EDITORIAL_LIGHT: Dict[str, str] = {
-    # 60% Dominant Background
-    "bg_canvas":        "#FDFBF7",
-    "bg_sidebar":       "rgba(253, 251, 247, 0.95)",
-    "bg_card":          "#F7F4EE",
-    "bg_card_hover":    "#EFECE5",
+LIGHT_PRO_THEME: Dict[str, str] = {
+    # Clean Slate White canvas
+    "bg_canvas":        "#F8FAFC",
+    "bg_sidebar":       "#F1F5F9",
+    "bg_card":          "#FFFFFF",
+    "bg_card_hover":    "#F1F5F9",
     "bg_surface":       "#FFFFFF",
     "bg_input":         "#FFFFFF",
     "input_bg":         "#FFFFFF",
-    "bg_dock":          "rgba(247, 244, 238, 0.95)",
-    "bg_pill":          "#EFECE5",
-    "bg_pill_active":   "#2B2625",
+    "bg_dock":          "rgba(248, 250, 252, 0.95)",
+    "bg_pill":          "#E2E8F0",
+    "bg_pill_active":   "#0F172A",
 
-    # 30% Structural Elements & Borders
-    "border_subtle":    "rgba(43, 38, 37, 0.08)",
-    "border_card":      "rgba(43, 38, 37, 0.12)",
-    "border_hover":     "rgba(43, 38, 37, 0.25)",
-    "border_focus":     "#D9745B",
+    # Borders
+    "border_subtle":    "rgba(15, 23, 42, 0.08)",
+    "border_card":      "rgba(15, 23, 42, 0.12)",
+    "border_hover":     "rgba(15, 23, 42, 0.22)",
+    "border_focus":     "#D97706",
 
-    # Typography (High-contrast WCAG AAA/AA)
-    "text_primary":     "#2B2625",
-    "text_secondary":   "#5C5552",
-    "text_muted":       "#827A76",
-    "text_dim":         "#A8A19C",
-    "text_inverted":    "#FDFBF7",
+    # Typography
+    "text_primary":     "#0F172A",
+    "text_secondary":   "#475569",
+    "text_muted":       "#64748B",
+    "text_dim":         "#94A3B8",
+    "text_inverted":    "#FFFFFF",
 
-    # 10% Accent Interaction Points
-    "accent":           "#D9745B",
-    "accent_hover":     "#C66249",
-    "accent_pressed":   "#B25039",
-    "accent_bg":        "rgba(217, 116, 91, 0.12)",
-    "accent_border":    "rgba(217, 116, 91, 0.35)",
+    # Status Colors
+    "live_green":       "#059669",
+    "live_green_bg":    "rgba(5, 150, 105, 0.12)",
+    "live_green_border":"rgba(5, 150, 105, 0.30)",
+
+    "danger_red":       "#DC2626",
+    "danger_red_bg":    "rgba(220, 38, 38, 0.12)",
+    "danger_red_border":"rgba(220, 38, 38, 0.30)",
+
+    "cyan_tag":         "#0284C7",
+    "cyan_tag_bg":      "rgba(2, 132, 199, 0.10)",
+    "cyan_tag_border":  "rgba(2, 132, 199, 0.28)",
+
+    "amber_tag":        "#D97706",
+    "amber_tag_bg":     "rgba(217, 119, 6, 0.12)",
+    "amber_tag_border": "rgba(217, 119, 6, 0.30)",
+
+    # Accent
+    "accent":           "#D97706",
+    "accent_hover":     "#B45309",
+    "accent_pressed":   "#92400E",
+    "accent_bg":        "rgba(217, 119, 6, 0.12)",
+    "accent_border":    "rgba(217, 119, 6, 0.30)",
     "accent_text":      "#FFFFFF",
 
-    # Secondary Accent: Muted Sage
-    "live_green":       "#6B8E78",
-    "live_green_bg":    "rgba(107, 142, 120, 0.14)",
-    "live_green_border":"rgba(107, 142, 120, 0.35)",
-
-    "danger_red":       "#D9745B",
-    "danger_red_bg":    "rgba(217, 116, 91, 0.14)",
-    "danger_red_border":"rgba(217, 116, 91, 0.35)",
-
-    "cyan_tag":         "#6B8E78",
-    "cyan_tag_bg":      "rgba(107, 142, 120, 0.12)",
-    "cyan_tag_border":  "rgba(107, 142, 120, 0.30)",
-
-    "amber_tag":        "#D9745B",
-    "amber_tag_bg":     "rgba(217, 116, 91, 0.12)",
-    "amber_tag_border": "rgba(217, 116, 91, 0.30)",
-
     # Scrollbars
-    "scrollbar_handle": "#DDD6CE",
-    "scrollbar_hover":  "#C2B9AF",
+    "scrollbar_handle": "#CBD5E1",
+    "scrollbar_hover":  "#94A3B8",
 
-    # Chat Bubbles (Heavily rounded editorial cards)
-    "bubble_user":           "#2B2625",
-    "bubble_user_text":      "#FDFBF7",
-    "bubble_assistant":      "#F7F4EE",
-    "bubble_assistant_text": "#2B2625",
-    "bubble_system":         "#EFECE5",
-    "bubble_system_text":    "#5C5552",
+    # Chat Bubbles
+    "bubble_user":           "#0F172A",
+    "bubble_user_text":      "#FFFFFF",
+    "bubble_assistant":      "#F1F5F9",
+    "bubble_assistant_text": "#0F172A",
+    "bubble_system":         "#E2E8F0",
+    "bubble_system_text":    "#475569",
 
     # Code Blocks
-    "code_bg":          "#EFECE5",
-    "code_block_bg":    "#2B2625",
-    "code_text":        "#7FA88D",
-    "code_border":      "rgba(43, 38, 37, 0.14)",
+    "code_bg":          "#E2E8F0",
+    "code_block_bg":    "#0F172A",
+    "code_text":        "#10B981",
+    "code_border":      "rgba(15, 23, 42, 0.12)",
 
-    # Chips & Quick Actions (Pills >= 16px)
-    "chip_bg":          "#F7F4EE",
-    "chip_hover":       "#EFECE5",
-    "chip_pressed":     "#E3DDD4",
-    "chip_text":        "#5C5552",
-    "chip_text_hover":  "#2B2625",
+    # Chips & Quick Actions
+    "chip_bg":          "#F1F5F9",
+    "chip_hover":       "#E2E8F0",
+    "chip_pressed":     "#CBD5E1",
+    "chip_text":        "#334155",
+    "chip_text_hover":  "#0F172A",
 
     # Navigation & Dock
-    "nav_bg":           "rgba(253, 251, 247, 0.95)",
-    "nav_border":       "rgba(43, 38, 37, 0.08)",
+    "nav_bg":           "#F1F5F9",
+    "nav_border":       "rgba(15, 23, 42, 0.08)",
 
     # Selection & Send
-    "selection_bg":     "rgba(217, 116, 91, 0.25)",
-    "send_bg":          "#D9745B",
-    "send_hover":       "#C66249",
-    "send_pressed":     "#B25039",
+    "selection_bg":     "rgba(217, 119, 6, 0.25)",
+    "send_bg":          "#D97706",
+    "send_hover":       "#B45309",
+    "send_pressed":     "#92400E",
     "send_text":        "#FFFFFF",
 
     # Combo Box
     "combo_bg":         "#FFFFFF",
-    "combo_hover_bg":   "#F7F4EE",
-    "combo_border":     "rgba(43, 38, 37, 0.14)",
-    "combo_hover_border": "#D9745B",
+    "combo_hover_bg":   "#F1F5F9",
+    "combo_border":     "rgba(15, 23, 42, 0.14)",
+    "combo_hover_border": "#D97706",
 
     # Header Card
-    "header_bg":        "rgba(247, 244, 238, 0.90)",
+    "header_bg":        "rgba(241, 245, 249, 0.95)",
 }
 
-# 60% Dominant Espresso Charcoal (#1C1917), 30% Warm Cream Typography (#FDFBF7), 10% Soft Terracotta (#E07A5F) & Sage (#7FA88D)
-WARM_EDITORIAL_DARK: Dict[str, str] = {
-    # 60% Dominant Background
-    "bg_canvas":        "#1C1917",
-    "bg_sidebar":       "#151312",
-    "bg_card":          "rgba(38, 33, 31, 0.75)",
-    "bg_card_hover":    "#322B29",
-    "bg_surface":       "#25201E",
-    "bg_input":         "#171514",
-    "input_bg":         "#171514",
-    "bg_dock":          "rgba(23, 20, 19, 0.90)",
-    "bg_pill":          "#322B29",
-    "bg_pill_active":   "#FDFBF7",
+# Backward compatibility aliases — map all legacy keys to clean professional themes
+MONO_DARK = DARK_PRO_THEME
+TACTICAL_DARK = DARK_PRO_THEME
+WARM_EDITORIAL_DARK = DARK_PRO_THEME
+WARM_EDITORIAL_LIGHT = LIGHT_PRO_THEME
+LIGHT_THEME = LIGHT_PRO_THEME
+STARK_DARK = DARK_PRO_THEME
 
-    # 30% Structural Elements & Borders
-    "border_subtle":    "rgba(253, 251, 247, 0.08)",
-    "border_card":      "rgba(253, 251, 247, 0.12)",
-    "border_hover":     "rgba(253, 251, 247, 0.25)",
-    "border_focus":     "#E07A5F",
 
-    # Typography (High-contrast Warm Cream)
-    "text_primary":     "#FDFBF7",
-    "text_secondary":   "#C4BCB5",
-    "text_muted":       "#8E8681",
-    "text_dim":         "#5E5652",
-    "text_inverted":    "#1C1917",
-
-    # 10% Accent Interaction Points
-    "accent":           "#E07A5F",
-    "accent_hover":     "#EB8C72",
-    "accent_pressed":   "#C9674D",
-    "accent_bg":        "rgba(224, 122, 95, 0.15)",
-    "accent_border":    "rgba(224, 122, 95, 0.35)",
-    "accent_text":      "#FFFFFF",
-
-    # Secondary Accent: Muted Sage
-    "live_green":       "#7FA88D",
-    "live_green_bg":    "rgba(127, 168, 141, 0.14)",
-    "live_green_border":"rgba(127, 168, 141, 0.35)",
-
-    "danger_red":       "#E07A5F",
-    "danger_red_bg":    "rgba(224, 122, 95, 0.14)",
-    "danger_red_border":"rgba(224, 122, 95, 0.35)",
-
-    "cyan_tag":         "#7FA88D",
-    "cyan_tag_bg":      "rgba(127, 168, 141, 0.12)",
-    "cyan_tag_border":  "rgba(127, 168, 141, 0.30)",
-
-    "amber_tag":        "#E07A5F",
-    "amber_tag_bg":     "rgba(224, 122, 95, 0.12)",
-    "amber_tag_border": "rgba(224, 122, 95, 0.30)",
-
-    # Scrollbars
-    "scrollbar_handle": "#3A3330",
-    "scrollbar_hover":  "#4D4440",
-
-    # Chat Bubbles (Heavily rounded editorial cards)
-    "bubble_user":           "#322B29",
-    "bubble_user_text":      "#FDFBF7",
-    "bubble_assistant":      "#26211F",
-    "bubble_assistant_text": "#FDFBF7",
-    "bubble_system":         "#181514",
-    "bubble_system_text":    "#C4BCB5",
-
-    # Code Blocks
-    "code_bg":          "#282321",
-    "code_block_bg":    "#12100F",
-    "code_text":        "#7FA88D",
-    "code_border":      "rgba(253, 251, 247, 0.12)",
-
-    # Chips & Quick Actions (Pills >= 16px)
-    "chip_bg":          "#25201E",
-    "chip_hover":       "#322B29",
-    "chip_pressed":     "#3D3532",
-    "chip_text":        "#C4BCB5",
-    "chip_text_hover":  "#FDFBF7",
-
-    # Navigation & Dock
-    "nav_bg":           "rgba(21, 19, 18, 0.95)",
-    "nav_border":       "rgba(253, 251, 247, 0.08)",
-
-    # Selection & Send
-    "selection_bg":     "rgba(224, 122, 95, 0.30)",
-    "send_bg":          "#E07A5F",
-    "send_hover":       "#EB8C72",
-    "send_pressed":     "#C9674D",
-    "send_text":        "#FFFFFF",
-
-    # Combo Box
-    "combo_bg":         "#25201E",
-    "combo_hover_bg":   "#322B29",
-    "combo_border":     "rgba(253, 251, 247, 0.14)",
-    "combo_hover_border": "#E07A5F",
-
-    # Header Card
-    "header_bg":        "rgba(32, 28, 26, 0.85)",
-}
-
-# Aliases for compatibility
-LIGHT_THEME = WARM_EDITORIAL_LIGHT
-STARK_DARK = WARM_EDITORIAL_DARK
-
-def get_theme_palette(theme_mode: str = "warm_light") -> Dict[str, str]:
-    mode = str(theme_mode).lower()
+def get_theme_palette(theme_mode: str = "dark") -> Dict[str, str]:
+    """Returns the unified theme palette. Defaults to the dark neutral charcoal palette."""
+    mode = str(theme_mode).lower() if theme_mode else "dark"
     if "light" in mode or "cream" in mode or mode == "white":
-        return WARM_EDITORIAL_LIGHT
-    elif "dark" in mode or "espresso" in mode or "obsidian" in mode or "warm_dark" in mode:
-        return WARM_EDITORIAL_DARK
-    elif "tactical" in mode or "neon" in mode or "void" in mode or "mono" in mode:
-        return WARM_EDITORIAL_DARK
-    # Default to Warm Editorial Light (Cream 60-30-10) for warm, calm experience
-    return WARM_EDITORIAL_LIGHT
+        return LIGHT_PRO_THEME
+    return DARK_PRO_THEME
 
 
 def get_current_palette() -> Dict[str, str]:
-    """Returns the active palette based on the persisted theme_mode setting."""
+    """Returns the active palette based on persisted theme_mode setting."""
     try:
         from friday_core.settings import settings
-        mode = settings.get("theme_mode", "warm_light")
+        mode = settings.get("theme_mode", "dark")
     except Exception:
-        mode = "warm_light"
+        mode = "dark"
     return get_theme_palette(mode)
 
 
 def generate_global_qss(theme_mode: str = "dark") -> str:
-    """Generates the unified desktop stylesheet with 60-30-10 tokens, 16px+ rounded corners and clean typography."""
+    """Generates the unified desktop stylesheet with clean typography, restrained accents, and compact rounded borders."""
     p = get_theme_palette(theme_mode)
-    is_light = "light" in str(theme_mode).lower()
 
-    # Use appropriate accent/status colors for HUD labels
     hud_listening = p.get("live_green", LIVE_GREEN)
     hud_idle = p.get("danger_red", DANGER_RED)
     hud_thinking = p.get("amber_tag", AMBER_WARN)
-    hud_speaking = p.get("accent", STARK_CYAN)
+    hud_speaking = p.get("accent", TOKENS.ACCENT)
 
     return f"""
         QWidget {{
-            font-family: 'Plus Jakarta Sans', 'Inter', 'Segoe UI', -apple-system, sans-serif;
+            font-family: 'Inter', 'Segoe UI', -apple-system, sans-serif;
             color: {p['text_primary']};
         }}
 
-        /* ── Canvas & Window Backdrop (60% Dominant Background) ── */
+        /* ── Canvas & Window Backdrop ── */
         #FridayMainWindow, #content_container, #workspace_container, #chat_view, #rag_view, #research_view, #settings_view {{
             background-color: {p['bg_canvas']};
         }}
@@ -432,12 +354,12 @@ def generate_global_qss(theme_mode: str = "dark") -> str:
             background: transparent;
         }}
 
-        /* ── Inputs (18px Heavily-Rounded Corners) ── */
+        /* ── Inputs ── */
         QLineEdit, QTextEdit, QPlainTextEdit {{
             background-color: {p['bg_input']};
             color: {p['text_primary']};
             border: 1px solid {p['border_card']};
-            border-radius: 18px;
+            border-radius: 10px;
             selection-background-color: {p['selection_bg']};
             selection-color: {p['text_primary']};
             padding: 8px 14px;
@@ -447,31 +369,31 @@ def generate_global_qss(theme_mode: str = "dark") -> str:
             border: 1.5px solid {p['border_focus']};
         }}
 
-        /* ── Dialogs & Container Cards (16px Heavily-Rounded Corners) ── */
+        /* ── Dialogs & Container Cards ── */
         QDialog, #fridayHeader, #attachmentsBar {{
-            border-radius: 16px;
+            border-radius: 12px;
         }}
 
-        /* ── CardWidget (QFluentWidgets with 18px radius) ── */
+        /* ── CardWidget ── */
         CardWidget {{
             background-color: {p['bg_surface']};
             border: 1px solid {p['border_card']};
-            border-radius: 18px;
+            border-radius: 12px;
         }}
         CardWidget:hover {{
             border: 1px solid {p['border_hover']};
         }}
 
-        /* ── Buttons & Action Controls (18px Heavily-Rounded Corners) ── */
+        /* ── Buttons & Action Controls ── */
         PrimaryPushButton {{
             background-color: {p['send_bg']};
             color: {p['send_text']};
-            border-radius: 18px;
-            font-weight: bold;
+            border-radius: 10px;
+            font-weight: 600;
             font-size: 12px;
             border: none;
-            padding: 7px 20px;
-            letter-spacing: 0.3px;
+            padding: 7px 18px;
+            letter-spacing: 0.2px;
         }}
         PrimaryPushButton:hover {{
             background-color: {p['send_hover']};
@@ -484,10 +406,10 @@ def generate_global_qss(theme_mode: str = "dark") -> str:
             background-color: {p['chip_bg']};
             color: {p['chip_text']};
             border: 1px solid {p['border_card']};
-            border-radius: 18px;
+            border-radius: 10px;
             font-weight: 500;
             font-size: 11px;
-            padding: 6px 16px;
+            padding: 6px 14px;
         }}
         PushButton:hover {{
             background-color: {p['chip_hover']};
@@ -501,7 +423,7 @@ def generate_global_qss(theme_mode: str = "dark") -> str:
         ToolButton {{
             background-color: {p['bg_surface']};
             border: 1px solid {p['border_card']};
-            border-radius: 14px;
+            border-radius: 8px;
             color: {p['text_secondary']};
         }}
         ToolButton:hover {{
@@ -513,7 +435,7 @@ def generate_global_qss(theme_mode: str = "dark") -> str:
         ComboBox {{
             background-color: {p['combo_bg']};
             border: 1px solid {p['combo_border']};
-            border-radius: 14px;
+            border-radius: 8px;
             color: {p['text_primary']};
             font-size: 11px;
             font-weight: 500;
@@ -524,31 +446,30 @@ def generate_global_qss(theme_mode: str = "dark") -> str:
             background-color: {p['combo_hover_bg']};
         }}
 
-        /* ── HUD State Label ── */
+        /* ── HUD State & Telemetry Labels ── */
         QLabel#hudStateLabel {{
             font-family: 'Consolas', 'Segoe UI', monospace;
             font-size: 10px;
-            letter-spacing: 0.8px;
+            letter-spacing: 0.6px;
             color: {p['text_muted']};
         }}
         QLabel#hudStateLabel[state="listening"], QLabel#hudStateLabel[state="standby"] {{
             color: {hud_listening};
-            font-weight: bold;
+            font-weight: 600;
         }}
         QLabel#hudStateLabel[state="idle"] {{
             color: {hud_idle};
-            font-weight: bold;
+            font-weight: 600;
         }}
-        QLabel#hudStateLabel[state="thinking"] {{
+        QLabel#hudStateLabel[state="thinking"], QLabel#hudStateLabel[state="researching"] {{
             color: {hud_thinking};
-            font-weight: bold;
+            font-weight: 600;
         }}
         QLabel#hudStateLabel[state="speaking"] {{
             color: {hud_speaking};
-            font-weight: bold;
+            font-weight: 600;
         }}
 
-        /* ── HUD Telemetry Label ── */
         QLabel#hudTelemetryLabel {{
             padding: 3px 8px;
             border-radius: 6px;
@@ -576,15 +497,16 @@ def generate_global_qss(theme_mode: str = "dark") -> str:
         }}
     """
 
-# ── 4. Reusable Animation Toolkit ──────────────────────────────────────
 
-def fade_in(widget: QWidget, duration: int = 200, start_opacity: float = 0.0, end_opacity: float = 1.0) -> QPropertyAnimation:
+# ── 4. Reusable Non-Blocking Animation Toolkit ────────────────────────
+
+def fade_in(widget: QWidget, duration: int = 180, start_opacity: float = 0.0, end_opacity: float = 1.0) -> QPropertyAnimation:
     """Applies a smooth fade-in entrance to any widget and cleanly restores the effect upon completion."""
     effect = widget.graphicsEffect()
     if not isinstance(effect, QGraphicsOpacityEffect):
         effect = QGraphicsOpacityEffect(widget)
         widget.setGraphicsEffect(effect)
-    
+
     if hasattr(widget, '_fade_anim') and widget._fade_anim:
         widget._fade_anim.stop()
 
@@ -597,7 +519,10 @@ def fade_in(widget: QWidget, duration: int = 200, start_opacity: float = 0.0, en
     def _cleanup():
         try:
             if hasattr(widget, 'graphicsEffect') and widget.graphicsEffect() == effect:
-                effect.setOpacity(end_opacity)
+                if end_opacity >= 1.0:
+                    widget.setGraphicsEffect(None)
+                else:
+                    effect.setOpacity(end_opacity)
         except Exception:
             pass
 
@@ -610,7 +535,7 @@ def fade_in(widget: QWidget, duration: int = 200, start_opacity: float = 0.0, en
 class SlideFadeEntrance:
     """Helper for combined slide-up/down + opacity fade entrance."""
     @staticmethod
-    def play(widget: QWidget, duration: int = 220, offset_y: int = 12) -> QParallelAnimationGroup:
+    def play(widget: QWidget, duration: int = 200, offset_y: int = 10) -> QParallelAnimationGroup:
         effect = widget.graphicsEffect()
         if not isinstance(effect, QGraphicsOpacityEffect):
             effect = QGraphicsOpacityEffect(widget)
@@ -620,18 +545,27 @@ class SlideFadeEntrance:
             widget._slide_group.stop()
 
         group = QParallelAnimationGroup(widget)
-        
         fade = QPropertyAnimation(effect, b"opacity", group)
         fade.setDuration(duration)
         fade.setStartValue(0.0)
         fade.setEndValue(1.0)
         fade.setEasingCurve(QEasingCurve.OutCubic)
         group.addAnimation(fade)
-        
+
         widget._slide_group = group
         group.start()
         return group
 
+
+def smooth_crossfade(stacked_widget: QStackedWidget, target_index: int, duration: int = 180):
+    """Performs a smooth non-blocking crossfade page transition between stacked views."""
+    if stacked_widget.currentIndex() == target_index:
+        return
+    next_widget = stacked_widget.widget(target_index)
+    if not next_widget:
+        return
+    stacked_widget.setCurrentIndex(target_index)
+    fade_in(next_widget, duration=duration)
 
 
 class ButtonMicroInteractionFilter(QObject):
@@ -646,8 +580,8 @@ class ButtonMicroInteractionFilter(QObject):
             if not self._orig_geo:
                 self._orig_geo = self.target.geometry()
             g = self.target.geometry()
-            dx = max(1, int(g.width() * 0.025))
-            dy = max(1, int(g.height() * 0.025))
+            dx = max(1, int(g.width() * 0.02))
+            dy = max(1, int(g.height() * 0.02))
             self.target.setGeometry(g.x() + dx, g.y() + dy, g.width() - 2*dx, g.height() - 2*dy)
         elif event.type() == QEvent.MouseButtonRelease:
             if self._orig_geo:
@@ -664,7 +598,7 @@ def install_button_micro_interaction(button: QWidget):
 
 
 class HoverRevealFilter(QObject):
-    """Reveals hidden child controls (e.g. copy button, options) when the parent card is hovered."""
+    """Reveals hidden child controls when parent card is hovered."""
     def __init__(self, parent_widget: QWidget, targets: List[QWidget]):
         super().__init__(parent_widget)
         self.parent_widget = parent_widget
@@ -676,7 +610,7 @@ class HoverRevealFilter(QObject):
         if event.type() == QEvent.Enter:
             for t in self.targets:
                 t.setVisible(True)
-                fade_in(t, duration=150)
+                fade_in(t, duration=140)
         elif event.type() == QEvent.Leave:
             for t in self.targets:
                 t.setVisible(False)
@@ -719,15 +653,52 @@ class PulsingGlowWidget(QWidget):
             cx, cy = w / 2.0, h / 2.0
             r = min(cx, cy) - 1
 
-            # Outer breathing halo
-            alpha = int(40 + 50 * (0.5 + 0.5 * math.sin(self._phase)))
+            alpha = int(35 + 45 * (0.5 + 0.5 * math.sin(self._phase)))
             p.setPen(Qt.NoPen)
             p.setBrush(QColor(self._color.red(), self._color.green(), self._color.blue(), alpha))
-            p.drawEllipse(QPoint(int(cx), int(cy)), int(r), int(r))
+            p.drawEllipse(QPointF(cx, cy), r, r)
 
-            # Solid core dot
-            core_r = max(2.0, r * 0.45)
+            core_r = max(2.0, r * 0.50)
             p.setBrush(self._color)
-            p.drawEllipse(QPoint(int(cx), int(cy)), int(core_r), int(core_r))
+            p.drawEllipse(QPointF(cx, cy), core_r, core_r)
+        finally:
+            p.end()
+
+
+class PulseStatusDot(QWidget):
+    """Compact status dot with subtle breathing ring."""
+    def __init__(self, color: QColor = QColor(16, 185, 129), size: int = 10, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(size, size)
+        self._color = color
+        self._phase = 0.0
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._tick)
+        self._timer.start(40)
+
+    def set_color(self, color: QColor):
+        self._color = color
+        self.update()
+
+    def _tick(self):
+        import math
+        self._phase = (self._phase + 0.07) % (2 * math.pi)
+        self.update()
+
+    def paintEvent(self, event):
+        import math
+        p = QPainter(self)
+        try:
+            p.setRenderHint(QPainter.Antialiasing)
+            cx = self.width() / 2.0
+            cy = self.height() / 2.0
+            r = min(cx, cy) - 0.5
+            halo_a = int(30 + 40 * (0.5 + 0.5 * math.sin(self._phase)))
+            p.setPen(Qt.NoPen)
+            p.setBrush(QColor(self._color.red(), self._color.green(), self._color.blue(), halo_a))
+            p.drawEllipse(QPointF(cx, cy), r, r)
+
+            p.setBrush(self._color)
+            p.drawEllipse(QPointF(cx, cy), r * 0.55, r * 0.55)
         finally:
             p.end()

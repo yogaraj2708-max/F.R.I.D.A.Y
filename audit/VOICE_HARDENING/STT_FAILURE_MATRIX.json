@@ -1,0 +1,62 @@
+{
+  "subsystem": "Speech-to-Text Failure & Resiliency Matrix",
+  "audit_phase": "VOICE_STT_TTS_ZERO_TRUST_HARDENING",
+  "timestamp": "2026-09-28T12:20:00Z",
+  "failure_modes": [
+    {
+      "mode_id": "STT_FAIL_01",
+      "mode": "Local Faster-Whisper CPU Runtime Failure / OOM",
+      "injection": "RuntimeError('Whisper model memory allocation error')",
+      "expected_behavior": "Catch exception, mark Whisper failed, seamlessly fallback to Tier 2 Google STT",
+      "observed_behavior": "Google STT fallback successfully executed without error bubbling",
+      "status": "PASS",
+      "verified": true
+    },
+    {
+      "mode_id": "STT_FAIL_02",
+      "mode": "Dual Engine Total Failure (Whisper + Google Offline)",
+      "injection": "Whisper exception + Google Network Offline exception",
+      "expected_behavior": "Return empty transcript string, transition to IDLE, notify user non-fatally",
+      "observed_behavior": "Returns empty string '', FSM transitions to IDLE, no UI crash",
+      "status": "PASS",
+      "verified": true
+    },
+    {
+      "mode_id": "STT_FAIL_03",
+      "mode": "Silent / Ambient Only Audio Segment",
+      "injection": "Zero-energy PCM buffer with no speech",
+      "expected_behavior": "Classified as NO_SPEECH / SILENCE, ignored without sending to LLM",
+      "observed_behavior": "VAD rejects buffer or STT returns empty string; no phantom turn dispatched",
+      "status": "PASS",
+      "verified": true
+    },
+    {
+      "mode_id": "STT_FAIL_04",
+      "mode": "Cancellation During In-Progress STT Inference",
+      "injection": "Cancel token set while worker thread transcribing",
+      "expected_behavior": "Inference halts promptly, returns CANCELLED, FSM recovers to IDLE",
+      "observed_behavior": "Returns status CANCELLED, cancel flag honored immediately",
+      "status": "PASS",
+      "verified": true
+    },
+    {
+      "mode_id": "STT_FAIL_05",
+      "mode": "STT Worker Processing Timeout (> 8.0s)",
+      "injection": "Simulated slow transcription backend taking > 8.0s",
+      "expected_behavior": "Execution terminates at 8.0s timeout boundary, returns TIMEOUT",
+      "observed_behavior": "Timeout enforced by orchestrator timer, worker released",
+      "status": "PASS",
+      "verified": true
+    },
+    {
+      "mode_id": "STT_FAIL_06",
+      "mode": "Corrupted Audio Data / Malformed PCM Header",
+      "injection": "Truncated byte buffer with invalid PCM headers",
+      "expected_behavior": "Handled cleanly via try/except, returns EMPTY_AUDIO",
+      "observed_behavior": "Safe exception catching, no segmentation fault or core dump",
+      "status": "PASS",
+      "verified": true
+    }
+  ],
+  "verification_status": "PASS"
+}

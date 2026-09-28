@@ -65,6 +65,7 @@ class TestSafeWeb(unittest.TestCase):
         signals = FridaySignals()
         tts = MagicMock()
         brain = FridayBrain(signals, tts)
+        brain._tool_capability_cache[brain.model] = "UNAVAILABLE"
 
         # Simulate prior conversation history about AI models
         brain.conversation_history.append({"role": "user", "content": "what are the latest ai models"})

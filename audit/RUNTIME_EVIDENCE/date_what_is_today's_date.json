@@ -1,0 +1,12 @@
+{
+  "trace_id": "trace-bb-c4e2a71e",
+  "category": "Date",
+  "user_command": "what is today's date",
+  "latency_ms": 0.34,
+  "response": "Today's date is Friday, September 25, Boss.",
+  "expected_keywords": [
+    "today's date is"
+  ],
+  "keywords_observed": true,
+  "verdict": "PASS"
+}

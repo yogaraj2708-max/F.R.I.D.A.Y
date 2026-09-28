@@ -1,0 +1,50 @@
+{
+  "title": "F.R.I.D.A.Y. 3.0 Vision Model Resolution Matrix",
+  "generated_at": "2026-09-27T21:23:00Z",
+  "provider": "Ollama Local Daemon",
+  "configured_default": "qwen2.5vl:3b",
+  "active_specialist_model": "qwen2.5vl:3b",
+  "live_probe_status": "READY",
+  "live_probe_latency_ms": 1104,
+  "preferred_models_hierarchy": [
+    "qwen2.5vl:3b",
+    "qwen2.5vl",
+    "qwen2-vl",
+    "llava:7b",
+    "llava",
+    "llama3.2-vision",
+    "moondream",
+    "bakllava"
+  ],
+  "installed_models_inspected": [
+    {
+      "model_name": "qwen2.5vl:3b",
+      "model_id": "fb90415cde1e",
+      "size_gb": 3.2,
+      "multimodal_capable": true,
+      "role": "ACTIVE_VISION_SPECIALIST",
+      "status": "READY"
+    },
+    {
+      "model_name": "qwen3.5:9b",
+      "model_id": "6488c96fa5fa",
+      "size_gb": 6.6,
+      "multimodal_capable": false,
+      "role": "MAIN_AGENT_MODEL",
+      "status": "READY"
+    },
+    {
+      "model_name": "deepseek-r1:8b",
+      "model_id": "6995872bfe4c",
+      "size_gb": 5.2,
+      "multimodal_capable": false,
+      "role": "REASONING_BENCHMARK",
+      "status": "READY"
+    }
+  ],
+  "fallback_policy": {
+    "silent_model_substitution": "STRICTLY_PROHIBITED",
+    "missing_model_behavior": "RETURN_UNAVAILABLE",
+    "offline_daemon_behavior": "RETURN_OFFLINE_HONEST_FAILURE"
+  }
+}

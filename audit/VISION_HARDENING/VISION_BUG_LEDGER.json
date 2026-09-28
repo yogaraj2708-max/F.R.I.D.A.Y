@@ -1,0 +1,81 @@
+{
+  "title": "F.R.I.D.A.Y. 3.0 Vision Subsystem Forensic Bug Ledger",
+  "generated_at": "2026-09-27T21:24:00Z",
+  "total_bugs_discovered": 8,
+  "total_bugs_fixed": 8,
+  "bugs_remaining": 0,
+  "ledger": [
+    {
+      "bug_id": "VIS-BUG-001",
+      "severity": "HIGH",
+      "component": "friday_ui/core/engine.py",
+      "description": "Hardcoded fallback to 'qwen2.5vl:3b' in engine._get_available_vision_model and process_image_command when vision model was not installed or offline.",
+      "root_cause": "Ternary operator default `or 'qwen2.5vl:3b'` silenced model absence and caused downstream connection crashes instead of reporting UNAVAILABLE.",
+      "resolution": "Removed hardcoded fallback. Implemented explicit UNAVAILABLE reporting and status propagation.",
+      "status": "FIXED"
+    },
+    {
+      "bug_id": "VIS-BUG-002",
+      "severity": "HIGH",
+      "component": "friday_core/vision/vision_model.py",
+      "description": "Lack of magic-byte validation allowed renamed non-image files (e.g. text/exe with .png extension) to pass initial validation.",
+      "root_cause": "Validation only checked file extension and size > 0.",
+      "resolution": "Implemented detect_image_format() inspecting magic bytes for PNG, JPEG, WEBP, BMP, GIF, and TIFF headers.",
+      "status": "FIXED"
+    },
+    {
+      "bug_id": "VIS-BUG-003",
+      "severity": "CRITICAL",
+      "component": "friday_core/vision/vision_model.py",
+      "description": "Vulnerability to decompression bombs due to lack of dimension and pixel ceilings.",
+      "root_cause": "PIL was called without MAX_IMAGE_PIXELS ceiling or pre-decode dimension checks.",
+      "resolution": "Enforced MAX_IMAGE_DIMENSION = 4096, MAX_IMAGE_PIXELS = 16,777,216, and caught DecompressionBombError.",
+      "status": "FIXED"
+    },
+    {
+      "bug_id": "VIS-BUG-004",
+      "severity": "CRITICAL",
+      "component": "friday_ui/core/engine.py",
+      "description": "Python keyword regex in query_llm (is_reanalysis_request) automatically triggered vision analysis without Main Agent decision.",
+      "root_cause": "Hardcoded Python re-analysis hook bypassed Main Agent tool-calling architecture.",
+      "resolution": "Removed automatic Python keyword execution. Replaced with structured grounding context allowing Main Agent to decide.",
+      "status": "FIXED"
+    },
+    {
+      "bug_id": "VIS-BUG-005",
+      "severity": "CRITICAL",
+      "component": "friday_core/vision/image_context.py",
+      "description": "Absence of prompt injection boundary delimiters around vision output.",
+      "root_cause": "Image OCR and visual descriptions were injected directly without untrusted data wrappers.",
+      "resolution": "Enclosed all ImageContext prompt output in <<<EXTERNAL_IMAGE_DATA_NOT_SYSTEM_INSTRUCTIONS>>> and sanitized delimiter injection.",
+      "status": "FIXED"
+    },
+    {
+      "bug_id": "VIS-BUG-006",
+      "severity": "HIGH",
+      "component": "friday_core/skills/agent_bridge.py",
+      "description": "Incomplete tool provenance for analyze_image in verify_tool_result.",
+      "root_cause": "verify_tool_result only recorded image_file path, omitting image_id, vision_model, dimensions, and uncertainty.",
+      "resolution": "Extended analyze_image branch in verify_tool_result to extract all 8 mandatory provenance fields.",
+      "status": "FIXED"
+    },
+    {
+      "bug_id": "VIS-BUG-007",
+      "severity": "MEDIUM",
+      "component": "friday_core/vision/image_context.py & vision_model.py",
+      "description": "Lack of uncertainty preservation (OBSERVED, LIKELY, UNCERTAIN, NOT_VISIBLE).",
+      "root_cause": "Uncertain or low-resolution image elements were described without an explicit confidence classification.",
+      "resolution": "Added uncertainty_rating to ImageContext schema and implemented heuristic/model uncertainty extraction.",
+      "status": "FIXED"
+    },
+    {
+      "bug_id": "VIS-BUG-008",
+      "severity": "MEDIUM",
+      "component": "friday_core/vision/vision_model.py",
+      "description": "Large images were passed directly to Ollama without bounded preprocessing, risking VRAM OOM and latency spikes.",
+      "root_cause": "validate_and_encode_image merely encoded raw file bytes to base64.",
+      "resolution": "Implemented bounded Lanczos downscaling to 1920px max dimension with aspect ratio preservation and metadata recording.",
+      "status": "FIXED"
+    }
+  ]
+}

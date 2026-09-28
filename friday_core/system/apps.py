@@ -55,7 +55,8 @@ KNOWN_WINDOWS_APPS: Dict[str, str] = {
     "screenshot": "snippingtool.exe",
     "calculator": "calc.exe",
     "calc": "calc.exe",
-    "notepad": "notepad.exe",
+    "notepad": r"shell:AppsFolder\Microsoft.WindowsNotepad_8wekyb3d8bbwe!App",
+    "notepad.exe": r"shell:AppsFolder\Microsoft.WindowsNotepad_8wekyb3d8bbwe!App",
     # Windows Modern / UWP Protocols
     "camera": "microsoft.windows.camera:",
     "settings": "ms-settings:",

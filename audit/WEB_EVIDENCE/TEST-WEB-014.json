@@ -1,0 +1,24 @@
+{
+  "trace_id": "trace-web-014-5901d0f2",
+  "test_id": "TEST-WEB-014",
+  "user_text": "read http://127.0.0.1:58800/malformed_json",
+  "router_result": "TIER_1_FAST_PATH_WEB",
+  "selected_skill": "web_reading",
+  "url": "http://127.0.0.1:58800/malformed_json",
+  "method": "GET",
+  "timestamp": "2026-09-25T16:29:14Z",
+  "status_code": 200,
+  "headers": {
+    "server": "BaseHTTP/0.6 Python/3.11.9",
+    "date": "Fri, 25 Sep 2026 16:29:14 GMT",
+    "content-type": "application/json",
+    "content-length": "33"
+  },
+  "response_length": 33,
+  "raw_body_hash": "90e8f33ec1ad2094f8f6e8a8a801180562d25230bfcf698112be8dfbde6b6a03",
+  "parser": "json.loads",
+  "parsed_result": "JSONDecodeError caught",
+  "answer_source": "ERROR_OBSERVER",
+  "final_output": "Malformed JSON rejected safely",
+  "verdict": "PASS"
+}

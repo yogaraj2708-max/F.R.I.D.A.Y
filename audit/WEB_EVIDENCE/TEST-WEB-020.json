@@ -1,0 +1,19 @@
+{
+  "trace_id": "trace-web-020-a0c56b70",
+  "test_id": "TEST-WEB-020",
+  "user_text": "read the paragraph of http://127.0.0.1:58800/nonce_test",
+  "router_result": "TIER_1_FAST_PATH_WEB",
+  "selected_skill": "web_reading",
+  "url": "http://127.0.0.1:58800/nonce_test",
+  "method": "GET",
+  "timestamp": "2026-09-25T16:29:17Z",
+  "status_code": 200,
+  "headers": {},
+  "response_length": 0,
+  "raw_body_hash": "",
+  "parser": "lxml.html",
+  "parsed_result": "Call A: 'Paragraph from 'http://127.0.0.1:58800/nonce_test': \"InitialNonce_111\", Boss.' | Call B: 'Paragraph from 'http://127.0.0.1:58800/nonce_test': \"UpdatedNonce_222\", Boss.'",
+  "answer_source": "LIVE_HTTP_RESPONSE",
+  "final_output": "Paragraph from 'http://127.0.0.1:58800/nonce_test': \"UpdatedNonce_222\", Boss.",
+  "verdict": "PASS"
+}

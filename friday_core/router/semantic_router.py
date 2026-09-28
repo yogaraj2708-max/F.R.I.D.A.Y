@@ -25,6 +25,8 @@ class SkillIntent(str, Enum):
     TIMER_CLOCK = "timer_clock"
     DEEP_RESEARCH = "deep_research"
     WEATHER = "weather"
+    DOCUMENT_QA = "document_qa"
+    WEB_READING = "web_reading"
     GENERAL_CHAT = "general_chat"
 
 
@@ -55,7 +57,8 @@ class FastLocalEmbedder:
 
     def embed_text(self, text: str) -> np.ndarray:
         vec = np.zeros(self.dim, dtype=np.float32)
-        tokens = text.lower().split()
+        cleaned = re.sub(r"[^\w\s]", " ", text.lower())
+        tokens = cleaned.split()
         if not tokens:
             return vec
 
@@ -109,12 +112,14 @@ INTENT_EXEMPLARS: Dict[SkillIntent, List[str]] = {
         "screen capture", "capture active screen", "lock workstation", "lock the computer", "lock screen", "lock pc"
     ],
     SkillIntent.APP_LAUNCH: [
+        "open notepad", "launch notepad", "start notepad",
+        "open calculator", "launch calculator", "start calculator",
         "open word", "launch ms word", "open blank word document", "open visual studio code",
         "launch vs code", "open edge browser", "open web browser", "launch spotify app",
-        "open chrome", "launch notepad", "start vscode", "start spotify", "open spotify",
+        "open chrome", "start vscode", "start spotify", "open spotify",
         "start browser", "start edge", "open edge", "open settings", "start settings",
         "open task manager", "start task manager", "open file explorer", "start file explorer",
-        "start calculator", "can you launch spotify", "please open spotify",
+        "can you launch spotify", "please open spotify",
         "ope vs coe for me", "open vs coe", "opn vs code", "open vs code for me", "ope wrd for me", "open vsc"
     ],
     SkillIntent.TIMER_CLOCK: [
@@ -132,8 +137,56 @@ INTENT_EXEMPLARS: Dict[SkillIntent, List[str]] = {
         "temperature outside", "is it raining outside", "current weather report",
         "what's the climate outside", "how cold is it outside", "weather in london", "is it hot out"
     ],
+    SkillIntent.DOCUMENT_QA: [
+        "what is the first sentence of this pdf",
+        "what's the first sentence in this pdf",
+        "what's the first sentence of this pdf",
+        "what is the first sentence in this pdf",
+        "first sentence of this pdf",
+        "first sentence in this pdf",
+        "read the pdf i just opened and tell me its title",
+        "what is the title of this pdf",
+        "what's the title of this pdf",
+        "what is the title of this document",
+        "what's the title of this document",
+        "tell me the title of this pdf document",
+        "summarize this pdf",
+        "summarize this pdf in 3 points",
+        "give me a 3-point summary of this pdf",
+        "summarize this pdf using only information in the pdf",
+        "read this pdf document",
+        "read this pdf file",
+        "what does this pdf say",
+        "what is written in this document",
+        "first sentence of this pdf document",
+        "title of the pdf file",
+        "read the document i opened",
+        "what does this document say",
+        "read this pdf and summarize it",
+        "fill this document from 12 to 13",
+        "fill this docx from 12 to 13 with verified",
+        "in document.docx replace item 12 with approved",
+        "edit this docx file",
+        "update section 12 in the document"
+    ],
+    SkillIntent.WEB_READING: [
+        "read http://127.0.0.1:8000",
+        "read the heading and paragraph of http://127.0.0.1:8000",
+        "read webpage https://example.com",
+        "read the website http://localhost:8080",
+        "extract content from http://127.0.0.1:5000",
+        "what does http://example.com say",
+        "read heading and paragraph from http://127.0.0.1",
+        "fetch and read https://news.ycombinator.com",
+        "what is written on http://127.0.0.1:8080",
+        "read http://localhost:3000",
+        "open http://127.0.0.1:8000 and read the heading",
+        "read the webpage at http://127.0.0.1:8000"
+    ],
     SkillIntent.GENERAL_CHAT: [
-        "hello how are you", "who are you", "what is your name", "tell me a joke",
+        "hi", "hello", "hey", "hey friday", "hello friday", "hi friday", "greetings",
+        "good morning", "good afternoon", "good evening", "how are you", "how are you doing",
+        "who are you", "what is your name", "what can you do", "tell me a joke",
         "write python code for quicksort", "explain quantum entanglement",
         "what is the capital of france", "how does a turbojet engine work",
         "can you help me with something", "tell me a story",
@@ -157,13 +210,19 @@ def extract_parameters(intent: SkillIntent, text: str) -> Dict[str, Any]:
     """Lightweight deterministic parameter extraction for routed intents."""
     params: Dict[str, Any] = {}
     clean = text.lower().strip()
-    if intent == SkillIntent.DESKTOP_AUDIO:
-        if any(w in clean for w in ["mute", "unmute", "silence"]):
+    if intent == SkillIntent.DOCUMENT_QA:
+        params["query"] = text
+    elif intent == SkillIntent.DESKTOP_AUDIO:
+        if any(w in clean for w in ["unmute"]):
+            params["action"] = "unmute"
+        elif re.search(r"\b(?:myute|muet|mut|mue|silence|mute)\b", clean):
             params["action"] = "mute"
         elif any(w in clean for w in ["down", "lower", "quiet", "decrease", "reduce", "rduece", "redus", "decr", "soft"]):
             params["action"] = "down"
-        else:
+        elif any(w in clean for w in ["up", "raise", "increase", "louder"]):
             params["action"] = "up"
+        else:
+            params["action"] = "unknown"
     elif intent == SkillIntent.SYSTEM_TIME_DATE:
         if any(w in clean for w in ["date", "day"]):
             params["action"] = "date"
@@ -210,6 +269,14 @@ def extract_parameters(intent: SkillIntent, text: str) -> Dict[str, Any]:
     elif intent == SkillIntent.DEEP_RESEARCH:
         query = re.sub(r"^(?:deep\s+research|deeply\s+research|investigate|research)\s+(?:on|about)?\s*", "", clean).strip()
         params["query"] = query
+    elif intent == SkillIntent.WEB_READING:
+        url_match = re.search(r"(https?://[^\s\"']+|127\.0\.0\.1:[0-9]+[^\s\"']*|localhost:[0-9]+[^\s\"']*)", text, re.IGNORECASE)
+        if url_match:
+            u = url_match.group(1).strip()
+            if not u.startswith("http"):
+                u = f"http://{u}"
+            params["url"] = u
+        params["query"] = text
     return params
 
 
@@ -348,7 +415,8 @@ class SemanticIntentRouter:
             except Exception:
                 pass
             if not target_model:
-                target_model = self.ollama_model
+                logger.debug("No dedicated nano-disambiguation model installed; bypassing Tier 2 to preserve sub-millisecond dispatch.")
+                return None
 
         if not client:
             try:
@@ -381,8 +449,16 @@ class SemanticIntentRouter:
                     f"- timer_clock: set timer, cancel timer, countdown\n"
                     f"- deep_research: deep web research on a specific topic\n"
                     f"- weather: weather forecast, temperature, rain, outside climate\n"
+                    f"- document_qa: reading, asking questions about, analyzing, or summarizing a PDF or document\n"
+                    f"- web_reading: reading, extracting headings, paragraphs, or content from a specific URL, website, or IP address\n"
                     f"- general_chat: coding requests, questions, explanations, conversation\n\n"
                     f"Examples:\n"
+                    f"\"what is the first sentence of this pdf\" -> document_qa\n"
+                    f"\"read the heading and paragraph of http://127.0.0.1:8000\" -> web_reading\n"
+                    f"\"read http://localhost:8080\" -> web_reading\n"
+                    f"\"read the pdf i just opened and tell me its title\" -> document_qa\n"
+                    f"\"summarize this pdf in 3 points\" -> document_qa\n"
+                    f"\"what does this document say\" -> document_qa\n"
                     f"\"turn it up louder\" -> desktop_audio\n"
                     f"\"rduece syestm souund\" -> desktop_audio\n"
                     f"\"reduce system sound level\" -> desktop_audio\n"
@@ -412,6 +488,9 @@ class SemanticIntentRouter:
                     options={'temperature': 0.0, 'num_predict': 25}
                 )
                 raw = (resp.get('response') if isinstance(resp, dict) else getattr(resp, 'response', '')).strip().lower()
+
+            if any(k in text.lower() for k in ["pdf", "document"]) and "telemetry" in raw:
+                return SkillIntent.DOCUMENT_QA
 
             for intent in SkillIntent:
                 if intent.value in raw:
@@ -446,6 +525,7 @@ class SemanticIntentRouter:
                         "timer_clock": "set timer, cancel timer, countdown",
                         "deep_research": "deep web research on a specific topic, investigate",
                         "weather": "weather forecast, temperature, rain, outside climate",
+                        "document_qa": "reading, asking questions about, analyzing, or summarizing a PDF or document",
                         "general_chat": "coding requests, questions, explanations, conversation"
                     }
                 }
@@ -500,7 +580,7 @@ class SemanticIntentRouter:
 
         engine = getattr(self, "decision_engine", "ollama")
 
-        # 1. Laya System 1 Engine (Convai Innovations)
+        # 1. Laya System 1 Engine (if explicitly configured by user as decision_engine)
         if engine == "laya":
             laya_intent = await self.route_tier2_laya(norm_text)
             if laya_intent is not None:
@@ -512,9 +592,21 @@ class SemanticIntentRouter:
                     matched_exemplar="laya_convai",
                     parameters=params
                 )
-            logger.debug("Laya engine unavailable or returned None; falling back to Ollama decision maker.")
+            logger.debug("Laya engine unavailable or returned None; falling back to local embedder.")
 
-        # 2. Ollama Decision Maker (friday-decider / Qwen 0.5B)
+        # 2. Tier 1 Fast Local Embedding Centroid Match (< 1ms)
+        intent, score, exemplar = self.route_tier1(norm_text)
+        if score >= threshold:
+            params = extract_parameters(intent, norm_text)
+            return RouteResult(
+                intent=intent,
+                confidence=score,
+                tier=1,
+                matched_exemplar=exemplar,
+                parameters=params
+            )
+
+        # 3. Tier 2 Disambiguation: Invoked only when local match is ambiguous (< threshold)
         if engine in ["ollama", "laya"]:
             nano_intent = await self.route_tier2_nano(norm_text, client=client, model=model)
             if nano_intent is not None:
@@ -526,18 +618,6 @@ class SemanticIntentRouter:
                     matched_exemplar="ollama_decision_maker",
                     parameters=params
                 )
-
-        # 3. Resilient Fallback: Tier 1 Vector Embedding Centroid Match (< 2ms)
-        intent, score, exemplar = self.route_tier1(norm_text)
-        if score >= threshold:
-            params = extract_parameters(intent, norm_text)
-            return RouteResult(
-                intent=intent,
-                confidence=score,
-                tier=1,
-                matched_exemplar=exemplar,
-                parameters=params
-            )
 
         # 4. Fallback to General Chat
         params = extract_parameters(SkillIntent.GENERAL_CHAT, norm_text)

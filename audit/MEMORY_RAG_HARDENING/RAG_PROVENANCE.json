@@ -1,0 +1,46 @@
+{
+  "audit_phase": "MEMORY_RAG_ZERO_TRUST_HARDENING",
+  "provenance_tracking": {
+    "chunk_metadata_schema": [
+      "chunk_id",
+      "doc_id",
+      "title",
+      "source_path",
+      "source_filename",
+      "page_or_section",
+      "chunk_index",
+      "content",
+      "char_offset",
+      "token_count",
+      "domain",
+      "version",
+      "content_hash",
+      "doc_hash",
+      "embedding_model",
+      "embedding_dim",
+      "created_at"
+    ],
+    "citation_format": "[Doc: <filename>, Sec: <section>, Chunk: <index>]",
+    "verification_capabilities": {
+      "exact_tag_matching": true,
+      "filename_level_grounding": true,
+      "hallucination_detection": true
+    },
+    "verification_test_results": [
+      {
+        "test": "Valid Citation Verification",
+        "answer_text": "AI systems must operate under strict human sovereignty [Doc: ai_safety_charter.txt, Sec: full_document, Chunk: 0].",
+        "verdict": "VALID",
+        "hallucinated_count": 0,
+        "status": "PASS"
+      },
+      {
+        "test": "Hallucinated Citation Detection",
+        "answer_text": "Secret details found in [Doc: phantom_leak.pdf, Sec: p.12, Chunk: 4].",
+        "verdict": "INVALID",
+        "hallucinated_tags": ["[Doc: phantom_leak.pdf, Sec: p.12, Chunk: 4]"],
+        "status": "PASS"
+      }
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "trace_id": "trace-web-017-9f75c586",
+  "test_id": "TEST-WEB-017",
+  "user_text": "read http://127.0.0.1:58800/truncated",
+  "router_result": "TIER_1_FAST_PATH_WEB",
+  "selected_skill": "web_reading",
+  "url": "http://127.0.0.1:58800/truncated",
+  "method": "GET",
+  "timestamp": "2026-09-25T16:29:15Z",
+  "status_code": 200,
+  "headers": {},
+  "response_length": 21,
+  "raw_body_hash": "",
+  "parser": "integrity_guard",
+  "parsed_result": "RemoteProtocolError (Content-Length mismatch)",
+  "answer_source": "ERROR_OBSERVER",
+  "final_output": "Truncation caught successfully",
+  "verdict": "PASS"
+}

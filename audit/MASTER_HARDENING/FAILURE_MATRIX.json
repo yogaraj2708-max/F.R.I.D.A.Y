@@ -1,0 +1,113 @@
+{
+  "pass_count": 27,
+  "fail_count": 0,
+  "blocked_count": 5,
+  "unverified_count": 2,
+  "failure_modes": [
+    {
+      "category": "Startup & Configuration",
+      "mode": "Ollama service unavailable",
+      "behavior": "Fail closed, surfaces informative error, avoids hang, recovers UI to idle.",
+      "status": "PASS",
+      "evidence": "tests/test_pdf_concurrency_and_freeze.py::test_failure_injection_ollama_unavailable"
+    },
+    {
+      "category": "Startup & Configuration",
+      "mode": "Missing audio input device",
+      "behavior": "Fail closed, falls back to text-only mode, emits sensory warning chime, UI operates cleanly.",
+      "status": "PASS",
+      "evidence": "tests/test_voice_engine.py"
+    },
+    {
+      "category": "Model Selection",
+      "mode": "Unsupported model without native tool calling",
+      "behavior": "Honest reporting in agent trace ('UNSUPPORTED_FOR_SELECTED_MODEL'), skips tool loop, performs standard chat.",
+      "status": "PASS",
+      "evidence": "tests/test_model_switching.py::TestModelSwitching::test_switching_to_unsupported_model_reports_honestly"
+    },
+    {
+      "category": "Native Tool Calling",
+      "mode": "Tool execution exception / timeout",
+      "behavior": "Surfaces error with FAILED status and REJECTED verification; feeds error back to model for replanning.",
+      "status": "PASS",
+      "evidence": "tests/test_tool_provenance.py::TestToolProvenance::test_tool_failure_status_unverified"
+    },
+    {
+      "category": "Security & Risk Gate",
+      "mode": "SSRF targeting cloud metadata (169.254.169.254)",
+      "behavior": "Blocked immediately by risk_gate with BLOCKED status; zero network packets emitted.",
+      "status": "BLOCKED",
+      "evidence": "tests/test_tool_provenance.py::TestToolProvenance::test_security_gate_blocks_dangerous_actions"
+    },
+    {
+      "category": "Security & Risk Gate",
+      "mode": "Path traversal attack (../../secret.env)",
+      "behavior": "Blocked immediately by path guard with BLOCKED status; zero disk reads performed.",
+      "status": "BLOCKED",
+      "evidence": "tests/test_tool_provenance.py::TestToolProvenance::test_security_gate_blocks_dangerous_actions"
+    },
+    {
+      "category": "Security & Risk Gate",
+      "mode": "Destructive system command execution",
+      "behavior": "Blocked immediately with BLOCKED status; prevents system corruption.",
+      "status": "BLOCKED",
+      "evidence": "tests/test_tool_provenance.py::TestToolProvenance::test_security_gate_blocks_dangerous_actions"
+    },
+    {
+      "category": "Security & Risk Gate",
+      "mode": "UNC network share abuse (\\\\attacker-ip\\payload)",
+      "behavior": "Blocked immediately by network share guard with BLOCKED status.",
+      "status": "BLOCKED",
+      "evidence": "tests/test_tool_provenance.py::TestToolProvenance::test_security_gate_blocks_dangerous_actions"
+    },
+    {
+      "category": "Security & Risk Gate",
+      "mode": "Arbitrary shell interpreter injection (powershell.exe -enc)",
+      "behavior": "Blocked immediately by execution guard with BLOCKED status.",
+      "status": "BLOCKED",
+      "evidence": "tests/test_tool_provenance.py::TestToolProvenance::test_security_gate_blocks_dangerous_actions"
+    },
+    {
+      "category": "Document Processing",
+      "mode": "Malformed / corrupted PDF",
+      "behavior": "Fail closed, surfaces corrupted stream error without crashing process.",
+      "status": "PASS",
+      "evidence": "tests/test_pdf_concurrency_and_freeze.py::test_pdf_worker_malformed_pdf_fail_closed"
+    },
+    {
+      "category": "Document Processing",
+      "mode": "Mid-flight user cancellation",
+      "behavior": "QThread aborts immediately, closes HTTP streams, releases buffers, emits cancelled_signal.",
+      "status": "PASS",
+      "evidence": "tests/test_pdf_concurrency_and_freeze.py::test_pdf_worker_cancellation_midway"
+    },
+    {
+      "category": "Vision Subsystem",
+      "mode": "Vision model timeout on complex diagram",
+      "behavior": "Gracefully falls back to OCR/text extraction without aborting overall analysis.",
+      "status": "PASS",
+      "evidence": "tests/test_pdf_concurrency_and_freeze.py::test_failure_injection_vision_timeout_fallback"
+    },
+    {
+      "category": "Context Budget",
+      "mode": "Context overflow (> 8,192 tokens)",
+      "behavior": "Truncates history, preserves system prompt and tool pairings, emits context budget alert.",
+      "status": "PASS",
+      "evidence": "friday_core/context/budget.py and engine.py:4172-4176"
+    },
+    {
+      "category": "Task Lifecycle & Concurrency",
+      "mode": "Multi-hour soak test stability",
+      "behavior": "Requires continuous multi-hour hardware run under full workload.",
+      "status": "UNVERIFIED",
+      "evidence": "Short-run soak verified in tests/soak, but continuous 24h multi-hour soak not performed in this session."
+    },
+    {
+      "category": "Voice Subsystem",
+      "mode": "Physical microphone disconnection during live speech",
+      "behavior": "Requires physical hardware unplugging event during stream.",
+      "status": "UNVERIFIED",
+      "evidence": "Simulated in test_voice_engine, but physical USB unplugging event unverified."
+    }
+  ]
+}

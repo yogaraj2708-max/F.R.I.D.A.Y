@@ -1,0 +1,24 @@
+{
+  "trace_id": "trace-web-012-158b7848",
+  "test_id": "TEST-WEB-012",
+  "user_text": "read http://127.0.0.1:58800/redirect",
+  "router_result": "TIER_1_FAST_PATH_WEB",
+  "selected_skill": "web_reading",
+  "url": "http://127.0.0.1:58800/redirect",
+  "method": "GET",
+  "timestamp": "2026-09-25T16:29:14Z",
+  "status_code": 200,
+  "headers": {
+    "server": "BaseHTTP/0.6 Python/3.11.9",
+    "date": "Fri, 25 Sep 2026 16:29:14 GMT",
+    "content-type": "text/html; charset=utf-8",
+    "content-length": "125"
+  },
+  "response_length": 125,
+  "raw_body_hash": "1032d1f44d10549266e526c3f9cee38aa829290f6eb84a14a13423f52a14e3c2",
+  "parser": "lxml.html",
+  "parsed_result": "Redirect resolved to /unique_marker",
+  "answer_source": "LIVE_HTTP_RESPONSE",
+  "final_output": "Resolved to destination",
+  "verdict": "PASS"
+}

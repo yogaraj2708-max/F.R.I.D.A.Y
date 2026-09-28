@@ -1,0 +1,134 @@
+{
+  "timestamp": "2026-09-28T07:19:53Z",
+  "total_missions": 15,
+  "passed": 15,
+  "failed": 0,
+  "total_duration_ms": 226.26,
+  "missions": {
+    "MISSION_1": {
+      "name": "Remember Project Name",
+      "status": "PASS",
+      "duration_ms": 12.68,
+      "expected": "Friday",
+      "actual": "Friday",
+      "verified": true
+    },
+    "MISSION_2": {
+      "name": "Update Project Name",
+      "status": "PASS",
+      "duration_ms": 11.32,
+      "expected": "Friday 4",
+      "actual": "Friday 4",
+      "verified": true
+    },
+    "MISSION_3": {
+      "name": "Delete Project Memory",
+      "status": "PASS",
+      "duration_ms": 9.06,
+      "expected": "absent / not found",
+      "actual": null,
+      "verified": true
+    },
+    "MISSION_4": {
+      "name": "Two Sessions Isolation",
+      "status": "PASS",
+      "duration_ms": 14.21,
+      "session_A": "Stark",
+      "session_B": "Banner",
+      "session_C": null,
+      "verified": true
+    },
+    "MISSION_5": {
+      "name": "Ingest Document & Retrieval",
+      "status": "PASS",
+      "duration_ms": 20.66,
+      "expected_snippet": "3.2 gigawatts",
+      "retrieved_snippet": "The Mark 85 Arc Reactor outputs 3.2 gigawatts using synthetic vibranium core.",
+      "verified": true
+    },
+    "MISSION_6": {
+      "name": "Update Document Content",
+      "status": "PASS",
+      "duration_ms": 20.36,
+      "expected_version": 2,
+      "actual_version": 2,
+      "retrieved_content": "The Mark 85 Arc Reactor outputs 5.0 gigawatts with upgraded nanotech matrix.",
+      "verified": true
+    },
+    "MISSION_7": {
+      "name": "Duplicate Ingestion Prevention",
+      "status": "PASS",
+      "duration_ms": 3.86,
+      "expected_chunk_count": 1,
+      "actual_chunk_count": 1,
+      "verified": true
+    },
+    "MISSION_8": {
+      "name": "Malicious Document Defense",
+      "status": "PASS",
+      "duration_ms": 19.43,
+      "untrusted_tags_enforced": true,
+      "verified": true
+    },
+    "MISSION_9": {
+      "name": "Large KB Bounded Retrieval",
+      "status": "PASS",
+      "duration_ms": 21.19,
+      "requested_k": 50,
+      "returned_k": 10,
+      "verified": true
+    },
+    "MISSION_10": {
+      "name": "Restart Application Persistence",
+      "status": "PASS",
+      "duration_ms": 7.31,
+      "expected": "ALPHA_PERSIST_99",
+      "recovered": "ALPHA_PERSIST_99",
+      "verified": true
+    },
+    "MISSION_11": {
+      "name": "Delete -> Restart -> Verify Absent",
+      "status": "PASS",
+      "duration_ms": 8.1,
+      "expected": null,
+      "actual": null,
+      "verified": true
+    },
+    "MISSION_12": {
+      "name": "Current User Intent Priority",
+      "status": "PASS",
+      "duration_ms": 5.85,
+      "stored_memory": "dark",
+      "current_user_request": "I changed my preference. Use light theme for this task.",
+      "effective_intent": "light",
+      "verified": true
+    },
+    "MISSION_13": {
+      "name": "Memory + Live Research Precedence",
+      "status": "PASS",
+      "duration_ms": 3.66,
+      "stored_memory": "Alice",
+      "live_evidence": "Bob was appointed new CEO in 2026.",
+      "effective_answer": "Bob",
+      "verified": true
+    },
+    "MISSION_14": {
+      "name": "RAG DB Recovery & Fail-Safe",
+      "status": "PASS",
+      "duration_ms": 40.72,
+      "corruption_detected": true,
+      "rebuild_succeeded": true,
+      "healthy_after_rebuild": true,
+      "verified": true
+    },
+    "MISSION_15": {
+      "name": "Large Conversation + RAG Context Budget",
+      "status": "PASS",
+      "duration_ms": 3.11,
+      "estimated_tokens": 747,
+      "context_limit": 4096,
+      "is_valid": true,
+      "verified": true
+    }
+  }
+}

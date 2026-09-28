@@ -1,0 +1,106 @@
+{
+  "audit_timestamp": "2026-09-27T14:58:10.321566+00:00",
+  "total_missions_executed": 10,
+  "missions": [
+    {
+      "mission": "MISSION_A",
+      "topic": "Give me the latest NVIDIA news.",
+      "nonce": "NONCE_d4aeb059",
+      "tool_call_id": "call_b55979f9",
+      "trace_id": "trace_9a1e2b28",
+      "duration_s": 0.001,
+      "http_status": 200,
+      "sources_discovered": 1,
+      "sources_verified": 1,
+      "is_verified": true,
+      "content_hash": "df48317454f12f40cd99ccde1be96ff0c2be079c349cb84eb56d66bbe52423a3",
+      "tool_verification_status": "VERIFIED",
+      "status": "PASS"
+    },
+    {
+      "mission": "MISSION_B",
+      "topic": "Quantum Computing Qubit Scaling and Gate Fidelity",
+      "duration_s": 0.0,
+      "sources_consulted": 3,
+      "findings_extracted": 2,
+      "top_finding_corroboration": 2,
+      "is_verified": true,
+      "status": "PASS"
+    },
+    {
+      "mission": "MISSION_C",
+      "topic": "Solid-State Battery Energy Density 2026",
+      "duration_s": 0.0,
+      "contradictions_detected": 1,
+      "flagged_topic": "Contrasting claims regarding 'have achieved commercial state'",
+      "disagreement_preserved": true,
+      "status": "PASS"
+    },
+    {
+      "mission": "MISSION_D",
+      "topic": "Next-Generation Photonic Computing",
+      "duration_s": 0.0,
+      "total_sources": 2,
+      "verified_count": 2,
+      "unverified_count": 0,
+      "is_verified": true,
+      "status": "PASS"
+    },
+    {
+      "mission": "MISSION_E",
+      "topic": "Offline Network Disconnect Simulation",
+      "duration_s": 0.001,
+      "is_verified": false,
+      "executive_summary": "\u26a0\ufe0f Research Inconclusive: Zero verifiable source endpoints could be retrieved for 'Offline Network Disconnect Simulation'. In accordance with zero-trust intelligence standards, F.R.I.D.A.Y. refuses to synthesize ungrounded claims or fabricate sources. No verifiable multi-source intelligence could be extracted for this topic.",
+      "refused_fabrication": true,
+      "status": "PASS"
+    },
+    {
+      "mission": "MISSION_F",
+      "task_id": "task_1790521090314_bc1dcc",
+      "duration_s": 0.003,
+      "final_state": "CANCELLED",
+      "is_cancelled": true,
+      "terminal_state": true,
+      "status": "PASS"
+    },
+    {
+      "mission": "MISSION_G",
+      "task_id": "task_1790521090317_b5d61b",
+      "duration_s": 0.002,
+      "final_state": "CANCELLED",
+      "is_cancelled": true,
+      "status": "PASS"
+    },
+    {
+      "mission": "MISSION_H",
+      "duration_s": 0.001,
+      "delimiters_present": true,
+      "security_directive_present": true,
+      "status": "PASS"
+    },
+    {
+      "mission": "MISSION_I",
+      "duration_s": 0.0,
+      "extracted_chars": 1800,
+      "is_bounded_under_2500": true,
+      "status": "PASS"
+    },
+    {
+      "mission": "MISSION_J",
+      "duration_s": 0.001,
+      "task_a_id": "task_1790521090321_95525b",
+      "task_b_id": "task_1790521090321_b04f52",
+      "distinct_task_ids": true,
+      "task_a_state": "CANCELLED",
+      "task_b_state": "CREATED",
+      "task_b_unaffected": true,
+      "status": "PASS"
+    }
+  ],
+  "execution_summary": {
+    "all_passed": true,
+    "pass_count": 10,
+    "fail_count": 0
+  }
+}

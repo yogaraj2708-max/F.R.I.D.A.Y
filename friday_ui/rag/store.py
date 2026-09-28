@@ -15,9 +15,11 @@ class FastLocalEmbedder:
     """
     Deterministic, zero-latency local embedding generator using Blake2b hashed projections.
     Guarantees stable, identical vectors across distinct application runs and Python processes.
+    Dynamically configurable dimension and model naming.
     """
-    def __init__(self, dim: int = 384):
-        self.dim = dim
+    def __init__(self, dim: int = 384, model_name: str = "fast_blake2b_384"):
+        self.dim = int(dim)
+        self.model_name = str(model_name)
 
     def _token_hash(self, token: str) -> int:
         digest = hashlib.blake2b(token.encode('utf-8'), digest_size=8).digest()
@@ -167,4 +169,33 @@ class FridayVectorStore:
             })
 
         scored_results.sort(key=lambda x: x["score"], reverse=True)
-        return scored_results[:top_k]
+        return scored_results[:max(1, min(top_k, 10))]
+
+    def delete_document(self, doc_id: str) -> bool:
+        """Deletes all chunks of doc_id with postcondition verification."""
+        conn = sqlite3.connect(self.db_path)
+        try:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM document_chunks WHERE doc_id = ?", (doc_id,))
+            conn.commit()
+            deleted = cursor.rowcount > 0
+            if deleted:
+                cursor.execute("SELECT id FROM document_chunks WHERE doc_id = ?", (doc_id,))
+                if cursor.fetchone() is not None:
+                    return False
+            return deleted
+        finally:
+            conn.close()
+
+    def check_integrity(self) -> bool:
+        """Checks SQLite database file integrity."""
+        conn = sqlite3.connect(self.db_path)
+        try:
+            cursor = conn.cursor()
+            cursor.execute("PRAGMA integrity_check;")
+            res = cursor.fetchone()
+            return bool(res and res[0] == "ok")
+        except Exception:
+            return False
+        finally:
+            conn.close()

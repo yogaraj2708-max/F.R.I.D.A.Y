@@ -1,0 +1,18 @@
+{
+  "audit": "SUBPROCESS_AUDIT",
+  "status": "PASS",
+  "baseline_child_processes": 0,
+  "after_tool_operations": 0,
+  "after_desktop_actions": 0,
+  "orphan_subprocesses": 0,
+  "inspected_operations": [
+    "safe_calculate",
+    "get_cpu_info",
+    "get_battery_info",
+    "capture_and_save_screenshot",
+    "deep_research_worker",
+    "browser_session"
+  ],
+  "verdict": "BOUNDED",
+  "analysis": "All system tools, automation helpers, and background tasks execute either purely in-process or manage child subprocess lifecycles cleanly without leaving zombie processes."
+}

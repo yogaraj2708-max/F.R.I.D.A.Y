@@ -1,0 +1,35 @@
+[
+  {
+    "scenario_id": "CONC-01",
+    "name": "Non-GUI PDF Worker Thread Execution",
+    "execution_thread": "QThread (PDFAnalysisWorker)",
+    "gui_thread_impact": "Zero GUI block; main event loop processes user clicks/HUD animations without stutter",
+    "signals_emitted": "progress_signal, finished_signal, cancelled_signal, error_signal",
+    "verification_test": "test_pdf_worker_runs_on_background_thread",
+    "status": "PASS"
+  },
+  {
+    "scenario_id": "CONC-02",
+    "name": "Parallel Multi-Document Reading",
+    "execution_thread": "ThreadPoolExecutor (5 concurrent worker threads)",
+    "isolation_guarantee": "Each thread processes independent file descriptors with independent extraction state; zero context bleed",
+    "verification_test": "test_concurrent_document_reads",
+    "status": "PASS"
+  },
+  {
+    "scenario_id": "CONC-03",
+    "name": "Concurrent Same-Document Deduplication",
+    "execution_thread": "ThreadPoolExecutor (4 concurrent threads on same document)",
+    "isolation_guarantee": "In-memory cache returns stable SHA-256 result safely",
+    "verification_test": "test_concurrent_same_document_deduplication",
+    "status": "PASS"
+  },
+  {
+    "scenario_id": "CONC-04",
+    "name": "Document Analysis + Web Research Isolation",
+    "execution_thread": "Isolated tool pipelines",
+    "isolation_guarantee": "Document provenance records source_file & hash; Web provenance records query & source_urls; zero field crossover",
+    "verification_test": "test_document_and_web_evidence_isolation",
+    "status": "PASS"
+  }
+]

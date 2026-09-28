@@ -1,0 +1,92 @@
+{
+  "test_suites": [
+    {
+      "file": "tests/test_document_ingestion_forensics.py",
+      "tests_count": 12,
+      "passed": 12,
+      "failed": 0,
+      "status": "PASS"
+    },
+    {
+      "file": "tests/test_pdf_hardening.py",
+      "tests_count": 7,
+      "passed": 7,
+      "failed": 0,
+      "status": "PASS"
+    },
+    {
+      "file": "tests/test_docx_hardening.py",
+      "tests_count": 6,
+      "passed": 6,
+      "failed": 0,
+      "status": "PASS"
+    },
+    {
+      "file": "tests/test_document_context_budget.py",
+      "tests_count": 4,
+      "passed": 4,
+      "failed": 0,
+      "status": "PASS"
+    },
+    {
+      "file": "tests/test_document_provenance.py",
+      "tests_count": 4,
+      "passed": 4,
+      "failed": 0,
+      "status": "PASS"
+    },
+    {
+      "file": "tests/test_document_edit_verification.py",
+      "tests_count": 4,
+      "passed": 4,
+      "failed": 0,
+      "status": "PASS"
+    },
+    {
+      "file": "tests/test_document_security.py",
+      "tests_count": 6,
+      "passed": 6,
+      "failed": 0,
+      "status": "PASS"
+    },
+    {
+      "file": "tests/test_document_cancellation.py",
+      "tests_count": 1,
+      "passed": 1,
+      "failed": 0,
+      "status": "PASS"
+    },
+    {
+      "file": "tests/test_document_concurrency.py",
+      "tests_count": 2,
+      "passed": 2,
+      "failed": 0,
+      "status": "PASS"
+    },
+    {
+      "file": "tests/test_document_prompt_injection.py",
+      "tests_count": 2,
+      "passed": 2,
+      "failed": 0,
+      "status": "PASS"
+    },
+    {
+      "file": "tests/test_document_false_success.py",
+      "tests_count": 5,
+      "passed": 5,
+      "failed": 0,
+      "status": "PASS"
+    }
+  ],
+  "total_document_tests": 53,
+  "total_passed": 53,
+  "total_failed": 0,
+  "pass_rate": "100%",
+  "runtime_missions": {
+    "total_missions": 14,
+    "executed_live": 14,
+    "successful": 14,
+    "trace_file": "AUDIT/DOCUMENT_HARDENING/DOCUMENT_RUNTIME_TRACE.json",
+    "status": "PASS"
+  }
+}

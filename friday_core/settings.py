@@ -63,7 +63,12 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "speak_full_response": True,
     "semantic_routing": True,
     "semantic_router_threshold": 0.76,
-    "decision_engine": "ollama"  # "ollama", "laya", "vector"
+    "decision_engine": "ollama",  # "ollama", "laya", "vector"
+    "permission_screen_access": True,
+    "permission_clipboard_access": True,
+    "permission_file_indexing": True,
+    "permission_memory": True,
+    "permission_background_context": True
 }
 
 

@@ -1,0 +1,16 @@
+# F.R.I.D.A.Y. 3.0 — Release Candidate Cryptographic Hashes
+# Generated: 2026-09-28T14:12:30Z
+# Git Commit: 4f41375f1dd5744990fe94db93a8a7890ce84e89
+
+# Core Application Files
+bec13de77367159a2f640ecbc1b01b17bb002e92ea56a1e0c96f720a907bf674  friday_ui/app.py
+67f04ff3609081bd52b8acb6e7821f894257c5118423d1e809a1287bdd33006e  friday_ui/core/engine.py
+06419f33d95565fbdbbc1cd0ffdb60c62a707fe9e51c37cf545d368a18b13c3e  friday_core/agent/task_lifecycle.py
+c3661b48be582cc99a33ccd9f051acb94a346dbb0bc3a55a73dc37bf65a4a105  friday_core/skills/agent_bridge.py
+92780e8e69c9113c6e8e626e92289c320755483febd3ea29e68f71caa07a47eb  friday_core/system/telemetry.py
+fabbddfbbcf4fe9352636bcdd57be2159354f69eba4815f9ad01cd2a536db029  friday_core/memory/manager.py
+3ab57b3ef3ac60e73a9caa871701513104a403ffb23e7036e96d098426e964b5  friday_core/document/editor.py
+3c0278deabcc89480b7c143a5767f6810abdef1c8360de25e66f1091a897542a  friday_core/vision/image_context.py
+c8bac7e3ab2ca069d5dfe483abe705309b7fd76d1021d1b88ec02763b7f472b7  friday_core/research/worker.py
+9f567ce2bdd6eeafd4dcabc44be10ce665f2993e3a07975121664812481c4844  FRIDAY_3.0.spec
+842b1ee437ffbb9979e5ec031403d9a5d92c78dd6e10ee94a7bc97afd0af52b1  requirements.txt

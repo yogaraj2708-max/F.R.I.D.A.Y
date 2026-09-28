@@ -1,0 +1,69 @@
+[
+  {
+    "edit_type": "DOCX Paragraph Replacement",
+    "target": "Item 12",
+    "operation": "replace",
+    "new_content": "Item 12: Reactor core cooling sequence has been upgraded to cryogenic liquid nitrogen.",
+    "staging_mechanism": "Temporary file .tmp_{uuid} in destination directory",
+    "atomic_commit": "os.replace(temp_path, target_path)",
+    "reopen_verifier": "DocxIndependentVerifier.verify_edit() with fresh docx.Document() handle",
+    "verification_checks": [
+      "Physical output file exists on disk",
+      "Byte size > 0",
+      "Uncorrupted OpenXML structure",
+      "New content verified in target paragraph",
+      "Unrelated paragraphs verified unchanged"
+    ],
+    "hash_tracking": "before_hash != after_hash recorded in provenance",
+    "rollback_on_failure": "Automatic discard of staging file / restore from backup",
+    "status": "PASS"
+  },
+  {
+    "edit_type": "Text File Surgical Replacement",
+    "target": "mode = development",
+    "operation": "replace",
+    "new_content": "mode = production",
+    "staging_mechanism": "Temporary file .tmp_{uuid} + os.fsync()",
+    "atomic_commit": "os.replace(temp_path, target_path)",
+    "reopen_verifier": "open(target_path, 'r') fresh file handle",
+    "verification_checks": [
+      "Physical file exists on disk",
+      "Byte size > 0",
+      "New content present in reopened text",
+      "All unrelated lines preserved exactly"
+    ],
+    "hash_tracking": "before_hash != after_hash recorded in provenance",
+    "rollback_on_failure": "Staging file deleted; original file untouched",
+    "status": "PASS"
+  },
+  {
+    "edit_type": "Source Code Function Modification",
+    "target": "return 'old_task'",
+    "operation": "replace",
+    "new_content": "return 'new_hardened_task'",
+    "staging_mechanism": "Temporary file .tmp_{uuid} + os.fsync()",
+    "atomic_commit": "os.replace(temp_path, target_path)",
+    "reopen_verifier": "open(target_path, 'r') fresh file handle",
+    "verification_checks": [
+      "Target modification present in reopened code",
+      "Unrelated function definitions preserved exactly"
+    ],
+    "hash_tracking": "before_hash != after_hash recorded in provenance",
+    "status": "PASS"
+  },
+  {
+    "edit_type": "Ambiguous Target Guard",
+    "target": "status = pending (occurs multiple times)",
+    "operation": "replace",
+    "new_content": "status = active",
+    "staging_mechanism": "Blocked before staging",
+    "atomic_commit": "N/A",
+    "reopen_verifier": "N/A",
+    "verification_checks": [
+      "Detects multiple occurrences",
+      "Rejects whole-file accidental corruption",
+      "Requests user clarification for exact line/target"
+    ],
+    "status": "PASS"
+  }
+]

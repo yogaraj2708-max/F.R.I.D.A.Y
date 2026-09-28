@@ -1,0 +1,18 @@
+{
+  "test_11_model_switch": {
+    "initial_model": "model-a:latest",
+    "switched_model": "model-b:latest",
+    "switch_successful": true,
+    "next_turn_used_new_model": true,
+    "cache_cleared": true
+  },
+  "test_12_unsupported_model": {
+    "selected_model": "deepseek-r1:8b",
+    "capability_probe_result": "UNAVAILABLE",
+    "reported_status": "NATIVE_TOOL_CALLING = UNSUPPORTED_FOR_SELECTED_MODEL",
+    "silent_fallback_to_other_model": false,
+    "silent_keyword_fallback": false,
+    "silent_1b_router_activation": false
+  },
+  "executed_at": "2026-09-27T11:37:14.653810+00:00"
+}

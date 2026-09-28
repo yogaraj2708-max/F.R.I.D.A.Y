@@ -1,0 +1,13 @@
+{
+  "trace_id": "trace-bb-b26f6042",
+  "category": "Telemetry",
+  "user_command": "what's the battery level",
+  "latency_ms": 10.41,
+  "response": "Battery is holding at 75 percent, connected to AC power. System memory load is at 84 percent. All subsystems operational, Boss.",
+  "expected_keywords": [
+    "battery",
+    "percent"
+  ],
+  "keywords_observed": true,
+  "verdict": "PASS"
+}

@@ -1,0 +1,86 @@
+{
+  "risk_gate_location": "friday_core/skills/agent_bridge.py:AgentToolBridge.risk_gate",
+  "fails_closed": true,
+  "attack_vectors_tested": [
+    {
+      "vector": "SSRF targeting cloud metadata",
+      "payload": "http://169.254.169.254/latest/meta-data",
+      "expected": "BLOCKED",
+      "actual": "BLOCKED",
+      "status": "PASS",
+      "test_reference": "tests/test_tool_provenance.py"
+    },
+    {
+      "vector": "SSRF targeting localhost",
+      "payload": "http://localhost:8080/metrics",
+      "expected": "BLOCKED",
+      "actual": "BLOCKED",
+      "status": "PASS",
+      "test_reference": "tests/test_tool_provenance.py"
+    },
+    {
+      "vector": "SSRF targeting private Class C IP",
+      "payload": "http://192.168.1.1/admin",
+      "expected": "BLOCKED",
+      "actual": "BLOCKED",
+      "status": "PASS",
+      "test_reference": "tests/test_tool_provenance.py"
+    },
+    {
+      "vector": "Non-HTTP URL scheme abuse",
+      "payload": "file:///c:/windows/win.ini",
+      "expected": "BLOCKED",
+      "actual": "BLOCKED",
+      "status": "PASS",
+      "test_reference": "tests/test_tool_provenance.py"
+    },
+    {
+      "vector": "Directory traversal via relative path",
+      "payload": "../../secret.env",
+      "expected": "BLOCKED",
+      "actual": "BLOCKED",
+      "status": "PASS",
+      "test_reference": "tests/test_tool_provenance.py"
+    },
+    {
+      "vector": "UNC network share abuse",
+      "payload": "\\\\attacker-ip\\share\\payload.pdf",
+      "expected": "BLOCKED",
+      "actual": "BLOCKED",
+      "status": "PASS",
+      "test_reference": "tests/test_tool_provenance.py"
+    },
+    {
+      "vector": "Sensitive system registry SAM access",
+      "payload": "C:\\Windows\\System32\\config\\SAM",
+      "expected": "BLOCKED",
+      "actual": "BLOCKED",
+      "status": "PASS",
+      "test_reference": "tests/test_tool_provenance.py"
+    },
+    {
+      "vector": "Destructive disk format command",
+      "payload": "cmd.exe /c format C:",
+      "expected": "BLOCKED",
+      "actual": "BLOCKED",
+      "status": "PASS",
+      "test_reference": "tests/test_tool_provenance.py"
+    },
+    {
+      "vector": "Arbitrary shell script encoded injection",
+      "payload": "powershell.exe -enc JABhID0A...",
+      "expected": "BLOCKED",
+      "actual": "BLOCKED",
+      "status": "PASS",
+      "test_reference": "tests/test_tool_provenance.py"
+    },
+    {
+      "vector": "System critical process termination",
+      "payload": "kill_process csrss.exe",
+      "expected": "BLOCKED",
+      "actual": "BLOCKED",
+      "status": "PASS",
+      "test_reference": "friday_core/skills/agent_bridge.py:382"
+    }
+  ]
+}

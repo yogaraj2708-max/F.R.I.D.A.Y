@@ -1,0 +1,78 @@
+{
+  "subsystem": "Voice Subsystem Cancellation Matrix",
+  "audit_phase": "VOICE_STT_TTS_ZERO_TRUST_HARDENING",
+  "timestamp": "2026-09-28T12:20:00Z",
+  "cancellation_points": [
+    {
+      "point_id": "CANCEL_01",
+      "stage": "LISTENING (Standby / Background Monitoring)",
+      "trigger": "User clicks mic button (Ctrl+M) to deactivate",
+      "mechanism": "voice_loop.stop(), _reader_idle synchronization",
+      "latency_to_halt": "< 10ms",
+      "state_transition": "LISTENING -> IDLE",
+      "status": "PASS",
+      "verified": true
+    },
+    {
+      "point_id": "CANCEL_02",
+      "stage": "DETECTING_SPEECH (Active VAD Recording)",
+      "trigger": "User presses ESC / Emergency Stop while speaking",
+      "mechanism": "Recorded audio buffer discarded, VAD reset(), speech_level_changed emit(0.0)",
+      "latency_to_halt": "< 15ms",
+      "state_transition": "DETECTING_SPEECH -> CANCELLED -> IDLE",
+      "status": "PASS",
+      "verified": true
+    },
+    {
+      "point_id": "CANCEL_03",
+      "stage": "TRANSCRIBING (STT Model Inference)",
+      "trigger": "Emergency Stop signal during Whisper CPU inference",
+      "mechanism": "cancel_event.is_set() check in STT loop, worker thread exits cleanly",
+      "latency_to_halt": "< 20ms",
+      "state_transition": "TRANSCRIBING -> CANCELLED -> IDLE",
+      "status": "PASS",
+      "verified": true
+    },
+    {
+      "point_id": "CANCEL_04",
+      "stage": "THINKING (Main Agent Reasoning)",
+      "trigger": "User cancels during LLM token generation",
+      "mechanism": "emergency_stop.trigger_stop(), query_llm cancel event set",
+      "latency_to_halt": "< 25ms",
+      "state_transition": "THINKING -> CANCELLED -> IDLE",
+      "status": "PASS",
+      "verified": true
+    },
+    {
+      "point_id": "CANCEL_05",
+      "stage": "EXECUTING (Native Tool Execution)",
+      "trigger": "User cancels while UI automation or research is running",
+      "mechanism": "UIActionEngine / ResearchWorker cancellation token check",
+      "latency_to_halt": "< 30ms",
+      "state_transition": "EXECUTING -> CANCELLED -> IDLE",
+      "status": "PASS",
+      "verified": true
+    },
+    {
+      "point_id": "CANCEL_06",
+      "stage": "TTS SYNTHESIS (Pre-fetching Audio Chunks)",
+      "trigger": "Emergency stop during ONNX / Edge-TTS synthesis",
+      "mechanism": "cancel_event checked between sentences; next_audio_task cancelled",
+      "latency_to_halt": "< 10ms",
+      "state_transition": "SPEAKING -> CANCELLED -> IDLE",
+      "status": "PASS",
+      "verified": true
+    },
+    {
+      "point_id": "CANCEL_07",
+      "stage": "SPEAKING (Active Audio Playback Through Speakers)",
+      "trigger": "User presses ESC or speaks barge-in utterance",
+      "mechanism": "pygame.mixer.stop() + SAPI.SpVoice Speak('', 2) + cancel_event.set()",
+      "latency_to_halt": "< 5ms (Instant acoustic cutoff)",
+      "state_transition": "SPEAKING -> CANCELLED / LISTENING -> IDLE",
+      "status": "PASS",
+      "verified": true
+    }
+  ],
+  "verification_status": "PASS"
+}

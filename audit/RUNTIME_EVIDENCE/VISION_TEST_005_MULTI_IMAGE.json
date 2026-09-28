@@ -1,0 +1,13 @@
+{
+  "test_id": "VISION-TEST-005",
+  "description": "Multiple Images in Session -> distinct IDs (001, 002) -> positional resolution",
+  "duration_s": 74.29,
+  "total_contexts_stored": 2,
+  "context_ids": [
+    "image_context_001",
+    "image_context_002"
+  ],
+  "resolved_first": "image_context_001",
+  "resolved_second": "image_context_002",
+  "verdict": "PASS"
+}
