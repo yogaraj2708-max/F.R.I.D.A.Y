@@ -81,19 +81,19 @@ class TestUIStateRendering(unittest.TestCase):
         self.assertEqual(rv.live_status_lbl.text(), "Analyzing evidence")
 
     def test_chat_bubble_operational_thinking_state(self):
-        """Verifies chat bubble exhibits concise operational thinking without raw <think> dump."""
+        """Verifies chat bubble exhibits strict reasoning isolation with zero reasoning visible."""
         bubble = ChatBubble("friday", "", is_streaming=True)
         self.assertTrue(bubble.thinking_container.isHidden())
 
-        # Stream thinking
+        # Stream thinking: reasoning remains strictly hidden from visible UI
         bubble.append_thinking("Evaluating search results...")
-        self.assertFalse(bubble.thinking_container.isHidden())
-        self.assertEqual(bubble.thinking_title_label.text(), "Thinking...")
+        self.assertTrue(bubble.thinking_container.isHidden())
 
         # Transition to content tokens
         bubble.append_token("Found optimal trajectory.")
-        self.assertIn("Thought for", bubble.thinking_title_label.text())
+        self.assertTrue(bubble.thinking_container.isHidden())
         self.assertNotIn("<think>", bubble.raw_text)
+        self.assertEqual(bubble.raw_text, "Found optimal trajectory.")
 
 
 if __name__ == "__main__":

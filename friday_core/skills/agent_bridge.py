@@ -170,13 +170,13 @@ class AgentToolBridge:
                 "type": "function",
                 "function": {
                     "name": "launch_app",
-                    "description": "Launches a Windows desktop application by executable or friendly name (e.g. 'notepad', 'calc', 'vscode', 'word', 'edge').",
+                    "description": "Launches a Windows desktop application strictly matching the user request (e.g. 'notepad', 'calculator', 'chrome', 'edge'). NEVER launch unrequested applications.",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "app_name": {
                                 "type": "string",
-                                "description": "The name or path of the desktop application to launch"
+                                "description": "The exact name or path of the desktop application requested by the user"
                             }
                         },
                         "required": ["app_name"]
@@ -187,17 +187,17 @@ class AgentToolBridge:
                 "type": "function",
                 "function": {
                     "name": "type_text",
-                    "description": "Types text into the currently active or specified desktop application window.",
+                    "description": "Types or inserts text (including multiline text, C/C++ code, scripts, and formatted documents) into the target desktop application window specified by the user (such as 'notepad'). Supports braces, quotes, newlines, and symbols with verified UI insertion and screen readback.",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "text": {
                                 "type": "string",
-                                "description": "The text string to type into the application"
+                                "description": "The exact text or multiline source code to insert into the application"
                             },
                             "app_name": {
                                 "type": "string",
-                                "description": "Optional name of the target application (e.g. 'notepad', 'word')"
+                                "description": "Name of the target application requested by the user (e.g. 'notepad'). Must strictly match user intent."
                             },
                             "control_name": {
                                 "type": "string",
@@ -206,7 +206,7 @@ class AgentToolBridge:
                             "mode": {
                                 "type": "string",
                                 "enum": ["type", "replace", "append"],
-                                "description": "Typing mode: 'type' at cursor, 'replace' clears existing text, 'append' adds to end"
+                                "description": "Typing mode: 'replace' clears existing text and sets full content, 'append' adds to end, 'type' inserts at current position"
                             }
                         },
                         "required": ["text"]
@@ -381,14 +381,16 @@ class AgentToolBridge:
         tools.extend(core_tools)
 
         # 2. Add Pluggable Skills from SkillRegistry
+        excluded_skills = {
+            "web_search", "calculate", "system_telemetry", "read_document",
+            "edit_document", "analyze_image", "launch_app", "type_text",
+            "inspect_ui", "click_control", "timer", "weather", "system_time_date",
+            "web_fetch", "deep_research", "query_knowledge_base",
+            "ui_type_text", "app_launcher", "word_drafter", "ui_key_press",
+            "ui_focus", "ui_verify_content"
+        }
         for s in skill_registry._skills.values():
-            # Avoid duplicating core tool names
-            if s.tool_id in [
-                "web_search", "calculate", "system_telemetry", "read_document",
-                "edit_document", "analyze_image", "launch_app", "type_text",
-                "inspect_ui", "click_control", "timer", "weather", "system_time_date",
-                "web_fetch", "deep_research", "query_knowledge_base"
-            ]:
+            if s.tool_id in excluded_skills:
                 continue
 
             properties = {}
@@ -416,10 +418,10 @@ class AgentToolBridge:
 
         return tools
 
-    def risk_gate(self, tool_name: str, arguments: Dict[str, Any]) -> Tuple[bool, str]:
+    def risk_gate(self, tool_name: str, arguments: Dict[str, Any], user_query: Optional[str] = None) -> Tuple[bool, str]:
         """
         Section 20: Python still decides whether the action is ALLOWED to execute.
-        Enforces path fencing, process protection, SSRF guards, and security clearance.
+        Enforces path fencing, process protection, SSRF guards, and authoritative application selection.
         """
         # Block protected system actions
         prohibited_commands = [
@@ -429,6 +431,41 @@ class AgentToolBridge:
         arg_str = json.dumps(arguments).lower()
         if any(cmd in arg_str for cmd in prohibited_commands):
             return False, "Command contains prohibited destructive system directive."
+
+        # Authoritative Application Selection Guard
+        if tool_name in ["launch_app", "type_text"] and user_query:
+            app_arg = str(arguments.get("app_name", "") or arguments.get("application", "") or arguments.get("name", "")).lower().strip()
+            if app_arg:
+                import re
+                from friday_core.system.window_manager import window_manager
+                target_norm = window_manager.normalize_app_name(app_arg)
+                uq = user_query.lower()
+                known_apps = ["notepad", "word", "vscode", "calculator", "chrome", "edge", "terminal", "cmd", "explorer"]
+                user_apps = []
+                for a in known_apps:
+                    if a == "notepad":
+                        if re.search(r"\b(?:notepad|note\s*pad|notes)\b", uq):
+                            user_apps.append("notepad")
+                    elif a == "word":
+                        if re.search(r"\b(?:ms\s+|microsoft\s+)?word\b", uq):
+                            user_apps.append("word")
+                    elif a == "vscode":
+                        if re.search(r"\b(?:vs\s*code|visual\s+studio\s+code|vscode|(?:in|open|launch)\s+code)\b", uq):
+                            user_apps.append("vscode")
+                    elif a == "calculator":
+                        if re.search(r"\b(?:calc|calculator)\b", uq):
+                            is_calc_subject = bool(re.search(r"\b(?:make|create|write|build|code|program|script|develop|implement)\s+.*?\b(?:calc|calculator)\b", uq))
+                            is_calc_app_requested = bool(re.search(r"\b(?:open|launch|run|start)\s+(?:the\s+)?(?:calc|calculator)\b|\b(?:in|into)\s+(?:the\s+|my\s+)?(?:calc|calculator)\b", uq))
+                            if not is_calc_subject or is_calc_app_requested:
+                                user_apps.append("calculator")
+                    else:
+                        if re.search(rf"\b{a}\b", uq):
+                            user_apps.append(a)
+
+                if user_apps and target_norm:
+                    canonical_user_apps = [window_manager.normalize_app_name(ua) for ua in user_apps]
+                    if target_norm not in canonical_user_apps:
+                        return False, f"Target application '{app_arg}' was not requested by user. Explicit user target: {', '.join(user_apps)}. Authoritative Application Selection requires strict adherence to user intent."
 
         # Path fencing for file/document tools
         if tool_name in ["read_document", "read_file", "edit_document"]:

@@ -74,13 +74,16 @@ class AudioDeviceManager:
         if not input_devs:
             return None, "NO_INPUT_DEVICE_AVAILABLE"
 
-        # 1. Try explicit configured device
+        # 1. Try explicit configured device (avoiding virtual Sound Mapper if physical default exists)
         target = configured_id if configured_id is not None else settings.get("audio_input_device", None)
         if target is not None:
             try:
                 idx = int(target)
                 for d in input_devs:
                     if d["index"] == idx:
+                        if idx == 0 and "sound mapper" in d["name"].lower():
+                            # Don't bind to silent Sound Mapper if default device is a physical hardware mic
+                            break
                         return idx, d["name"]
             except (ValueError, TypeError):
                 pass
@@ -99,7 +102,11 @@ class AudioDeviceManager:
         except Exception:
             pass
 
-        # 3. Fallback to first available input device
+        # 3. Fallback: prefer physical device over virtual Sound Mapper
+        for d in input_devs:
+            if "sound mapper" not in d["name"].lower():
+                return d["index"], d["name"]
+
         first = input_devs[0]
         return first["index"], first["name"]
 
@@ -277,6 +284,30 @@ class AudioDeviceManager:
             return sd.query_devices(device_index)
         except Exception:
             return None
+
+    def get_capture_endpoint_state(self) -> Dict[str, Any]:
+        """
+        Queries Windows Core Audio for the physical state of the default recording endpoint (eCapture).
+        Returns dict with keys: 'available', 'is_muted', 'master_volume'.
+        """
+        try:
+            from friday_core.system.telemetry import get_microphone_state
+            is_muted, vol = get_microphone_state()
+            return {"available": True, "is_muted": is_muted, "master_volume": vol}
+        except Exception as ex:
+            logger.debug("Failed to query capture endpoint state: %s", ex)
+            return {"available": False, "is_muted": False, "master_volume": 100.0}
+
+    def ensure_capture_unmuted(self, min_volume: float = 0.50) -> bool:
+        """
+        Guarantees that the Windows recording endpoint is physically unmuted and adequate.
+        """
+        try:
+            from friday_core.system.telemetry import ensure_microphone_unmuted
+            return ensure_microphone_unmuted(min_volume=min_volume)
+        except Exception as ex:
+            logger.debug("Failed to unmute capture endpoint: %s", ex)
+            return False
 
 
 # Global Singleton Audio Device Manager

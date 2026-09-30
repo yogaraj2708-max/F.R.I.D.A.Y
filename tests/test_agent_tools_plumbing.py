@@ -34,6 +34,15 @@ class TestAgentToolsPlumbing:
         assert "RAM:" in res
 
     @pytest.mark.asyncio
+    async def test_tool_dispatch_weather(self):
+        signals = FridaySignals()
+        brain = FridayBrain(signals, None)
+        res = await brain.dispatch_agent_tool("weather", {"location": "Coimbatore"})
+        assert "Coimbatore" in res
+        assert ("Weather Report" in res or "Weather Intelligence" in res)
+        assert "Source" in res
+
+    @pytest.mark.asyncio
     async def test_preflight_tool_execution_enriches_context(self):
         signals = FridaySignals()
         status_updates = []

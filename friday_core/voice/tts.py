@@ -84,11 +84,20 @@ class TextToSpeechOrchestrator:
         if not text:
             return ""
 
-        # 0. Strip internal reasoning/thought tags: <think>...</think>
-        text = re.sub(r"<think>[\s\S]*?</think>", " ", text, flags=re.IGNORECASE)
+        # 0. Strict Reasoning & Thought Scrubbing via ReasoningStreamParser
+        try:
+            from friday_core.models.stream_parser import ReasoningStreamParser
+            text = ReasoningStreamParser.clean_final_content(text)
+        except Exception:
+            text = re.sub(r"<(?:think|thought|reasoning)>[\s\S]*?</(?:think|thought|reasoning)>", " ", text, flags=re.IGNORECASE)
+            text = re.sub(r"<(?:think|thought|reasoning)>[\s\S]*$", " ", text, flags=re.IGNORECASE)
+            text = re.sub(r"</(?:think|thought|reasoning)>", " ", text, flags=re.IGNORECASE)
 
         # 0.1 Strip tool traces & system provenance markers
         text = re.sub(r"\[(?:TOOL|TRACE|ACTION|RESULT)[\s\S]*?\]", " ", text, flags=re.IGNORECASE)
+
+        # 0.2 Strip raw tool call JSON payloads
+        text = re.sub(r'\{[^{}]*"(?:name|arguments|tool_calls|query|expression)"[^{}]*\}', ' ', text)
 
         # 1. Strip complete fenced code blocks (handling CRLF and LF)
         text = re.sub(r"```[\w\-]*\r?\n[\s\S]*?```", " ", text)

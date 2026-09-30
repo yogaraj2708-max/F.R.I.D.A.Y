@@ -1,0 +1,245 @@
+{
+  "requirements_manifest": {
+    "PySide6": {
+      "module": "PySide6",
+      "status": "PASS",
+      "version": "6.11.2"
+    },
+    "PySide6-Fluent-Widgets": {
+      "module": "qfluentwidgets",
+      "status": "PASS",
+      "version": "1.11.3"
+    },
+    "qasync": {
+      "module": "qasync",
+      "status": "PASS",
+      "version": "INSTALLED"
+    },
+    "edge-tts": {
+      "module": "edge_tts",
+      "status": "PASS",
+      "version": "7.2.8"
+    },
+    "pygame-ce": {
+      "module": "pygame",
+      "status": "PASS",
+      "version": "2.5.8"
+    },
+    "sounddevice": {
+      "module": "sounddevice",
+      "status": "PASS",
+      "version": "0.5.6"
+    },
+    "SpeechRecognition": {
+      "module": "speech_recognition",
+      "status": "PASS",
+      "version": "3.17.0"
+    },
+    "ollama": {
+      "module": "ollama",
+      "status": "PASS",
+      "version": "INSTALLED"
+    },
+    "duckduckgo_search": {
+      "module": "duckduckgo_search",
+      "status": "PASS",
+      "version": "8.1.1"
+    },
+    "numpy": {
+      "module": "numpy",
+      "status": "PASS",
+      "version": "2.4.6"
+    },
+    "rapidfuzz": {
+      "module": "rapidfuzz",
+      "status": "PASS",
+      "version": "3.14.6"
+    },
+    "certifi": {
+      "module": "certifi",
+      "status": "PASS",
+      "version": "2026.07.22"
+    },
+    "pywin32": {
+      "module": "win32api",
+      "status": "PASS",
+      "version": "INSTALLED"
+    },
+    "kokoro-onnx": {
+      "module": "kokoro_onnx",
+      "status": "PASS",
+      "version": "INSTALLED"
+    },
+    "soundfile": {
+      "module": "soundfile",
+      "status": "PASS",
+      "version": "0.14.0"
+    },
+    "faster-whisper": {
+      "module": "faster_whisper",
+      "status": "PASS",
+      "version": "1.2.1"
+    },
+    "pillow": {
+      "module": "PIL",
+      "status": "PASS",
+      "version": "12.3.0"
+    },
+    "beautifulsoup4": {
+      "module": "bs4",
+      "status": "PASS",
+      "version": "4.15.0"
+    }
+  },
+  "scanned_third_party_imports": {
+    "PIL": {
+      "status": "PASS",
+      "version": "12.3.0",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\PIL\\__init__.py"
+    },
+    "PySide6": {
+      "status": "PASS",
+      "version": "6.11.2",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\PySide6\\__init__.py"
+    },
+    "certifi": {
+      "status": "PASS",
+      "version": "2026.07.22",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\certifi\\__init__.py"
+    },
+    "comtypes": {
+      "status": "PASS",
+      "version": "1.4.17",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\comtypes\\__init__.py"
+    },
+    "ddgs": {
+      "status": "PASS",
+      "version": "9.16.0",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\ddgs\\__init__.py"
+    },
+    "docx": {
+      "status": "PASS",
+      "version": "1.2.0",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\docx\\__init__.py"
+    },
+    "duckduckgo_search": {
+      "status": "PASS",
+      "version": "8.1.1",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\duckduckgo_search\\__init__.py"
+    },
+    "edge_tts": {
+      "status": "PASS",
+      "version": "7.2.8",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\edge_tts\\__init__.py"
+    },
+    "faster_whisper": {
+      "status": "PASS",
+      "version": "1.2.1",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\faster_whisper\\__init__.py"
+    },
+    "httpx": {
+      "status": "PASS",
+      "version": "0.28.1",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\httpx\\__init__.py"
+    },
+    "kokoro_onnx": {
+      "status": "PASS",
+      "version": "INSTALLED",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\kokoro_onnx\\__init__.py"
+    },
+    "laya": {
+      "status": "PASS",
+      "version": "0.3.6",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\laya\\__init__.py"
+    },
+    "lxml": {
+      "status": "PASS",
+      "version": "6.1.3",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\lxml\\__init__.py"
+    },
+    "mss": {
+      "status": "PASS",
+      "version": "10.2.0",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\mss\\__init__.py"
+    },
+    "numpy": {
+      "status": "PASS",
+      "version": "2.4.6",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\numpy\\__init__.py"
+    },
+    "ollama": {
+      "status": "PASS",
+      "version": "INSTALLED",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\ollama\\__init__.py"
+    },
+    "psutil": {
+      "status": "PASS",
+      "version": "7.2.2",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\psutil\\__init__.py"
+    },
+    "pydantic": {
+      "status": "PASS",
+      "version": "2.13.5",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\pydantic\\__init__.py"
+    },
+    "pygame": {
+      "status": "PASS",
+      "version": "2.5.8",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\pygame\\__init__.py"
+    },
+    "pypdf": {
+      "status": "PASS",
+      "version": "6.19.0",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\pypdf\\__init__.py"
+    },
+    "pytesseract": {
+      "status": "FAIL",
+      "error": "No module named 'pytesseract'"
+    },
+    "pythoncom": {
+      "status": "PASS",
+      "version": "INSTALLED",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\pywin32_system32\\pythoncom311.dll"
+    },
+    "qasync": {
+      "status": "PASS",
+      "version": "INSTALLED",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\qasync\\__init__.py"
+    },
+    "qfluentwidgets": {
+      "status": "PASS",
+      "version": "1.11.3",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\qfluentwidgets\\__init__.py"
+    },
+    "sounddevice": {
+      "status": "PASS",
+      "version": "0.5.6",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\sounddevice.py"
+    },
+    "soundfile": {
+      "status": "PASS",
+      "version": "0.14.0",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\soundfile.py"
+    },
+    "speech_recognition": {
+      "status": "PASS",
+      "version": "3.17.0",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\speech_recognition\\__init__.py"
+    },
+    "uiautomation": {
+      "status": "PASS",
+      "version": "2.0.29",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\uiautomation\\__init__.py"
+    },
+    "win32clipboard": {
+      "status": "PASS",
+      "version": "INSTALLED",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\win32\\win32clipboard.pyd"
+    },
+    "win32com": {
+      "status": "PASS",
+      "version": "INSTALLED",
+      "location": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Lib\\site-packages\\win32com\\__init__.py"
+    }
+  }
+}

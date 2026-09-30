@@ -167,8 +167,11 @@ def get_disk_info() -> dict:
         logger.debug(f"[Telemetry]: Disk scan error: {e}")
         return {}
 
-def _get_audio_endpoint_volume():
-    """Retrieves Windows Core Audio IAudioEndpointVolume interface via COM."""
+def _get_audio_endpoint_volume(data_flow: int = 0):
+    """
+    Retrieves Windows Core Audio IAudioEndpointVolume interface via COM.
+    data_flow: 0 for eRender (speakers/headphones), 1 for eCapture (microphone input).
+    """
     if not IS_WINDOWS:
         return None
     try:
@@ -218,21 +221,49 @@ def _get_audio_endpoint_volume():
             IMMDeviceEnumerator,
             CLSCTX_ALL
         )
-        endpoint = enumerator.GetDefaultAudioEndpoint(0, 1)
+        endpoint = enumerator.GetDefaultAudioEndpoint(data_flow, 1) # role 1 = eMultimedia
         return endpoint.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
     except Exception as e:
         logger.debug(f"[Telemetry] Audio COM initialization error: {e}")
         return None
 
 def get_audio_state():
-    """Returns (is_muted, volume_percentage) from Windows Core Audio."""
-    vol = _get_audio_endpoint_volume()
+    """Returns (is_muted, volume_percentage) from Windows Core Audio for speakers."""
+    vol = _get_audio_endpoint_volume(data_flow=0)
     if vol:
         try:
             return bool(vol.GetMute()), round(vol.GetMasterVolumeLevelScalar() * 100, 1)
         except Exception:
             pass
     return False, 50.0
+
+def get_microphone_state():
+    """Returns (is_muted, volume_percentage) from Windows Core Audio for microphone capture endpoint."""
+    vol = _get_audio_endpoint_volume(data_flow=1)
+    if vol:
+        try:
+            return bool(vol.GetMute()), round(vol.GetMasterVolumeLevelScalar() * 100, 1)
+        except Exception:
+            pass
+    return False, 100.0
+
+def ensure_microphone_unmuted(min_volume: float = 0.5):
+    """Ensures the Windows recording endpoint is unmuted and set to at least min_volume."""
+    vol = _get_audio_endpoint_volume(data_flow=1)
+    if not vol:
+        return False
+    try:
+        if vol.GetMute():
+            vol.SetMute(False, None)
+            logger.info("[Telemetry] Unmuted Windows recording capture endpoint.")
+        current_scalar = vol.GetMasterVolumeLevelScalar()
+        if current_scalar < min_volume:
+            vol.SetMasterVolumeLevelScalar(min_volume, None)
+            logger.info(f"[Telemetry] Raised microphone capture volume from {current_scalar*100:.1f}% to {min_volume*100:.1f}%.")
+        return True
+    except Exception as e:
+        logger.debug(f"[Telemetry] Failed to unmute microphone capture endpoint: {e}")
+        return False
 
 def adjust_volume(action: str):
     """Adjusts master system volume or sets exact mute state with verified readback."""

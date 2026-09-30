@@ -63,7 +63,22 @@ def safe_launch(target: str, args: str = "") -> bool:
             clean_target.startswith("ms-") or clean_target.startswith("microsoft.") or
             clean_target.startswith("shell:") or
             (":" in clean_target and clean_target.endswith(":"))):
-            os.startfile(clean_target)
+            # When caller thread has initialized COM as MTA (e.g. uiautomation/comtypes),
+            # ShellExecute/os.startfile for AppX or shell: protocols fails silently on MTA.
+            # Running on a clean worker thread ensures STA/neutral COM apartment activation.
+            import threading
+            err_box = []
+            def _launch_protocol():
+                try:
+                    os.startfile(clean_target)
+                except Exception as ex:
+                    err_box.append(ex)
+
+            t = threading.Thread(target=_launch_protocol, daemon=True)
+            t.start()
+            t.join(timeout=2.0)
+            if err_box:
+                logger.debug(f"[Launcher]: os.startfile error on '{clean_target}': {err_box[0]}")
             return True
 
         if os.path.exists(clean_target):
@@ -141,7 +156,8 @@ def bring_or_launch_vscode() -> bool:
             user32.ShowWindow(hwnd, 9)  # SW_RESTORE
             try:
                 fore_hwnd = user32.GetForegroundWindow()
-                fore_tid = user32.GetWindowThreadProcessId(fore_hwnd, None)
+                p_dummy = wintypes.DWORD()
+                fore_tid = user32.GetWindowThreadProcessId(fore_hwnd, ctypes.byref(p_dummy))
                 curr_tid = kernel32.GetCurrentThreadId()
                 if fore_tid != curr_tid:
                     user32.AttachThreadInput(curr_tid, fore_tid, True)
@@ -310,13 +326,30 @@ def find_and_open_desktop_or_system_item(query: str) -> Tuple[bool, str]:
 
     return False, query
 
-def launch_application(target: str) -> Tuple[bool, str]:
+def launch_application(target: str, raw_launch: bool = False) -> Tuple[bool, str]:
     """Universal Application & File Launcher Dispatcher."""
     t = target.lower().strip()
 
     # Guard: Never launch local apps for web targets or URLs
     if "youtube" in t or "http://" in t or "https://" in t or t.endswith(".com") or t.endswith(".org"):
         return False, target
+
+    # 0. Idempotent Window Reuse for Desktop Productivity Apps (bypassed if raw_launch requested by window_manager)
+    clean_t = re.sub(r"^(open|launch|start|pull up|bring up|run|play)\s+", "", t).strip()
+    norm_t = clean_t.replace(".exe", "").replace(" ", "").replace("_", "").replace("-", "")
+
+    if not raw_launch:
+        if norm_t in ("notepad", "notepadd", "mynotepad") or clean_t in ("notepad", "notepad.exe", "my notepad"):
+            from friday_core.system.window_manager import window_manager
+            ok, target_win, reused, msg = window_manager.get_or_launch_window("notepad")
+            if ok and target_win:
+                return True, "Notepad"
+
+        if norm_t in ("calculator", "calc", "mycalc", "mycalculator") or clean_t in ("calc", "calculator", "calc.exe", "calculator.exe"):
+            from friday_core.system.window_manager import window_manager
+            ok, target_win, reused, msg = window_manager.get_or_launch_window("calculator")
+            if ok and target_win:
+                return True, "Calculator"
 
     # 1. Visual Studio Code
     if (

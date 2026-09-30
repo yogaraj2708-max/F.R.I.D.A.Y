@@ -1,0 +1,922 @@
+{
+  "time_sleep": [
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 5206,
+      "code": "time.sleep(0.04)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 325,
+      "code": "time.sleep(0.2)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 459,
+      "code": "time.sleep(0.25)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 553,
+      "code": "time.sleep(0.08)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 605,
+      "code": "time.sleep(0.08)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 684,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 690,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 693,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 699,
+      "code": "time.sleep(0.15)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 713,
+      "code": "time.sleep(0.2)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 784,
+      "code": "time.sleep(0.25)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 793,
+      "code": "time.sleep(0.25)"
+    },
+    {
+      "file": "friday_core/automation/inspector.py",
+      "line": 299,
+      "code": "time.sleep(0.2)"
+    },
+    {
+      "file": "friday_core/automation/inspector.py",
+      "line": 309,
+      "code": "time.sleep(0.2)"
+    },
+    {
+      "file": "friday_core/automation/inspector.py",
+      "line": 384,
+      "code": "time.sleep(0.15)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 145,
+      "code": "time.sleep(0.002)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 163,
+      "code": "time.sleep(0.002)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 187,
+      "code": "time.sleep(0.10)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 191,
+      "code": "time.sleep(0.10)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 213,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 288,
+      "code": "time.sleep(0.04)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 298,
+      "code": "time.sleep(0.1)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 318,
+      "code": "time.sleep(0.08)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 322,
+      "code": "time.sleep(0.08)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 325,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 328,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 349,
+      "code": "time.sleep(0.01)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 360,
+      "code": "time.sleep(0.08)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 370,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 381,
+      "code": "time.sleep(0.035)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 384,
+      "code": "time.sleep(0.015)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 387,
+      "code": "time.sleep(0.015)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 400,
+      "code": "time.sleep(0.030)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 402,
+      "code": "time.sleep(delay_sec)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 431,
+      "code": "time.sleep(0.04)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 435,
+      "code": "time.sleep(0.03)"
+    },
+    {
+      "file": "friday_core/automation/shortcuts.py",
+      "line": 78,
+      "code": "time.sleep(0.02)"
+    },
+    {
+      "file": "friday_core/automation/shortcuts.py",
+      "line": 80,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/automation/shortcuts.py",
+      "line": 85,
+      "code": "time.sleep(0.02)"
+    },
+    {
+      "file": "friday_core/automation/uia.py",
+      "line": 81,
+      "code": "time.sleep(0.15)"
+    },
+    {
+      "file": "friday_core/automation/uia.py",
+      "line": 104,
+      "code": "time.sleep(0.1)"
+    },
+    {
+      "file": "friday_core/automation/uia.py",
+      "line": 111,
+      "code": "time.sleep(0.1)"
+    },
+    {
+      "file": "friday_core/automation/uia.py",
+      "line": 118,
+      "code": "time.sleep(0.1)"
+    },
+    {
+      "file": "friday_core/automation/uia.py",
+      "line": 141,
+      "code": "time.sleep(0.1)"
+    },
+    {
+      "file": "friday_core/automation/uia.py",
+      "line": 151,
+      "code": "time.sleep(0.1)"
+    },
+    {
+      "file": "friday_core/gatekeeper/gatekeeper.py",
+      "line": 387,
+      "code": "time.sleep(0.5)"
+    },
+    {
+      "file": "friday_core/gatekeeper/gatekeeper.py",
+      "line": 435,
+      "code": "time.sleep(0.2)"
+    },
+    {
+      "file": "friday_core/gatekeeper/gatekeeper.py",
+      "line": 460,
+      "code": "time.sleep(0.15)"
+    },
+    {
+      "file": "friday_core/gatekeeper/gatekeeper.py",
+      "line": 476,
+      "code": "time.sleep(0.3)"
+    },
+    {
+      "file": "friday_core/research/worker.py",
+      "line": 140,
+      "code": "time.sleep(0.5 * attempt)"
+    },
+    {
+      "file": "friday_core/skills/builtins/apps.py",
+      "line": 111,
+      "code": "time.sleep(0.35)"
+    },
+    {
+      "file": "friday_core/skills/builtins/desktop_action.py",
+      "line": 257,
+      "code": "time.sleep(0.04)"
+    },
+    {
+      "file": "friday_core/skills/builtins/desktop_action.py",
+      "line": 279,
+      "code": "time.sleep(0.04)"
+    },
+    {
+      "file": "friday_core/skills/builtins/desktop_action.py",
+      "line": 304,
+      "code": "time.sleep(0.04)"
+    },
+    {
+      "file": "friday_core/skills/builtins/desktop_action.py",
+      "line": 324,
+      "code": "time.sleep(0.04)"
+    },
+    {
+      "file": "friday_core/skills/builtins/desktop_action.py",
+      "line": 337,
+      "code": "time.sleep(0.04)"
+    },
+    {
+      "file": "friday_core/skills/builtins/desktop_action.py",
+      "line": 413,
+      "code": "time.sleep(0.04)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 89,
+      "code": "time.sleep(0.2)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 215,
+      "code": "time.sleep(0.4)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 217,
+      "code": "time.sleep(0.08)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 239,
+      "code": "time.sleep(0.2)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 271,
+      "code": "time.sleep(0.08)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 336,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 342,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 345,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 348,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 356,
+      "code": "time.sleep(0.15)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 366,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 369,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 372,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 375,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 393,
+      "code": "time.sleep(0.25)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 672,
+      "code": "time.sleep(0.1)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 678,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 698,
+      "code": "time.sleep(0.15)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 814,
+      "code": "time.sleep(0.3)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 821,
+      "code": "time.sleep(0.3)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 917,
+      "code": "time.sleep(0.15)"
+    },
+    {
+      "file": "friday_core/system/telemetry.py",
+      "line": 106,
+      "code": "time.sleep(0.12)"
+    },
+    {
+      "file": "friday_core/system/window_manager.py",
+      "line": 466,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/system/window_manager.py",
+      "line": 518,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/system/window_manager.py",
+      "line": 610,
+      "code": "time.sleep(0.15)"
+    },
+    {
+      "file": "friday_core/voice/tts.py",
+      "line": 241,
+      "code": "time.sleep(0.04)"
+    },
+    {
+      "file": "friday_core/voice/tts.py",
+      "line": 275,
+      "code": "time.sleep(0.05)"
+    }
+  ],
+  "thread_join": [
+    {
+      "file": "friday_ui/widgets/command_bar.py",
+      "line": 104,
+      "code": "self._thread.join(timeout=0.5)"
+    },
+    {
+      "file": "friday_core/scheduler/scheduler.py",
+      "line": 160,
+      "code": "self._worker_thread.join(timeout=2.0)"
+    },
+    {
+      "file": "friday_core/system/launcher.py",
+      "line": 79,
+      "code": "t.join(timeout=2.0)"
+    },
+    {
+      "file": "friday_core/system/window_manager.py",
+      "line": 157,
+      "code": "t.join(timeout=desktop_timeout)"
+    }
+  ],
+  "subprocess": [
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 1679,
+      "code": "subprocess.Popen(\"explorer.exe\")"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 1681,
+      "code": "subprocess.Popen([\"xdg-open\", os.path.expanduser(\"~\")])"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 1734,
+      "code": "subprocess.Popen([\"xdg-open\", str(p)])"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 1820,
+      "code": "subprocess.Popen([\"xdg-open\", str(found_folder)])"
+    },
+    {
+      "file": "friday_core/dev_agent/git_manager.py",
+      "line": 21,
+      "code": "return subprocess.run("
+    },
+    {
+      "file": "friday_core/dev_agent/runner.py",
+      "line": 29,
+      "code": "proc = subprocess.run("
+    },
+    {
+      "file": "friday_core/gatekeeper/gatekeeper.py",
+      "line": 473,
+      "code": "subprocess.run([\"taskkill\", \"/F\", \"/T\", \"/IM\", exe], capture_output=True, timeout=2.0)"
+    },
+    {
+      "file": "friday_core/gatekeeper/gatekeeper.py",
+      "line": 505,
+      "code": "proc = subprocess.run(cmd, capture_output=True, text=True)"
+    },
+    {
+      "file": "friday_core/router/semantic_router.py",
+      "line": 402,
+      "code": "subprocess.run([\"ollama\", \"create\", \"friday-decider\", \"-f\", str(modelfile_path)], capture_output=True, timeout=15)"
+    },
+    {
+      "file": "friday_core/scheduler/notifier.py",
+      "line": 84,
+      "code": "subprocess.Popen("
+    },
+    {
+      "file": "friday_core/skills/builtins/file_ops.py",
+      "line": 315,
+      "code": "subprocess.Popen([\"xdg-open\", str(selected_path)])"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 614,
+      "code": "subprocess.Popen([\"explorer.exe\", dest])"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 617,
+      "code": "subprocess.Popen([\"explorer.exe\"])"
+    },
+    {
+      "file": "friday_core/system/launcher.py",
+      "line": 110,
+      "code": "subprocess.Popen("
+    },
+    {
+      "file": "friday_core/system/launcher.py",
+      "line": 205,
+      "code": "subprocess.Popen([exe_path], startupinfo=si)"
+    },
+    {
+      "file": "friday_core/system/office.py",
+      "line": 65,
+      "code": "subprocess.Popen([word_exe, \"/q\", \"/n\"])"
+    },
+    {
+      "file": "friday_core/system/office.py",
+      "line": 73,
+      "code": "subprocess.Popen(\"start winword\", shell=True)"
+    }
+  ],
+  "urllib_request": [
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 694,
+      "code": "req = urllib.request.Request("
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 699,
+      "code": "with urllib.request.urlopen(req, timeout=6) as response:"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 723,
+      "code": "req = urllib.request.Request(url, headers={'User-Agent': 'FridayAssistant/2.0 (Windows NT 10.0)'})"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 724,
+      "code": "with urllib.request.urlopen(req, timeout=5) as resp:"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 787,
+      "code": "req = urllib.request.Request("
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 2197,
+      "code": "req = urllib.request.Request(url, headers={'User-Agent': 'curl/7.68.0'})"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 2198,
+      "code": "with urllib.request.urlopen(req, timeout=3.5) as res_w:"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 3862,
+      "code": "req = urllib.request.Request(url, headers={'User-Agent': 'curl/7.68.0'})"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 3863,
+      "code": "with urllib.request.urlopen(req, timeout=3.5) as res_w:"
+    },
+    {
+      "file": "friday_core/skills/builtins/content.py",
+      "line": 83,
+      "code": "req = urllib.request.Request("
+    },
+    {
+      "file": "friday_core/skills/builtins/content.py",
+      "line": 88,
+      "code": "with urllib.request.urlopen(req, timeout=timeout) as resp:"
+    },
+    {
+      "file": "friday_core/web/fetcher.py",
+      "line": 121,
+      "code": "req = urllib.request.Request(url, headers=headers)"
+    },
+    {
+      "file": "friday_core/web/youtube.py",
+      "line": 29,
+      "code": "req = urllib.request.Request("
+    },
+    {
+      "file": "friday_core/web/youtube.py",
+      "line": 36,
+      "code": "with urllib.request.urlopen(req, timeout=timeout) as resp:"
+    }
+  ],
+  "requests_http": [],
+  "sync_skill_exec": [
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 2935,
+      "code": "skill_res = skill_registry.execute_skill("
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 2964,
+      "code": "skill_res = skill_registry.execute_skill("
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 3020,
+      "code": "m_res = skill_registry.execute_skill("
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 3040,
+      "code": "m_res = skill_registry.execute_skill("
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 3060,
+      "code": "m_res = skill_registry.execute_skill("
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 3128,
+      "code": "c_res = skill_registry.execute_skill("
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 3151,
+      "code": "shot_res = skill_registry.execute_skill("
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 3182,
+      "code": "c_res = skill_registry.execute_skill("
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 3204,
+      "code": "search_res = skill_registry.execute_skill("
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 3233,
+      "code": "sel_res = skill_registry.execute_skill("
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 4330,
+      "code": "res = skill_registry.execute_skill(name, args if isinstance(args, dict) else {})"
+    }
+  ],
+  "uia_wait": [
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 384,
+      "code": "if not live_ctrl or not live_ctrl.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 388,
+      "code": "if live_ctrl and live_ctrl.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 591,
+      "code": "if not edit_ctrl or not edit_ctrl.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 593,
+      "code": "if not edit_ctrl or not edit_ctrl.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 596,
+      "code": "if edit_ctrl and edit_ctrl.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 733,
+      "code": "if not doc.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 735,
+      "code": "if doc and doc.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/automation/inspector.py",
+      "line": 205,
+      "code": "if not element.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/automation/inspector.py",
+      "line": 255,
+      "code": "if win.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/automation/inspector.py",
+      "line": 261,
+      "code": "if win_class.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/automation/inspector.py",
+      "line": 265,
+      "code": "if win_class.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/automation/inspector.py",
+      "line": 269,
+      "code": "if win_class.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/automation/inspector.py",
+      "line": 302,
+      "code": "if ctrl and ctrl.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/automation/inspector.py",
+      "line": 367,
+      "code": "if not win or not win.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/automation/inspector.py",
+      "line": 374,
+      "code": "if not win or not win.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/automation/inspector.py",
+      "line": 557,
+      "code": "if not live or not live.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/automation/inspector.py",
+      "line": 560,
+      "code": "if live and live.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 314,
+      "code": "if not doc.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 316,
+      "code": "if doc and doc.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/automation/uia.py",
+      "line": 76,
+      "code": "if ctrl and ctrl.Exists(maxSearchSeconds=0.2):"
+    },
+    {
+      "file": "friday_core/gatekeeper/gatekeeper.py",
+      "line": 409,
+      "code": "if not win.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/gatekeeper/gatekeeper.py",
+      "line": 411,
+      "code": "if not win.Exists(0, 0) and clean_target == \"notepad\":"
+    },
+    {
+      "file": "friday_core/gatekeeper/gatekeeper.py",
+      "line": 417,
+      "code": "if not matched_procs and win and win.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/gatekeeper/gatekeeper.py",
+      "line": 426,
+      "code": "if not matched_procs and (win is None or not win.Exists(0, 0)):"
+    },
+    {
+      "file": "friday_core/gatekeeper/gatekeeper.py",
+      "line": 432,
+      "code": "if win and win.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/gatekeeper/gatekeeper.py",
+      "line": 456,
+      "code": "win_alive = win.Exists(0, 0) if win else False"
+    },
+    {
+      "file": "friday_core/gatekeeper/gatekeeper.py",
+      "line": 482,
+      "code": "if win and win.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 62,
+      "code": "if ctrl and ctrl.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 83,
+      "code": "if win.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 87,
+      "code": "if win_class.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 225,
+      "code": "if not win or not win.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 243,
+      "code": "if not edit.Exists(0.5, 0.1):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 251,
+      "code": "if edit.Exists(0.2, 0.1):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 266,
+      "code": "if edit.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 395,
+      "code": "if edit.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 435,
+      "code": "window_active = win.Exists(0, 0) if win else False"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 439,
+      "code": "if not edit.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 441,
+      "code": "if edit.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 511,
+      "code": "if self._last_window and self._last_window.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 674,
+      "code": "if not edit.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 676,
+      "code": "if edit.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 694,
+      "code": "if edit and edit.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 775,
+      "code": "if not edit.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 777,
+      "code": "if edit.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 817,
+      "code": "if not save_dlg.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 819,
+      "code": "if save_dlg.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 910,
+      "code": "if not edit.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 912,
+      "code": "if edit.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 1002,
+      "code": "if not edit.Exists(0, 0):"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 1004,
+      "code": "if edit.Exists(0, 0):"
+    }
+  ],
+  "sync_executor_mission": [
+    {
+      "file": "friday_core/agent/recovery.py",
+      "line": 67,
+      "code": "return self.executor.execute_mission(mission, context=context)"
+    }
+  ]
+}

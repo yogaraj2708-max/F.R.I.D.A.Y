@@ -335,6 +335,22 @@ class UIInspector:
         Conducts deep forensic UI inspection on a desktop window.
         Extracts metadata, control hierarchy, states, bounding boxes, and values.
         """
+        from friday_core.system.window_manager import run_on_interactive_desktop
+        return run_on_interactive_desktop(
+            self._inspect_window_impl,
+            app_name=app_name,
+            hwnd=hwnd,
+            max_elements=max_elements,
+            wake_window=wake_window
+        )
+
+    def _inspect_window_impl(
+        self,
+        app_name: str = "",
+        hwnd: Optional[int] = None,
+        max_elements: int = 80,
+        wake_window: bool = True
+    ) -> Optional[WindowInspection]:
         ensure_interactive_desktop()
         if not HAS_UIA or not auto:
             logger.warning("UIA not available for inspection.")
@@ -342,16 +358,18 @@ class UIInspector:
 
         win = None
         if hwnd:
+            if HAS_WIN32 and not user32.IsWindow(hwnd):
+                return None
             try:
                 win = auto.ControlFromHandle(hwnd)
             except Exception as ex:
                 logger.debug(f"Failed ControlFromHandle({hwnd}): {ex}")
-
-        if not win or not win.Exists(0, 0):
-            if app_name:
-                win = self.find_window_by_app_name(app_name, timeout=1.5)
-            else:
-                win = auto.GetForegroundControl()
+            if not win or not win.Exists(0, 0):
+                return None
+        elif app_name:
+            win = self.find_window_by_app_name(app_name, timeout=1.5)
+        else:
+            win = auto.GetForegroundControl()
 
         if not win or not win.Exists(0, 0):
             return None
@@ -384,7 +402,7 @@ class UIInspector:
         # Inspect controls recursively
         elements: List[UIElementInfo] = []
 
-        def _walk_controls(ctrl: Any, depth: int = 0, max_depth: int = 4):
+        def _walk_controls(ctrl: Any, depth: int = 0, max_depth: int = 6):
             if depth > max_depth or len(elements) >= max_elements:
                 return
             try:

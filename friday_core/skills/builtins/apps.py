@@ -80,45 +80,29 @@ class AppLauncherSkill(BaseSkill):
         app_name = params.get("app_name", "").strip()
         force_new = params.get("force_new", False)
 
-        # Track execution attempts for idempotency
-        attempt = self._attempts.get(operation_id, 0) + 1
-        self._attempts[operation_id] = attempt
-        if attempt > 2:
+        from friday_core.system.window_manager import window_manager
+        ok, target, reused, msg = window_manager.get_or_launch_window(
+            app_name=app_name,
+            operation_id=operation_id,
+            force_new=force_new,
+            timeout=5.0
+        )
+        if ok and target:
+            self._spawned_pids[operation_id] = target.pid
+            self._spawned_hwnds[operation_id] = target.hwnd
             return {
                 "app_name": app_name,
-                "launched": False,
-                "reused": False,
-                "message": f"Execution attempt limit reached ({attempt}) for operation '{operation_id}'."
+                "launched": not reused,
+                "reused": reused,
+                "pid": target.pid,
+                "hwnd": target.hwnd,
+                "message": msg
             }
-
-        # Idempotency check: detect existing running instance
-        if not force_new:
-            existing_pid = self._find_existing_instance(app_name)
-            if existing_pid:
-                # Bring existing window to foreground
-                from friday_core.skills.builtins.ui_automation import find_app_window
-                win = find_app_window(app_name, max_wait=1.0)
-                hwnd = win.NativeWindowHandle if win else 0
-                self._spawned_pids[operation_id] = existing_pid
-                if hwnd:
-                    self._spawned_hwnds[operation_id] = hwnd
-                return {
-                    "app_name": app_name,
-                    "launched": False,
-                    "reused": True,
-                    "pid": existing_pid,
-                    "hwnd": hwnd,
-                    "message": f"Application '{app_name}' is already running (PID: {existing_pid}); reused instance."
-                }
-
-        # Launch fresh instance
-        intent = ActionIntent(action="open_app", target=app_name)
-        result = gatekeeper.execute_action(intent)
         return {
             "app_name": app_name,
-            "launched": result.success,
+            "launched": False,
             "reused": False,
-            "message": result.message
+            "message": msg
         }
 
     def observe(self, operation_id: str, params: Dict[str, Any] = None) -> ObservationResult:

@@ -43,6 +43,14 @@ except Exception:
 from friday_core.automation.security_guard import automation_security_guard
 from friday_core.automation.tracer import ui_tracer
 from friday_core.automation.mouse_keyboard import input_driver
+from friday_core.skills.builtins.ui_automation import (
+    choose_insertion_mode,
+    INSERTION_MODE_REAL_KEYSTROKE,
+    INSERTION_MODE_PROGRAMMATIC_SETVALUE,
+    INSERTION_MODE_HUMAN_TYPING,
+    INSERTION_MODE_SAFE_ATOMIC,
+    INSERTION_MODE_CLIPBOARD_FALLBACK
+)
 from friday_core.automation.shortcuts import shortcut_driver
 from friday_core.system.launcher import launch_application
 
@@ -54,6 +62,18 @@ class UIActionEngine:
 
     def __init__(self):
         self._cancelled_tasks: Set[str] = set()
+        self._executed_operations: Dict[Tuple[str, str, int], Dict[str, Any]] = {}
+
+    def get_idempotent_result(self, task_id: str, action_type: str, target_hwnd: int = 0) -> Optional[Dict[str, Any]]:
+        """Checks if operation was already completed for this task_id to prevent duplicate side effects."""
+        if not task_id:
+            return None
+        return self._executed_operations.get((task_id, action_type, target_hwnd))
+
+    def record_idempotent_result(self, task_id: str, action_type: str, target_hwnd: int, result: Dict[str, Any]) -> None:
+        """Stores verified result of an idempotent operation."""
+        if task_id and result.get("success"):
+            self._executed_operations[(task_id, action_type, target_hwnd)] = result
 
     def cancel_task(self, task_id: str) -> None:
         """Flags an active task for immediate cancellation."""
@@ -86,6 +106,12 @@ class UIActionEngine:
             ui_tracer.record_failure(tid, "launch_app", app_clean, "CANCELLED", "Task cancelled by user.")
             return {"success": False, "status": "CANCELLED", "message": "Task cancelled before launch."}
 
+        # Idempotency check: if already launched for this task, return verified result
+        cached = self.get_idempotent_result(tid, "launch_app", 0)
+        if cached:
+            logger.info(f"Returning cached idempotent launch result for task '{tid}'")
+            return cached
+
         # 1. Security Gate Check
         sec_eval = automation_security_guard.evaluate(
             action="launch_app",
@@ -103,65 +129,40 @@ class UIActionEngine:
 
         ensure_interactive_desktop()
 
-        # 2. Check if window already open
-        existing_insp = ui_inspector.inspect_window(app_clean, wake_window=True)
-        if existing_insp and existing_insp.hwnd and ui_inspector.is_hwnd_valid(existing_insp.hwnd):
-            ui_tracer.record_action(
-                task_id=tid,
-                action="launch_app",
-                application=app_clean,
-                arguments={"app_name": app_clean},
-                security_status="ALLOWED",
-                execution_status="SUCCESS",
-                verification_status="VERIFIED",
-                before_state={"already_running": True, "hwnd": existing_insp.hwnd},
-                after_state=existing_insp.to_dict(),
-                process={"pid": existing_insp.process_id, "name": existing_insp.process_name},
-                window={"hwnd": existing_insp.hwnd, "title": existing_insp.window_title},
-                details=f"Application '{app_clean}' was already open; focused and verified."
-            )
-            return {
-                "success": True,
-                "status": "VERIFIED",
-                "app_name": app_clean,
-                "pid": existing_insp.process_id,
-                "hwnd": existing_insp.hwnd,
-                "title": existing_insp.window_title,
-                "elements_count": len(existing_insp.elements),
-                "message": f"Application '{app_clean}' activated on desktop (HWND={existing_insp.hwnd}, PID={existing_insp.process_id})."
-            }
-
-        # 3. Start Process safely
-        launched, resolved_name = launch_application(app_clean)
-        if not launched:
-            ui_tracer.record_failure(tid, "launch_app", app_clean, "APP_NOT_FOUND", f"Could not find or launch '{app_clean}' in system registry or PATH.")
+        # 2. Idempotent Window Reuse & Single-Flight Launch
+        from friday_core.system.window_manager import window_manager
+        resolved_name = window_manager.normalize_app_name(app_clean)
+        ok, target, reused, msg = window_manager.get_or_launch_window(
+            app_name=resolved_name,
+            operation_id=tid,
+            force_new=False,
+            timeout=timeout
+        )
+        if not ok or not target:
+            ui_tracer.record_failure(tid, "launch_app", app_clean, "LAUNCH_FAILED", msg)
             return {
                 "success": False,
                 "status": "FAILED",
-                "message": f"Failed to launch application '{app_clean}'. Application not found in known registry or PATH."
+                "message": f"Failed to acquire window for '{app_clean}': {msg}"
             }
 
-        # 4. Wait for top-level window to appear and become interactive
-        t0 = time.time()
-        insp = None
-        while time.time() - t0 <= timeout:
-            if self.is_cancelled(tid):
-                ui_tracer.record_failure(tid, "launch_app", app_clean, "CANCELLED", "Task cancelled during window wait.")
-                return {"success": False, "status": "CANCELLED", "message": "Task cancelled during application startup."}
+        # Step 3: Inspect the exact bound window
+        insp = ui_inspector.inspect_window(hwnd=target.hwnd, wake_window=True)
+        if not insp or not ui_inspector.is_hwnd_valid(insp.hwnd):
+            insp = ui_inspector.inspect_window(app_name=app_clean, wake_window=True)
 
-            insp = ui_inspector.inspect_window(app_clean, wake_window=True)
-            if insp and insp.hwnd and insp.is_visible:
-                break
-            time.sleep(0.3)
-
-        # 5. Verify postcondition: window exists and is valid
         if not insp or not insp.hwnd or not ui_inspector.is_hwnd_valid(insp.hwnd):
-            ui_tracer.record_failure(tid, "launch_app", app_clean, "LAUNCH_TIMEOUT", f"Application '{app_clean}' did not open a visible window within {timeout}s.")
+            ui_tracer.record_failure(tid, "launch_app", app_clean, "INSPECTION_FAILED", "Failed to inspect bound window.")
             return {
                 "success": False,
                 "status": "TIMEOUT",
-                "message": f"Application process initiated for '{app_clean}', but no visible window appeared within {timeout} seconds."
+                "message": f"Application '{app_clean}' window bound (HWND={target.hwnd}) but inspection failed."
             }
+
+        if target and target.process_name:
+            resolved_name = target.process_name
+        elif insp and insp.process_name:
+            resolved_name = insp.process_name
 
         # Record action in tracer
         ui_tracer.record_action(
@@ -179,16 +180,20 @@ class UIActionEngine:
             details=f"Application '{app_clean}' launched and verified open with {len(insp.elements)} controls."
         )
 
-        return {
+        res = {
             "success": True,
             "status": "VERIFIED",
             "app_name": app_clean,
+            "resolved_name": resolved_name,
             "pid": insp.process_id,
             "hwnd": insp.hwnd,
             "title": insp.window_title,
             "elements_count": len(insp.elements),
             "message": f"Application '{app_clean}' launched successfully and verified on desktop (HWND={insp.hwnd}, PID={insp.process_id})."
         }
+        self.record_idempotent_result(tid, "launch_app", 0, res)
+        self.record_idempotent_result(tid, "launch_app", insp.hwnd, res)
+        return res
 
     # ─────────────────────────────────────────────────────────────
     # 2. INSPECT UI
@@ -300,6 +305,12 @@ class UIActionEngine:
         if not insp_before:
             ui_tracer.record_failure(tid, "click_control", app_name or "", "WINDOW_NOT_FOUND", f"Window '{app_name}' not found for click target '{target_name}'.")
             return {"success": False, "status": "WINDOW_NOT_FOUND", "message": f"Window for '{app_name or target_name}' not found."}
+
+        # Idempotency check: if click already succeeded on this window for this task
+        cached = self.get_idempotent_result(tid, "click_control", insp_before.hwnd)
+        if cached:
+            logger.info(f"Returning cached idempotent click result for task '{tid}'")
+            return cached
 
         # 3. Resolve Actual Control
         ctrl_info = ui_inspector.search_control(
@@ -469,7 +480,7 @@ class UIActionEngine:
             details=f"{click_msg} | {verification_msg}"
         )
 
-        return {
+        res = {
             "success": True,
             "status": "VERIFIED",
             "level_used": level_used,
@@ -478,6 +489,9 @@ class UIActionEngine:
             "window_title": insp_before.window_title,
             "message": f"Successfully clicked '{ctrl_info.name or target_name}' [{level_used}]. {verification_msg}"
         }
+        if postcondition_verified:
+            self.record_idempotent_result(tid, "click_control", insp_before.hwnd, res)
+        return res
 
     # ─────────────────────────────────────────────────────────────
     # 4. TYPE TEXT
@@ -516,23 +530,35 @@ class UIActionEngine:
 
         ensure_interactive_desktop()
 
-        # 2. Before Inspection & Window Focus Protection
-        insp_before = ui_inspector.inspect_window(app_name=app_clean, wake_window=True)
-        if not insp_before:
-            ui_tracer.record_failure(tid, "type_text", app_clean, "WINDOW_NOT_FOUND", f"Target window for '{app_clean}' not found.")
-            return {"success": False, "status": "WINDOW_NOT_FOUND", "message": f"Application '{app_clean}' window not found for typing."}
+        # 2. Before Inspection & Window Focus Protection (Idempotent Window Reuse)
+        from friday_core.system.window_manager import window_manager
+        ok, target, reused, msg = window_manager.get_or_launch_window(
+            app_name=app_clean,
+            operation_id=tid,
+            force_new=False,
+            timeout=4.0
+        )
+        if not ok or not target:
+            ui_tracer.record_failure(tid, "type_text", app_clean, "WINDOW_NOT_FOUND", msg)
+            return {"success": False, "status": "WINDOW_NOT_FOUND", "message": f"Application '{app_clean}' window not found for typing: {msg}"}
 
-        # Ensure window is in foreground to prevent accidental focus theft
-        if HAS_WIN32 and insp_before.hwnd:
-            user32.ShowWindow(insp_before.hwnd, 9)  # SW_RESTORE
-            user32.SetForegroundWindow(insp_before.hwnd)
-            time.sleep(0.15)
-            # Verify foreground ownership
-            fg = user32.GetForegroundWindow()
-            if fg != insp_before.hwnd:
-                logger.warning(f"Window {insp_before.hwnd} not foreground (active: {fg}). Retrying focus.")
-                user32.SetForegroundWindow(insp_before.hwnd)
-                time.sleep(0.1)
+        # Idempotency check: if already typed for this task and window, return verified result
+        cached = self.get_idempotent_result(tid, "type_text", target.hwnd)
+        if cached and cached.get("text_hash") == hash(text):
+            logger.info(f"Returning cached idempotent typing result for task '{tid}'")
+            return cached
+
+        # Focus target and verify focus
+        window_manager.focus_window_verified(target.hwnd)
+        time.sleep(0.08)
+
+        insp_before = ui_inspector.inspect_window(hwnd=target.hwnd, wake_window=True)
+        if not insp_before:
+            insp_before = ui_inspector.inspect_window(app_name=app_clean, wake_window=True)
+
+        if not insp_before or not insp_before.hwnd:
+            ui_tracer.record_failure(tid, "type_text", app_clean, "WINDOW_NOT_FOUND", "Target window inspection failed.")
+            return {"success": False, "status": "WINDOW_NOT_FOUND", "message": f"Application '{app_clean}' window bound but inspection failed."}
 
         # 3. Locate Target Editable Control
         target_ctrl = None
@@ -552,7 +578,7 @@ class UIActionEngine:
             "control": target_ctrl.to_dict() if target_ctrl else None
         }
 
-        # 4. Perform Typing
+        # 4. Perform Typing with Adaptive Insertion Policy
         injected = False
         method_used = "NONE"
 
@@ -570,36 +596,111 @@ class UIActionEngine:
                 if edit_ctrl and edit_ctrl.Exists(0, 0):
                     try:
                         edit_ctrl.SetFocus()
-                        time.sleep(0.08)
+                    except Exception:
+                        pass
+                    try:
+                        edit_ctrl.Click(simulateMove=False)
+                    except Exception:
+                        pass
+                    time.sleep(0.08)
+
+                    vp = None
+                    try:
+                        vp = edit_ctrl.GetValuePattern()
                     except Exception:
                         pass
 
-                    # Apply mode semantics
-                    if mode == "replace":
+                    ctrl_hwnd = getattr(edit_ctrl, "NativeWindowHandle", None) or insp_before.hwnd
+
+                    control_caps = {
+                        "has_value_pattern": vp is not None,
+                        "supports_keys": True,
+                        "app_name": app_clean,
+                        "force_mode": "PROGRAMMATIC_SETVALUE" if mode == "setvalue" else None
+                    }
+                    chosen_mode = choose_insertion_mode(text, control_caps)
+
+                    # ── PATH 1: REAL_KEYSTROKE (True User32 SendInput Keystroke Injection) ──
+                    if chosen_mode == INSERTION_MODE_REAL_KEYSTROKE:
+                        from friday_core.automation.mouse_keyboard import type_real_keystrokes
+                        success, msg, count = type_real_keystrokes(
+                            text=text,
+                            mode=mode,
+                            typing_delay_ms=10.0,
+                            hwnd=insp_before.hwnd,
+                            cancel_check=lambda: self.is_cancelled(tid)
+                        )
+                        if not success:
+                            if "cancelled" in msg.lower():
+                                ui_tracer.record_failure(tid, "type_text", app_clean, "CANCELLED", "Typing cancelled during real keystroke typing.")
+                                return {
+                                    "success": False,
+                                    "status": "CANCELLED",
+                                    "insertion_mode": INSERTION_MODE_REAL_KEYSTROKE,
+                                    "method_used": INSERTION_MODE_REAL_KEYSTROKE,
+                                    "message": "Typing cancelled by user during real keystroke typing."
+                                }
+                            ui_tracer.record_failure(tid, "type_text", app_clean, "INPUT_METHOD_FAILED", msg)
+                            return {
+                                "success": False,
+                                "status": "INPUT_METHOD_FAILED",
+                                "insertion_mode": INSERTION_MODE_REAL_KEYSTROKE,
+                                "method_used": "INPUT_METHOD_FAILED",
+                                "message": f"INPUT_METHOD_FAILED: {msg}"
+                            }
+
+                        injected = True
+                        method_used = INSERTION_MODE_REAL_KEYSTROKE
+
+                    # ── PATH 2: PROGRAMMATIC_SETVALUE (Only when explicitly forced) ──
+                    elif chosen_mode == INSERTION_MODE_PROGRAMMATIC_SETVALUE:
+                        if vp:
+                            try:
+                                if mode == "replace":
+                                    vp.SetValue(text)
+                                    injected = True
+                                    method_used = INSERTION_MODE_PROGRAMMATIC_SETVALUE
+                                elif mode == "append":
+                                    curr = vp.Value or ""
+                                    new_val = f"{curr}\n{text}" if curr else text
+                                    vp.SetValue(new_val)
+                                    injected = True
+                                    method_used = INSERTION_MODE_PROGRAMMATIC_SETVALUE
+                                elif mode in ("type", "insert"):
+                                    curr = vp.Value or ""
+                                    if not curr:
+                                        vp.SetValue(text)
+                                    else:
+                                        vp.SetValue(f"{curr}\n{text}")
+                                    injected = True
+                                    method_used = INSERTION_MODE_PROGRAMMATIC_SETVALUE
+                            except Exception as vp_err:
+                                logger.debug(f"ValuePattern insertion error: {vp_err}")
+
+                    # ── PATH 3: CLIPBOARD_FALLBACK (Clipboard paste fallback only when forced) ──
+                    elif chosen_mode == INSERTION_MODE_CLIPBOARD_FALLBACK:
                         try:
-                            vp = edit_ctrl.GetValuePattern()
-                            if vp:
-                                vp.SetValue(text)
-                                injected = True
-                                method_used = "VALUE_PATTERN"
-                        except Exception:
-                            pass
-                        if not injected:
-                            edit_ctrl.SendKeys("{Ctrl}a{Delete}")
+                            auto.SetClipboardText(text)
                             time.sleep(0.05)
-                            edit_ctrl.SendKeys(text)
+                            if mode == "replace":
+                                if vp:
+                                    vp.SetValue("")
+                                else:
+                                    edit_ctrl.SendKeys("{Ctrl}a{Delete}")
+                                time.sleep(0.05)
+                            elif mode == "append":
+                                edit_ctrl.SendKeys("{Ctrl}{End}")
+                                time.sleep(0.05)
+
+                            if HAS_WIN32 and ctrl_hwnd and user32:
+                                user32.SendMessageW(ctrl_hwnd, 0x0302, 0, 0)  # WM_PASTE
+                            else:
+                                edit_ctrl.SendKeys("{Ctrl}v")
+                            time.sleep(0.15)
                             injected = True
-                            method_used = "UIA_SENDKEYS_REPLACE"
-                    elif mode == "append":
-                        edit_ctrl.SendKeys("{Ctrl}{End}")
-                        time.sleep(0.05)
-                        edit_ctrl.SendKeys(text)
-                        injected = True
-                        method_used = "UIA_SENDKEYS_APPEND"
-                    else:  # default 'type'
-                        edit_ctrl.SendKeys(text)
-                        injected = True
-                        method_used = "UIA_SENDKEYS"
+                            method_used = INSERTION_MODE_CLIPBOARD_FALLBACK
+                        except Exception as cb_err:
+                            logger.debug(f"Clipboard paste error: {cb_err}")
             except Exception as ex:
                 logger.debug(f"UIA typing error: {ex}")
 
@@ -632,21 +733,24 @@ class UIActionEngine:
                         if not doc.Exists(0, 0):
                             doc = root.EditControl(searchDepth=4)
                         if doc and doc.Exists(0, 0):
-                            tp = doc.GetTextPattern()
-                            if tp and tp.DocumentRange:
-                                readback_content = tp.DocumentRange.GetText(-1)
+                            vp = doc.GetValuePattern()
+                            if vp and vp.Value:
+                                readback_content = vp.Value
                             if not readback_content:
-                                vp = doc.GetValuePattern()
-                                if vp:
-                                    readback_content = vp.Value
+                                tp = doc.GetTextPattern()
+                                if tp and tp.DocumentRange:
+                                    readback_content = tp.DocumentRange.GetText(-1)
                     except Exception:
                         pass
 
-        # Verify readback against injected text
+        # Verify readback against injected text (Strict Equality Enforcement)
         if readback_content:
-            clean_expected = text.strip().replace("\r\n", "\n")
-            clean_actual = readback_content.strip().replace("\r\n", "\n")
-            verified = (clean_expected in clean_actual) or (len(clean_actual) >= len(clean_expected) * 0.8)
+            clean_expected = text.strip().replace("\r\n", "\n").replace("\r", "\n")
+            clean_actual = readback_content.strip().replace("\r\n", "\n").replace("\r", "\n")
+            if mode == "append":
+                verified = clean_expected in clean_actual
+            else:
+                verified = (clean_expected == clean_actual)
         else:
             # Fallback if application does not expose TextPattern (e.g. legacy controls)
             verified = injected
@@ -674,6 +778,34 @@ class UIActionEngine:
         )
 
         if not verified:
+            # Scoped single-retry with clean replace and safe pacing (14ms) on exact same window
+            if method_used == INSERTION_MODE_REAL_KEYSTROKE and mode in ("replace", "type") and not self.is_cancelled(tid):
+                logger.info(f"[ActionEngine]: Readback mismatch on initial attempt. Retrying with safe pacing (14ms) on HWND {insp_before.hwnd}...")
+                time.sleep(0.25)
+                retry_ok, retry_msg, _ = type_real_keystrokes(
+                    text=text,
+                    mode="replace",
+                    typing_delay_ms=14.0,
+                    hwnd=insp_before.hwnd,
+                    cancel_check=lambda: self.is_cancelled(tid)
+                )
+                if retry_ok:
+                    time.sleep(0.25)
+                    insp_retry = ui_inspector.inspect_window(app_name=app_clean, hwnd=insp_before.hwnd, wake_window=False)
+                    retry_readback = ""
+                    if insp_retry:
+                        for e in insp_retry.elements:
+                            if e.control_type in ("DocumentControl", "EditControl") and e.current_value:
+                                retry_readback = e.current_value
+                                break
+                    if retry_readback:
+                        clean_retry = retry_readback.strip().replace("\r\n", "\n").replace("\r", "\n")
+                        if clean_expected == clean_retry:
+                            verified = True
+                            readback_content = retry_readback
+                            logger.info(f"[ActionEngine]: Scoped retry succeeded with exact readback match on HWND {insp_before.hwnd}!")
+
+        if not verified:
             ui_tracer.record_failure(tid, "type_text", insp_before.app_name, "READBACK_MISMATCH", f"Expected '{text}' but read back '{readback_content}'.")
             return {
                 "success": False,
@@ -682,15 +814,20 @@ class UIActionEngine:
                 "message": f"Text injected, but postcondition readback verification failed in {insp_before.app_name}."
             }
 
-        return {
+        res = {
             "success": True,
             "status": "VERIFIED",
             "method": method_used,
+            "method_used": method_used,
+            "insertion_mode": method_used,
             "readback": readback_content[:80],
             "verified_text": readback_content,
             "window_title": insp_before.window_title,
-            "message": f"Typed '{text}' into {insp_before.app_name} successfully and verified on screen."
+            "text_hash": hash(text),
+            "message": f"Typed '{text[:40]}' into {insp_before.app_name} via {method_used} successfully and verified on screen."
         }
+        self.record_idempotent_result(tid, "type_text", target.hwnd, res)
+        return res
 
 
 # Global Singleton Action Engine

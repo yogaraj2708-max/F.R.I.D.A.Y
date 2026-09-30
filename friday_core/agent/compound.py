@@ -46,9 +46,10 @@ class CompoundIntentParser:
 
         # Generative content indicators (Sections 24 & 25)
         self._generative_topic_pattern = re.compile(
-            r"^(?:a\s+|an\s+|the\s+)?(?:short\s+|formal\s+|casual\s+|brief\s+|official\s+|quick\s+|college\s+)?"
+            r"^(?:a\s+|an\s+|the\s+)?(?:short\s+|formal\s+|casual\s+|brief\s+|official\s+|quick\s+|college\s+|working\s+|simple\s+)?"
             r"(?:welcome\s+speech|speech|birthday\s+message|message|apology\s+letter|leave\s+letter|letter|summary|"
-            r"project\s+introduction|introduction|meeting\s+summary|essay|poem|note|memo|report|email|draft)\b",
+            r"project\s+introduction|introduction|meeting\s+summary|essay|poem|note|memo|report|email|draft|"
+            r"(?:c|c\+\+|python|java|javascript|rust|go|html|css|bash|powershell|sql)?\s*(?:program|code|script|app|calculator|function))\b",
             re.IGNORECASE
         )
 
@@ -57,7 +58,12 @@ class CompoundIntentParser:
         clean = text.strip().lower()
         if self._generative_topic_pattern.search(clean):
             return True
-        if any(clean.startswith(p) for p in ["speech about", "letter to", "summary of", "message for", "introduction to"]):
+        if any(clean.startswith(p) for p in [
+            "speech about", "letter to", "summary of", "message for", "introduction to",
+            "program to", "code to", "code for", "script to", "script for", "calculator"
+        ]):
+            return True
+        if any(p in clean for p in ["program", "code", "script", "calculator"]):
             return True
         return False
 
@@ -73,6 +79,46 @@ class CompoundIntentParser:
             clean,
             flags=re.IGNORECASE
         ).strip()
+
+        # -----------------------------------------------------------------
+        # REVERSED SYNTAX: "write/draft/compose/code <topic> and put it in <app>"
+        # Handles commands like:
+        #   "write a c program to make a working calculator and put it in my note pad"
+        #   "write a summary of Harry Potter and put it in my notepad"
+        #   "draft a welcome speech and put it in notepad"
+        #   "compose an email and put it in word"
+        # -----------------------------------------------------------------
+        reversed_match = re.match(
+            r"^(?:write|draft|compose|code|create|generate)\s+(.+?)\s+(?:and\s+)?(?:put|place|paste|insert|type)\s+(?:it\s+|that\s+)?(?:in|into|on)\s+(?:my\s+)?(.+)$",
+            clean,
+            re.IGNORECASE
+        )
+        if reversed_match:
+            topic = reversed_match.group(1).strip()
+            raw_app = reversed_match.group(2).strip()
+            if re.search(r"\b(?:notepad|note\s*pad|notes)\b", raw_app, re.IGNORECASE):
+                app_name = "Notepad"
+            elif re.search(r"\b(?:ms\s+|microsoft\s+)?word\b", raw_app, re.IGNORECASE):
+                app_name = "Word"
+            else:
+                app_name = raw_app
+            if self.is_generative_writing(topic):
+                steps = [
+                    CompoundStep(action="open_app", target=app_name, params={"app_name": app_name}),
+                    CompoundStep(action="content_generation", target=topic, params={"prompt": topic, "target_app": app_name}),
+                    CompoundStep(action="ui_focus", target=app_name, params={"app_name": app_name}),
+                    CompoundStep(action="ui_type_text", target=app_name, params={
+                        "app_name": app_name,
+                        "text": "$content_generation.generated_text",
+                        "mode": "replace"
+                    }),
+                    CompoundStep(action="ui_verify_content", target=app_name, params={
+                        "app_name": app_name,
+                        "expected_text": "$content_generation.generated_text",
+                        "min_length": 15
+                    })
+                ]
+                return CompoundPlan(goal=text, steps=steps)
 
         # Check if the command starts with an open/launch verb
         open_match = re.match(rf"^{self._open_verbs}\s+(.+?)(?:,\s*|\s+and\s+|\s+then\s+)(.+)$", clean, re.IGNORECASE)

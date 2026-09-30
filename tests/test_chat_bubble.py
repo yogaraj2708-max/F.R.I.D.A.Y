@@ -77,11 +77,10 @@ class TestChatBubble(unittest.TestCase):
         self.assertTrue(bubble.is_streaming)
         self.assertTrue(bubble.thinking_container.isHidden())
 
-        # 1. Stream thinking tokens
+        # 1. Stream thinking tokens (internal reasoning MUST remain hidden from visible chat)
         bubble.append_thinking("Analyzing ")
-        self.assertFalse(bubble.thinking_container.isHidden())
+        self.assertTrue(bubble.thinking_container.isHidden())
         self.assertTrue(bubble.is_thinking)
-        self.assertIn("Thinking", bubble.thinking_title_label.text())
 
         bubble.append_thinking("neural weights...")
         self.assertEqual(bubble.thinking_text, "Analyzing neural weights...")
@@ -89,7 +88,6 @@ class TestChatBubble(unittest.TestCase):
         # 2. Transition to content tokens
         bubble.append_token("Directive complete.")
         self.assertFalse(bubble.is_thinking)
-        self.assertIn("Thought for", bubble.thinking_title_label.text())
         self.assertEqual(bubble.raw_text, "Directive complete.")
 
         # 3. Finish stream
@@ -97,14 +95,15 @@ class TestChatBubble(unittest.TestCase):
         self.assertFalse(bubble.is_streaming)
         self.assertEqual(bubble.thinking_text, "Analyzing neural weights...")
         self.assertEqual(bubble.raw_text, "Directive complete.")
+        self.assertTrue(bubble.thinking_container.isHidden())
 
     def test_thinking_history_parsing(self):
-        """Verifies that <think> tags in loaded message text are parsed into thinking container."""
+        """Verifies that <think> tags in loaded message text are isolated and never displayed in visible bubble."""
         content_with_think = "<think>\nConsidered multiple execution paths.\nSelected optimal path.\n</think>\n\nHere is the answer: 42."
         bubble = ChatBubble("friday", content_with_think)
         self.assertEqual(bubble.thinking_text, "Considered multiple execution paths.\nSelected optimal path.")
         self.assertEqual(bubble.raw_text, "Here is the answer: 42.")
-        self.assertFalse(bubble.thinking_container.isHidden())
+        self.assertTrue(bubble.thinking_container.isHidden())
         self.assertFalse(bubble._thinking_expanded) # Collapsed by default for historical messages
 
     def test_toggle_thinking(self):

@@ -59,14 +59,25 @@ class ContentGenerationSkill(BaseSkill):
 
     def _query_local_ollama(self, prompt: str, timeout: float = 20.0) -> Optional[str]:
         """Attempts fast local LLM synthesis via Ollama HTTP API."""
-        models_to_try = ["qwen2.5:0.5b", "friday-decider:latest", "llama3.2:1b", "qwen3.5:9b", "jarvis:latest"]
+        from friday_ui.core.config import settings
+        primary_model = settings.get("model", "qwen3.5:9b")
+        models_to_try = [primary_model] if primary_model == "qwen3.5:9b" else [primary_model, "qwen3.5:9b"]
         
-        system_instruction = (
-            "You are an expert executive speechwriter and author. "
-            "Write the requested content with eloquence, clarity, and authenticity. "
-            "CRITICAL: Output ONLY the requested speech, message, or letter itself. "
-            "Do NOT include conversational chatter, pleasantries, markdown titles, or explanations."
-        )
+        is_code = any(w in prompt.lower() for w in ["program", "code", "script", "calculator", "function", "class"])
+        if is_code:
+            system_instruction = (
+                "You are an expert systems programmer and software engineer. "
+                "Write clean, valid, working source code with error handling. "
+                "CRITICAL: Output ONLY the raw source code itself. "
+                "Do NOT wrap in markdown code blocks, do NOT include conversational chatter, pleasantries, or explanations."
+            )
+        else:
+            system_instruction = (
+                "You are an expert executive speechwriter and author. "
+                "Write the requested content with eloquence, clarity, and authenticity. "
+                "CRITICAL: Output ONLY the requested speech, message, or letter itself. "
+                "Do NOT include conversational chatter, pleasantries, markdown titles, or explanations."
+            )
 
         for model in models_to_try:
             try:
@@ -75,8 +86,8 @@ class ContentGenerationSkill(BaseSkill):
                     "prompt": f"{system_instruction}\n\nTask: Write {prompt}.",
                     "stream": False,
                     "options": {
-                        "temperature": 0.7,
-                        "num_predict": 300
+                        "temperature": 0.5 if is_code else 0.7,
+                        "num_predict": 450
                     }
                 }).encode("utf-8")
 
@@ -92,7 +103,11 @@ class ContentGenerationSkill(BaseSkill):
                         # Clean any think tags
                         if "<think>" in response_text and "</think>" in response_text:
                             response_text = response_text.split("</think>")[-1].strip()
-                        if len(response_text.split()) >= 15:
+                        # Clean markdown code fences if model wrapped the code
+                        if response_text.startswith("```"):
+                            response_text = re.sub(r"^```[a-zA-Z0-9_\+\-]*\n?", "", response_text)
+                            response_text = re.sub(r"\n?```$", "", response_text).strip()
+                        if len(response_text.split()) >= 10:
                             return response_text
             except Exception as ex:
                 logger.debug(f"[ContentGeneration] Model '{model}' attempt failed: {ex}")
@@ -103,7 +118,33 @@ class ContentGenerationSkill(BaseSkill):
     def _fallback_generate(self, prompt: str) -> str:
         """High-grade semantic template fallback if local inference service is offline."""
         p_lower = prompt.lower()
-        if "welcome speech" in p_lower:
+        if "calculator" in p_lower or "c program" in p_lower:
+            return (
+                "#include <stdio.h>\n\n"
+                "int main() {\n"
+                "    char op;\n"
+                "    double num1, num2, result;\n\n"
+                "    printf(\"=== Working C Calculator ===\\n\");\n"
+                "    printf(\"Enter operator (+, -, *, /): \");\n"
+                "    if (scanf(\" %c\", &op) != 1) return 1;\n\n"
+                "    printf(\"Enter two numbers: \");\n"
+                "    if (scanf(\"%lf %lf\", &num1, &num2) != 2) return 1;\n\n"
+                "    switch (op) {\n"
+                "        case '+': result = num1 + num2; break;\n"
+                "        case '-': result = num1 - num2; break;\n"
+                "        case '*': result = num1 * num2; break;\n"
+                "        case '/':\n"
+                "            if (num2 != 0) result = num1 / num2;\n"
+                "            else { printf(\"Error: Division by zero!\\n\"); return 1; }\n"
+                "            break;\n"
+                "        default:\n"
+                "            printf(\"Error: Invalid operator!\\n\"); return 1;\n"
+                "    }\n\n"
+                "    printf(\"Result: %.2lf %c %.2lf = %.2lf\\n\", num1, op, num2, result);\n"
+                "    return 0;\n"
+                "}"
+            )
+        elif "welcome speech" in p_lower:
             return (
                 "Distinguished guests, faculty members, and dear friends,\n\n"
                 "It is a true privilege and an absolute honor to welcome each of you here today. "

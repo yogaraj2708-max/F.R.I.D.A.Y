@@ -51,4 +51,10 @@ scratch_probe_*
 sample_ui_test.txt
 thank_you_sister.txt
 *.friday_bak
+scratch_*
+*.c
+real_windows_verification_evidence.json
+forensic_test_results.json
+Documents/
+Downloads/
 

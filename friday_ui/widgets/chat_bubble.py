@@ -58,14 +58,14 @@ class ChatBubble(QFrame):
         self._slide_offset = 8.0
 
         if text:
-            m_think = re.search(r"<think>(.*?)</think>", text, flags=re.DOTALL)
+            from friday_core.models.stream_parser import ReasoningStreamParser
+            m_think = re.search(r"<(?:think|thought|reasoning)>(.*?)</(?:think|thought|reasoning)>", text, flags=re.DOTALL | re.IGNORECASE)
             if m_think:
                 self.thinking_text = m_think.group(1).strip()
-                clean_raw = text[:m_think.start()] + text[m_think.end():]
-                self.raw_text = clean_raw.strip()
-                self._thinking_expanded = False
-            else:
-                self.raw_text = text
+            self.raw_text = ReasoningStreamParser.clean_final_content(text)
+            self._thinking_expanded = False
+        else:
+            self.raw_text = ""
 
         self._last_token_render = 0.0
         self._token_render_timer = QTimer(self)
@@ -230,12 +230,9 @@ class ChatBubble(QFrame):
         self.thinking_browser.document().documentLayout().documentSizeChanged.connect(self._adjust_height)
         t_layout.addWidget(self.thinking_browser)
 
-        if self.thinking_text:
-            self.thinking_browser.setMarkdown(self.thinking_text)
-            self.thinking_browser.setVisible(self._thinking_expanded)
-            self.thinking_container.setVisible(True)
-        else:
-            self.thinking_container.setVisible(False)
+        # HARD SAFETY INVARIANT: Internal reasoning must NEVER enter visible chat bubbles
+        self.thinking_container.setVisible(False)
+        self.thinking_container.hide()
 
         self.main_layout.addWidget(self.thinking_container)
 
@@ -317,22 +314,12 @@ class ChatBubble(QFrame):
         if not self.is_thinking:
             self.is_thinking = True
             self.thinking_start_time = time.time()
-            self.thinking_container.setVisible(True)
-            self._thinking_expanded = True
-            self.thinking_browser.setVisible(True)
-            self.thinking_toggle_btn.setText("▼")
-            self.thinking_title_label.setText("Thinking...")
-            if not self.raw_text:
-                p = get_current_palette()
-                self.text_browser.setHtml(f"<div style='color: {p['text_muted']}; font-family: Inter, sans-serif; font-size: 12px; padding: 4px 0;'>● Formulating plan...</div>")
 
         self.thinking_text += token
 
-        now = time.perf_counter()
-        if now - self._last_thinking_render >= 0.06:
-            self._flush_thinking_render()
-        elif not self._thinking_render_timer.isActive():
-            self._thinking_render_timer.start(60)
+        # HARD SAFETY INVARIANT: Internal reasoning must NEVER enter visible chat bubbles
+        self.thinking_container.setVisible(False)
+        self.thinking_container.hide()
 
     def _flush_thinking_render(self):
         self._last_thinking_render = time.perf_counter()
@@ -344,16 +331,8 @@ class ChatBubble(QFrame):
         self.is_thinking = False
         if self._thinking_render_timer.isActive():
             self._thinking_render_timer.stop()
-        self._flush_thinking_render()
-        if self.thinking_start_time:
-            elapsed = max(0.1, time.time() - self.thinking_start_time)
-            self.thinking_title_label.setText(f"Thought for {elapsed:.1f}s")
-        else:
-            self.thinking_title_label.setText("Thought Process")
-        self._thinking_expanded = False
-        self.thinking_browser.setVisible(False)
-        self.thinking_toggle_btn.setText("▶")
-        self._adjust_height()
+        self.thinking_container.setVisible(False)
+        self.thinking_container.hide()
 
     def append_token(self, token: str):
         if not token:
@@ -396,30 +375,15 @@ class ChatBubble(QFrame):
         if self.is_thinking:
             self.finish_thinking()
 
-        if final_text is not None and (final_text.strip() or not self.raw_text):
-            m_think = re.search(r"<think>(.*?)</think>", final_text, flags=re.DOTALL)
-            if m_think:
-                if not self.thinking_text:
-                    self.thinking_text = m_think.group(1).strip()
-                    self.thinking_browser.setMarkdown(self.thinking_text)
-                    self.thinking_container.setVisible(True)
-                clean_ans = final_text[:m_think.start()] + final_text[m_think.end():]
-                self.raw_text = clean_ans.strip()
-            else:
-                self.raw_text = final_text
+        from friday_core.models.stream_parser import ReasoningStreamParser
+        target_text = final_text if (final_text is not None and (final_text.strip() or not self.raw_text)) else self.raw_text
+        self.raw_text = ReasoningStreamParser.clean_final_content(target_text)
 
-        # Strip any stray think blocks
-        if "<think>" in self.raw_text:
-            m = re.search(r"<think>(.*?)</think>", self.raw_text, flags=re.DOTALL)
-            if m:
-                if not self.thinking_text:
-                    self.thinking_text = m.group(1).strip()
-                    self.thinking_browser.setMarkdown(self.thinking_text)
-                    self.thinking_container.setVisible(True)
-                self.raw_text = (self.raw_text[:m.start()] + self.raw_text[m.end():]).strip()
+        # HARD SAFETY INVARIANT: Keep thinking container strictly hidden
+        self.thinking_container.setVisible(False)
+        self.thinking_container.hide()
 
         self._flush_token_render()
-        self._flush_thinking_render()
 
         if hasattr(self, 'tool_chip') and self.tool_chip.isVisible():
             if self.status_text:
@@ -435,8 +399,10 @@ class ChatBubble(QFrame):
         self._adjust_height()
 
     def _copy_content(self):
+        from friday_core.models.stream_parser import ReasoningStreamParser
         clipboard = QApplication.clipboard()
-        clipboard.setText(self.raw_text)
+        clean_text = ReasoningStreamParser.clean_final_content(self.raw_text)
+        clipboard.setText(clean_text)
         self.copy_btn.setIcon(FluentIcon.ACCEPT)
         self.copy_btn.setToolTip("Copied!")
         QTimer.singleShot(1500, lambda: (self.copy_btn.setIcon(FluentIcon.COPY), self.copy_btn.setToolTip("Copy response")))

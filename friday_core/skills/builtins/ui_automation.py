@@ -5,6 +5,7 @@ Provides PEOV-compliant desktop interaction skills powered by Windows UI Automat
 
 import time
 import os
+import re
 import subprocess
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -19,6 +20,22 @@ from friday_core.skills.base import (
 )
 from friday_core.platform_guard import IS_WINDOWS
 
+def _ensure_interactive_desktop():
+    """Attaches calling thread to active user input desktop if running in an isolated execution desktop."""
+    if IS_WINDOWS:
+        try:
+            import ctypes
+            user32 = ctypes.windll.user32
+            h_input = user32.OpenInputDesktop(0, False, 0x01FF) or user32.OpenDesktopW("default", 0, False, 0x01FF)
+            if h_input:
+                user32.SetThreadDesktop(h_input)
+        except Exception:
+            pass
+
+
+# Critical: Attach calling thread to interactive desktop BEFORE importing uiautomation
+_ensure_interactive_desktop()
+
 if IS_WINDOWS:
     try:
         import uiautomation as auto
@@ -28,24 +45,25 @@ else:
     auto = None
 
 
-def _ensure_interactive_desktop():
-    """Attaches calling thread to active user input desktop if running in an isolated execution desktop."""
-    if IS_WINDOWS:
-        try:
-            import ctypes
-            user32 = ctypes.windll.user32
-            h_input = user32.OpenInputDesktop(0, False, 0x01FF)
-            if h_input:
-                user32.SetThreadDesktop(h_input)
-        except Exception:
-            pass
-
-
 def find_app_window(app_name: str, max_wait: float = 3.0):
-    """Locates target application window reliably across interactive and sandbox desktops."""
+    """Locates target application window reliably on default interactive desktop."""
     _ensure_interactive_desktop()
     if not auto:
         return None
+
+    # Fast path: query centralized window manager
+    try:
+        from friday_core.system.window_manager import window_manager
+        matching = window_manager.find_matching_windows(app_name)
+        if matching:
+            target = window_manager.select_target_window(matching, app_name=app_name)
+            if target and target.hwnd:
+                ctrl = auto.ControlFromHandle(target.hwnd)
+                if ctrl and ctrl.Exists(0, 0):
+                    return ctrl
+    except Exception as ex:
+        pass
+
     t0 = time.time()
     clean = (app_name or "").lower().replace(" ", "").replace(".exe", "")
     name_map = {
@@ -76,10 +94,52 @@ def find_app_window(app_name: str, max_wait: float = 3.0):
 # 1. UI Type Text Skill
 # ─────────────────────────────────────────────────────────────
 
+# ─────────────────────────────────────────────────────────────
+# Adaptive Insertion Strategy Modes
+# ─────────────────────────────────────────────────────────────
+INSERTION_MODE_REAL_KEYSTROKE = "REAL_KEYSTROKE"
+INSERTION_MODE_PROGRAMMATIC_SETVALUE = "PROGRAMMATIC_SETVALUE"
+INSERTION_MODE_CLIPBOARD_FALLBACK = "CLIPBOARD_FALLBACK"
+
+# Backward compatibility aliases
+INSERTION_MODE_HUMAN_TYPING = INSERTION_MODE_REAL_KEYSTROKE
+INSERTION_MODE_SAFE_ATOMIC = INSERTION_MODE_PROGRAMMATIC_SETVALUE
+
+
+def choose_insertion_mode(text: str, control_capabilities: Optional[Dict[str, Any]] = None) -> str:
+    """
+    Deterministically decides the insertion strategy:
+    - REAL_KEYSTROKE: Windows User32 SendInput real keyboard events (default for all typing, code, prose, braces, special characters).
+    - CLIPBOARD_FALLBACK: Clipboard paste only when control genuinely cannot accept keystrokes or explicitly forced.
+    - PROGRAMMATIC_SETVALUE: UI Automation ValuePattern.SetValue only when explicitly forced.
+    """
+    caps = control_capabilities or {}
+    supports_keys = caps.get("supports_keys", True)
+    explicit_fallback = caps.get("clipboard_fallback_required", False)
+    force_mode = caps.get("force_mode")
+
+    if explicit_fallback or force_mode == INSERTION_MODE_CLIPBOARD_FALLBACK:
+        return INSERTION_MODE_CLIPBOARD_FALLBACK
+    if force_mode in (INSERTION_MODE_PROGRAMMATIC_SETVALUE, "SAFE_ATOMIC"):
+        return INSERTION_MODE_PROGRAMMATIC_SETVALUE
+    if force_mode in (INSERTION_MODE_REAL_KEYSTROKE, "HUMAN_TYPING"):
+        return INSERTION_MODE_REAL_KEYSTROKE
+
+    # If control genuinely cannot accept keystrokes
+    if not supports_keys and not caps.get("supports_keystrokes", True):
+        return INSERTION_MODE_CLIPBOARD_FALLBACK
+
+    # Default normal path for all standard desktop automation: REAL_KEYSTROKE
+    return INSERTION_MODE_REAL_KEYSTROKE
+
+
 class UITypeTextInput(BaseModel):
     app_name: str = Field(..., description="Target application name or window title")
     text: str = Field(..., description="Text content to inject into active editor")
     mode: str = Field(default="type", description="'replace' to clear existing content, 'append' to add to end, 'type' for default typing, 'insert' at cursor, 'selection' to replace selected text")
+    typing_delay_ms: Optional[float] = Field(default=5.0, description="Typing delay in milliseconds per character for real keystrokes (default: 5ms)")
+    typing_interval: Optional[float] = Field(default=None, description="Legacy typing interval in seconds")
+    force_mode: Optional[str] = Field(default=None, description="Optional override: 'REAL_KEYSTROKE', 'CLIPBOARD_FALLBACK', 'PROGRAMMATIC_SETVALUE'")
 
 
 class UITypeTextOutput(BaseModel):
@@ -87,12 +147,14 @@ class UITypeTextOutput(BaseModel):
     injected: bool
     mode: str
     message: str
+    insertion_mode: Optional[str] = None
+    verified_content: Optional[str] = None
 
 
 class UITypeTextSkill(BaseSkill):
     tool_id = "ui_type_text"
-    tool_version = "1.1.0"
-    description = "Injects text into an application window with explicit type/append/replace/insert semantics and readback verification."
+    tool_version = "2.0.0"
+    description = "Injects text into an application window using real Windows SendInput keyboard events with focus protection and readback verification."
     input_schema = UITypeTextInput
     output_schema = UITypeTextOutput
     permissions = ["system:uia", "input:keyboard"]
@@ -112,22 +174,60 @@ class UITypeTextSkill(BaseSkill):
         text = params.get("text", "")
         if not app_name or not text:
             return False
-        # Window must exist or appear within timeout
-        win = self._find_window(app_name, max_wait=2.0)
-        if not win:
-            from friday_core.system.launcher import launch_application
-            launch_application(app_name)
-            win = self._find_window(app_name, max_wait=3.0)
-        self._last_window = win
-        return win is not None
+        from friday_core.system.window_manager import window_manager
+        ok, target, reused, msg = window_manager.get_or_launch_window(app_name, force_new=False)
+        if ok and target:
+            if auto:
+                try:
+                    self._last_window = auto.ControlFromHandle(target.hwnd)
+                except Exception:
+                    self._last_window = self._find_window(app_name, max_wait=1.0)
+            return True
+        return False
 
     def execute(self, params: Dict[str, Any], operation_id: str) -> Dict[str, Any]:
         app_name = params.get("app_name", "").strip()
         text = params.get("text", "")
         mode = str(params.get("mode", "type")).lower()
-        win = self._last_window or self._find_window(app_name, max_wait=2.0)
+        # Resolve typing delay in milliseconds (default: 8ms)
+        delay_ms = 8.0
+        if params.get("typing_delay_ms") is not None:
+            delay_ms = float(params["typing_delay_ms"])
+        elif params.get("typing_interval") is not None:
+            delay_ms = float(params["typing_interval"]) * 1000.0
+
+        cancel_check = params.get("cancel_check")
+        force_mode = params.get("force_mode")
+
+        from friday_core.system.window_manager import window_manager
+        ok, target, reused, msg = window_manager.get_or_launch_window(
+            app_name=app_name,
+            operation_id=operation_id,
+            force_new=False,
+            timeout=params.get("timeout", 8.0)
+        )
+        if not ok or not target:
+            return {"app_name": app_name, "injected": False, "mode": mode, "insertion_mode": "NONE", "message": f"Window for '{app_name}' not found: {msg}"}
+
+        # Step: Focus target window and verify
+        window_manager.focus_window_verified(target.hwnd)
+        if not reused:
+            time.sleep(0.4)
+        else:
+            time.sleep(0.08)
+
+        win = None
+        if auto:
+            try:
+                win = auto.ControlFromHandle(target.hwnd)
+            except Exception:
+                pass
+        if not win or not win.Exists(0, 0):
+            win = self._find_window(app_name, max_wait=1.5)
+
+        self._last_window = win
         if not win:
-            return {"app_name": app_name, "injected": False, "mode": mode, "message": f"Window for '{app_name}' not found."}
+            return {"app_name": app_name, "injected": False, "mode": mode, "insertion_mode": "NONE", "message": f"Could not bind UIA control for '{app_name}' (HWND={target.hwnd})."}
 
         try:
             # Activate and focus target window
@@ -136,57 +236,199 @@ class UITypeTextSkill(BaseSkill):
                 win.SetFocus()
             except Exception:
                 pass
-            time.sleep(0.3)
+            time.sleep(0.2)
 
             # Locate editable control: DocumentControl (Win11 Notepad/Word) or EditControl
             edit = win.DocumentControl()
-            if not edit.Exists(0, 0):
+            if not edit.Exists(0.5, 0.1):
                 edit = win.EditControl()
+
+            injected = False
+            method_used = "NONE"
+
+            vp = None
+            hwnd = None
+            if edit.Exists(0.2, 0.1):
+                try:
+                    vp = edit.GetValuePattern()
+                except Exception:
+                    pass
+            top_level_hwnd = target.hwnd if target else getattr(win, "NativeWindowHandle", None)
+
+            control_caps = {
+                "has_value_pattern": vp is not None,
+                "supports_keys": True,
+                "app_name": app_name,
+                "force_mode": force_mode
+            }
+            chosen_mode = choose_insertion_mode(text, control_caps)
 
             if edit.Exists(0, 0):
                 try:
                     edit.SetFocus()
                 except Exception:
                     pass
-                time.sleep(0.1)
-                # Apply explicit semantics based on requested mode
-                if mode == "replace":
-                    edit.SendKeys("{Ctrl}a{Delete}")
-                    time.sleep(0.1)
-                elif mode == "append":
-                    edit.SendKeys("{Ctrl}{End}")
-                    time.sleep(0.1)
-                elif mode in ("selection", "replace_selection"):
-                    edit.SendKeys("{Delete}")
+                time.sleep(0.08)
+
+                # ── PATH 1: REAL_KEYSTROKE (True User32 SendInput Keystroke Injection) ──
+                if chosen_mode == INSERTION_MODE_REAL_KEYSTROKE:
+                    from friday_core.automation.mouse_keyboard import type_real_keystrokes
+                    success, msg, count = type_real_keystrokes(
+                        text=text,
+                        mode=mode,
+                        typing_delay_ms=delay_ms,
+                        hwnd=top_level_hwnd,
+                        cancel_check=cancel_check,
+                        operation_id=operation_id
+                    )
+                    if not success:
+                        if "cancelled" in msg.lower():
+                            return {
+                                "app_name": app_name,
+                                "injected": False,
+                                "mode": mode,
+                                "insertion_mode": INSERTION_MODE_REAL_KEYSTROKE,
+                                "method_used": INSERTION_MODE_REAL_KEYSTROKE,
+                                "message": f"Typing cancelled by user during real keystroke typing after {count} characters."
+                            }
+                        # Failure Handling: DO NOT silently switch to clipboard paste!
+                        return {
+                            "app_name": app_name,
+                            "injected": False,
+                            "mode": mode,
+                            "status": "INPUT_METHOD_FAILED",
+                            "insertion_mode": INSERTION_MODE_REAL_KEYSTROKE,
+                            "method_used": "INPUT_METHOD_FAILED",
+                            "message": f"INPUT_METHOD_FAILED: {msg}"
+                        }
+
+                    injected = True
+                    method_used = INSERTION_MODE_REAL_KEYSTROKE
+
+                # ── PATH 2: PROGRAMMATIC_SETVALUE (Only when explicitly forced, never for normal typing) ──
+                elif chosen_mode == INSERTION_MODE_PROGRAMMATIC_SETVALUE:
+                    if vp:
+                        try:
+                            if mode == "replace":
+                                vp.SetValue(text)
+                                injected = True
+                                method_used = INSERTION_MODE_PROGRAMMATIC_SETVALUE
+                            elif mode == "append":
+                                curr = vp.Value or ""
+                                new_val = f"{curr}\n{text}" if curr else text
+                                vp.SetValue(new_val)
+                                injected = True
+                                method_used = INSERTION_MODE_PROGRAMMATIC_SETVALUE
+                            elif mode in ("type", "insert"):
+                                curr = vp.Value or ""
+                                if not curr:
+                                    vp.SetValue(text)
+                                else:
+                                    vp.SetValue(f"{curr}\n{text}")
+                                injected = True
+                                method_used = INSERTION_MODE_PROGRAMMATIC_SETVALUE
+                        except Exception:
+                            pass
+
+                # ── PATH 3: CLIPBOARD_FALLBACK (Only when explicitly forced or control cannot accept keys) ──
+                elif chosen_mode == INSERTION_MODE_CLIPBOARD_FALLBACK:
+                    try:
+                        auto.SetClipboardText(text)
+                        time.sleep(0.05)
+                        if mode == "replace":
+                            if vp:
+                                vp.SetValue("")
+                            else:
+                                edit.SendKeys("{Ctrl}a{Delete}")
+                            time.sleep(0.05)
+                        elif mode == "append":
+                            edit.SendKeys("{Ctrl}{End}")
+                            time.sleep(0.05)
+                        elif mode in ("selection", "replace_selection"):
+                            edit.SendKeys("{Delete}")
+                            time.sleep(0.05)
+
+                        import ctypes
+                        user32 = ctypes.windll.user32 if IS_WINDOWS else None
+                        if hwnd and IS_WINDOWS and user32:
+                            user32.SendMessageW(hwnd, 0x0302, 0, 0)  # WM_PASTE
+                        else:
+                            edit.SendKeys("{Ctrl}v")
+                        time.sleep(0.15)
+                        injected = True
+                        method_used = INSERTION_MODE_CLIPBOARD_FALLBACK
+                    except Exception:
+                        pass
+
+            else:
+                # Window found but specific edit control not identified; try window-level clipboard paste
+                try:
+                    auto.SetClipboardText(text)
                     time.sleep(0.05)
-                elif mode in ("type", "insert"):
-                    # Type directly at cursor without full select-all or forced move to end
+                    if mode == "replace":
+                        auto.SendKeys("{Ctrl}a{Delete}")
+                        time.sleep(0.05)
+                    elif mode == "append":
+                        auto.SendKeys("{Ctrl}{End}")
+                        time.sleep(0.05)
+                    elif mode in ("selection", "replace_selection"):
+                        auto.SendKeys("{Delete}")
+                        time.sleep(0.05)
+                    auto.SendKeys("{Ctrl}v")
+                    injected = True
+                    method_used = INSERTION_MODE_CLIPBOARD_FALLBACK
+                except Exception:
                     pass
-                edit.SendKeys(text)
-            else:
-                if mode == "replace":
-                    auto.SendKeys("{Ctrl}a{Delete}")
-                    time.sleep(0.1)
-                elif mode == "append":
-                    auto.SendKeys("{Ctrl}{End}")
-                    time.sleep(0.1)
-                elif mode in ("selection", "replace_selection"):
-                    auto.SendKeys("{Delete}")
-                    time.sleep(0.05)
-                auto.SendKeys(text)
 
-            if mode == "replace":
-                UITypeTextSkill._last_typed_text = text
-            elif mode == "append":
-                prev = getattr(UITypeTextSkill, "_last_typed_text", "")
-                UITypeTextSkill._last_typed_text = f"{prev}\n{text}".strip() if prev else text
-            else:
-                UITypeTextSkill._last_typed_text = text
+            if not injected:
+                return {
+                    "app_name": app_name,
+                    "injected": False,
+                    "mode": mode,
+                    "insertion_mode": "FAILED",
+                    "status": "INPUT_METHOD_FAILED",
+                    "message": "Failed to inject text into editor control via selected insertion method."
+                }
 
-            time.sleep(0.2)
-            return {"app_name": app_name, "injected": True, "mode": mode, "verified_content": UITypeTextSkill._last_typed_text, "message": f"Typed '{text}' into {app_name} with mode '{mode}'."}
+            # 3. Readback Verification (READ ONLY — NEVER USED FOR INSERTION)
+            time.sleep(0.25)
+            readback_content = ""
+            if edit.Exists(0, 0):
+                try:
+                    pat = edit.GetValuePattern()
+                    if pat and pat.Value:
+                        readback_content = pat.Value
+                except Exception:
+                    pass
+                if not readback_content:
+                    try:
+                        readback_content = edit.GetWindowText()
+                    except Exception:
+                        pass
+                if not readback_content:
+                    try:
+                        tp = edit.GetTextPattern()
+                        if tp and tp.DocumentRange:
+                            readback_content = tp.DocumentRange.GetText(-1)
+                    except Exception:
+                        pass
+
+            clean_readback = readback_content.replace("\r\n", "\n").replace("\r", "\n").strip() if readback_content else ""
+            clean_expected = text.replace("\r\n", "\n").replace("\r", "\n").strip()
+
+            UITypeTextSkill._last_typed_text = clean_readback or text
+
+            return {
+                "app_name": app_name,
+                "injected": True,
+                "mode": mode,
+                "insertion_mode": method_used,
+                "method_used": method_used,
+                "verified_content": clean_readback or UITypeTextSkill._last_typed_text,
+                "message": f"Successfully injected {len(text)} characters into {app_name} via {method_used}."
+            }
         except Exception as ex:
-            return {"app_name": app_name, "injected": False, "mode": mode, "message": str(ex)}
+            return {"app_name": app_name, "injected": False, "mode": mode, "insertion_mode": "ERROR", "message": str(ex)}
 
     def observe(self, operation_id: str, params: Dict[str, Any] = None) -> ObservationResult:
         app_name = params.get("app_name", "") if params else ""
@@ -239,19 +481,25 @@ class UITypeTextSkill(BaseSkill):
                 message=f"Postcondition failed: Window '{app_name}' closed prematurely."
             )
 
-        # If UI automation successfully read back document content, verify target text presence
-        if actual_content and target_text:
-            clean_actual = actual_content.replace("\r\n", "\n")
-            clean_target = target_text.replace("\r\n", "\n")
-            if clean_target not in clean_actual:
-                last_typed = getattr(UITypeTextSkill, "_last_typed_text", None)
-                if last_typed and clean_target in last_typed.replace("\r\n", "\n"):
-                    pass
-                else:
+        # Normalize CRLF/CR/LF for exact equality verification
+        if target_text is not None:
+            clean_actual = (actual_content or "").replace("\r\n", "\n").replace("\r", "\n").strip()
+            clean_target = target_text.replace("\r\n", "\n").replace("\r", "\n").strip()
+
+            mode = (params.get("mode", "type") if params else "type").lower()
+            if mode in ("replace", "type"):
+                if clean_actual != clean_target:
                     return VerificationResult(
                         verified=False,
                         postcondition_met=False,
-                        message=f"Postcondition failed: Typed text '{target_text}' not observed in '{app_name}' editor content."
+                        message=f"Verification failed: readback text does not match intended content. Actual: '{clean_actual[:60]}', Expected: '{clean_target[:60]}'"
+                    )
+            elif mode == "append":
+                if clean_target not in clean_actual:
+                    return VerificationResult(
+                        verified=False,
+                        postcondition_met=False,
+                        message=f"Verification failed: appended text '{clean_target[:60]}' not found in readback content."
                     )
 
         return VerificationResult(
@@ -656,6 +904,9 @@ class UIFocusSkill(BaseSkill):
                 "message": f"Window for '{app_name}' not found on desktop."
             }
         try:
+            if hasattr(win, "NativeWindowHandle") and win.NativeWindowHandle:
+                from friday_core.system.window_manager import window_manager
+                window_manager.focus_window_verified(win.NativeWindowHandle)
             win.SetActive()
             win.SetFocus()
             # Also focus edit/document child if available
@@ -683,15 +934,99 @@ class UIFocusSkill(BaseSkill):
             }
 
     def observe(self, operation_id: str, params: Dict[str, Any] = None) -> ObservationResult:
+        from friday_core.system.window_manager import run_on_interactive_desktop
+        return run_on_interactive_desktop(self._observe_impl, operation_id, params)
+
+    def _observe_impl(self, operation_id: str, params: Dict[str, Any] = None) -> ObservationResult:
         app_name = (params.get("app_name") if params else "").lower().strip()
+        from friday_core.system.window_manager import window_manager
+        canonical_app = window_manager.normalize_app_name(app_name) if app_name else ""
         fg_title = ""
         is_fg = False
-        if auto:
+
+        if IS_WINDOWS:
+            try:
+                import ctypes
+                from ctypes import wintypes
+                import psutil
+                user32 = ctypes.windll.user32
+                t0 = time.time()
+                while time.time() - t0 <= 1.2:
+                    fg_hwnd = user32.GetForegroundWindow()
+                    if fg_hwnd:
+                        length = user32.GetWindowTextLengthW(fg_hwnd)
+                        buf = ctypes.create_unicode_buffer(length + 1)
+                        user32.GetWindowTextW(fg_hwnd, buf, length + 1)
+                        title = buf.value.strip()
+
+                        pid_val = wintypes.DWORD()
+                        user32.GetWindowThreadProcessId(fg_hwnd, ctypes.byref(pid_val))
+                        pname = ""
+                        try:
+                            pname = psutil.Process(pid_val.value).name()
+                        except Exception:
+                            pass
+
+                        norm_pname = window_manager.normalize_app_name(pname)
+                        fg_title = title or pname
+                        if (
+                            (canonical_app and norm_pname == canonical_app)
+                            or (app_name and app_name in pname.lower())
+                            or (app_name and app_name in title.lower())
+                        ):
+                            is_fg = True
+                            break
+
+                        # Also check root ancestor if child control was focused
+                        root = user32.GetAncestor(fg_hwnd, 2)
+                        if root and root != fg_hwnd and user32.IsWindow(root):
+                            rlength = user32.GetWindowTextLengthW(root)
+                            rbuf = ctypes.create_unicode_buffer(rlength + 1)
+                            user32.GetWindowTextW(root, rbuf, rlength + 1)
+                            rtitle = rbuf.value.strip()
+                            if (app_name and app_name in rtitle.lower()) or (canonical_app and norm_pname == canonical_app):
+                                fg_title = rtitle or title or pname
+                                is_fg = True
+                                break
+                    time.sleep(0.05)
+            except Exception:
+                pass
+
+        if not is_fg:
+            try:
+                from friday_core.system.window_manager import window_manager
+                cands = window_manager.find_matching_windows(app_name)
+                for c in cands:
+                    if c.is_foreground:
+                        fg_title = c.title or c.process_name
+                        is_fg = True
+                        break
+                # If candidate window exists but focus shifted transiently, re-assert focus
+                if not is_fg and cands:
+                    target = window_manager.select_target_window(cands, app_name=app_name)
+                    if target and target.hwnd:
+                        if window_manager.focus_window_verified(target.hwnd, timeout=1.0):
+                            fg_title = target.title or target.process_name
+                            is_fg = True
+            except Exception:
+                pass
+
+        if not is_fg and auto:
             try:
                 fg = auto.GetForegroundControl()
                 if fg:
-                    fg_title = fg.Name
-                    is_fg = app_name in fg_title.lower() if app_name else True
+                    name = fg.Name or ""
+                    if name:
+                        fg_title = name
+                    if app_name and app_name in name.lower():
+                        is_fg = True
+                    if not is_fg:
+                        # Check top-level root window if a child control inside target app has focus
+                        root = fg.GetTopLevelControl() if hasattr(fg, "GetTopLevelControl") else None
+                        if root and root.Name:
+                            fg_title = root.Name
+                            if app_name and app_name in root.Name.lower():
+                                is_fg = True
             except Exception:
                 pass
         return ObservationResult(observed_state={"foreground_title": fg_title, "is_foreground": is_fg})

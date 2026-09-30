@@ -1,0 +1,1567 @@
+{
+  "join": [
+    {
+      "file": "friday_ui/app.py",
+      "line": 36,
+      "code": "assets_dir = os.path.join(os.path.dirname(__file__), \"assets\")"
+    },
+    {
+      "file": "friday_ui/app.py",
+      "line": 37,
+      "code": "ico_path = os.path.join(assets_dir, \"friday_icon.ico\")"
+    },
+    {
+      "file": "friday_ui/app.py",
+      "line": 40,
+      "code": "png_path = os.path.join(assets_dir, \"friday_icon.png\")"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 258,
+      "code": "return \"\".join(s.text for s in segments).strip()"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 382,
+      "code": "summary = \" \".join(words[:max_words])"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 389,
+      "code": "return \" \".join(selected)"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 564,
+      "code": "chunks.append(\" \".join(current_chunk))"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 572,
+      "code": "chunks.append(\" \".join(current_chunk))"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 818,
+      "code": "result = '\\n'.join(lines)"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 1041,
+      "code": "full_content = \"\".join(accumulated_chunks)"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 1042,
+      "code": "full_thinking = \"\".join(accumulated_thinking)"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 1282,
+      "code": "context_blocks = \"\\n\\n\".join(c.to_prompt_context() for c in created_contexts)"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 1298,
+      "code": "image_id=\",\".join(c.image_id for c in created_contexts),"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 1314,
+      "code": "image_id=\",\".join(c.image_id for c in created_contexts),"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 1551,
+      "code": "sample = \", \".join(fnames[:4]) + (f\" and {len(fnames)-4} more\" if len(fnames) > 4 else \"\")"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 1554,
+      "code": "f_sample = \", \".join(f.name for f in folders_to_move[:3])"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 1557,
+      "code": "return \"\\n\".join(lines)"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 1601,
+      "code": "cat_details = \", \".join(f\"{cnt} {k}\" for k, cnt in moved_counts.items())"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 1606,
+      "code": "summary_text = \" and \".join(summary_parts)"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 1664,
+      "code": "return \"\\n\".join(lines)"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 2125,
+      "code": "return \" \".join(parts) + \" All subsystems operational, Boss.\""
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 2376,
+      "code": "for base_dir in [os.getcwd(), os.path.join(os.getcwd(), \"scratch\"), str(Path.home() / \"Downloads\"), str(Path.home() / \"D"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 2377,
+      "code": "check_path = os.path.join(base_dir, os.path.basename(candidate))"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 2387,
+      "code": "scratch_dir = os.path.join(os.getcwd(), \"scratch\")"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 2389,
+      "code": "pdf_files = [os.path.join(scratch_dir, f) for f in os.listdir(scratch_dir) if f.lower().endswith(\".pdf\")]"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 2395,
+      "code": "root_pdfs = [os.path.join(os.getcwd(), f) for f in os.listdir(os.getcwd()) if f.lower().endswith(\".pdf\")]"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 2437,
+      "code": "for base_dir in [os.getcwd(), os.path.join(os.getcwd(), \"scratch\"), str(Path.home() / \"Downloads\"), str(Path.home() / \"D"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 2438,
+      "code": "check_path = os.path.join(base_dir, os.path.basename(candidate))"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 2448,
+      "code": "scratch_dir = os.path.join(os.getcwd(), \"scratch\")"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 2450,
+      "code": "docx_files = [os.path.join(scratch_dir, f) for f in os.listdir(scratch_dir) if f.lower().endswith(\".docx\")]"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 2456,
+      "code": "root_docx = [os.path.join(os.getcwd(), f) for f in os.listdir(os.getcwd()) if f.lower().endswith(\".docx\")]"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 2554,
+      "code": "combined_context = \"\\n\\n\".join(all_text_chunks)[:7500]"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 2578,
+      "code": "doc_context = \"\\n\\n\".join(extracted_pages)[:7500]"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 2705,
+      "code": "return f\"Content extracted from {url}:\\n\" + \"\\n\".join(summary_parts)"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 3217,
+      "code": "file_list_str = \"\\n\".join(f\"\u2022 `{f.get('name')}` ({f.get('size_bytes', 0)} bytes)\" for f in files[:10])"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 3310,
+      "code": "return \" \".join(parts) + \" All subsystems operational, Boss.\""
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 3384,
+      "code": "action_str = \" and \".join(summaries)"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 3389,
+      "code": "err_text = \"; \".join(mission_res.errors) if mission_res.errors else \"Mission step verification failed.\""
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 3487,
+      "code": "other_highlights = \"; \".join(all_headlines[1:4]) if len(all_headlines) > 1 else \"\""
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 3770,
+      "code": "if os.path.exists(os.path.join(desktop, target_path)):"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 3771,
+      "code": "target_path = os.path.join(desktop, target_path)"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 3772,
+      "code": "elif os.path.exists(os.path.join(desktop_one, target_path)):"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 3773,
+      "code": "target_path = os.path.join(desktop_one, target_path)"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 3914,
+      "code": "return \" \".join(parts) + \" All subsystems operational, Boss.\""
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 4108,
+      "code": "return f\"LIVE WEB SEARCH RESULTS FOR '{query}':\\n\\n\" + \"\\n\\n\".join(lines)"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 4321,
+      "code": "return \"--- BEGIN RETRIEVED EVIDENCE (UNTRUSTED DATA) ---\\n\" + \"\\n\\n\".join(lines) + \"\\n--- END RETRIEVED EVIDENCE ---\""
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 4362,
+      "code": "f\"- Visible Text: {', '.join(target_ctx.visible_text) if target_ctx.visible_text else 'None'}\\n\""
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 4363,
+      "code": "f\"- Objects: {', '.join(target_ctx.objects) if target_ctx.objects else 'None'}\\n\""
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 4365,
+      "code": "f\"- Actions/Buttons/Events: {', '.join(target_ctx.actions_or_events) if target_ctx.actions_or_events else 'None'}\\n\""
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 4366,
+      "code": "f\"- Details: {', '.join(target_ctx.important_details) if target_ctx.important_details else 'None'}\\n\""
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 4741,
+      "code": "reply = ReasoningStreamParser.clean_final_content(\"\".join(collected).strip())"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 4783,
+      "code": "reply = \"\".join(collected).strip()"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 4785,
+      "code": "return \"\".join(collected).strip()"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 4788,
+      "code": "partial = \"\".join(collected).strip()"
+    },
+    {
+      "file": "friday_ui/core/session_store.py",
+      "line": 53,
+      "code": "return f\"{' '.join(topic_words).title()} Research\""
+    },
+    {
+      "file": "friday_ui/core/session_store.py",
+      "line": 62,
+      "code": "return f\"Word: {' '.join(words).title()}\""
+    },
+    {
+      "file": "friday_ui/core/session_store.py",
+      "line": 73,
+      "code": "return f\"YouTube: {' '.join(words).title()}\""
+    },
+    {
+      "file": "friday_ui/core/session_store.py",
+      "line": 100,
+      "code": "return f\"{' '.join(words[:3]).title()} Code\""
+    },
+    {
+      "file": "friday_ui/core/session_store.py",
+      "line": 126,
+      "code": "title = \" \".join(meaningful_words[:3]).title()"
+    },
+    {
+      "file": "friday_ui/core/session_store.py",
+      "line": 142,
+      "code": "db_path = os.path.join(APP_DATA_DIR, \"friday_sessions.db\")"
+    },
+    {
+      "file": "friday_ui/rag/store.py",
+      "line": 59,
+      "code": "db_path = os.path.join(APP_DATA_DIR, \"friday_vectors.db\")"
+    },
+    {
+      "file": "friday_ui/views/chat_view.py",
+      "line": 1002,
+      "code": "snip_dir = os.path.join(APP_DATA_DIR, \"screenshots\")"
+    },
+    {
+      "file": "friday_ui/views/chat_view.py",
+      "line": 1004,
+      "code": "snip_path = os.path.join(snip_dir, f\"snip_{int(datetime.now().timestamp())}.png\")"
+    },
+    {
+      "file": "friday_ui/views/chat_view.py",
+      "line": 1158,
+      "code": "sample_preview = \"\\n\".join(sample_snippets) if sample_snippets else \"Standard Document Layout\""
+    },
+    {
+      "file": "friday_ui/views/chat_view.py",
+      "line": 1178,
+      "code": "att_names_str = \", \".join(file_names)"
+    },
+    {
+      "file": "friday_ui/views/chat_view.py",
+      "line": 1180,
+      "code": "full_prompt = \"\\n\\n\".join(file_contexts) + f\"\\n\\nBoss Directive:\\n{text}\""
+    },
+    {
+      "file": "friday_ui/views/rag_view.py",
+      "line": 290,
+      "code": "found_files.extend(glob.glob(os.path.join(DOCUMENTS_DIR, pat)))"
+    },
+    {
+      "file": "friday_ui/views/rag_view.py",
+      "line": 293,
+      "code": "root_dir = os.path.abspath(os.path.join(DOCUMENTS_DIR, \"..\"))"
+    },
+    {
+      "file": "friday_ui/views/rag_view.py",
+      "line": 295,
+      "code": "for f in glob.glob(os.path.join(root_dir, pat)):"
+    },
+    {
+      "file": "friday_ui/widgets/command_bar.py",
+      "line": 104,
+      "code": "self._thread.join(timeout=0.5)"
+    },
+    {
+      "file": "friday_core/agent/compound.py",
+      "line": 191,
+      "code": "save_params[\"content\"] = \"\\n\".join(typed_contents)"
+    },
+    {
+      "file": "friday_core/agent/mission_store.py",
+      "line": 63,
+      "code": "db_path = os.path.join(APP_DATA_DIR, \"friday_missions.db\")"
+    },
+    {
+      "file": "friday_core/automation/inspector.py",
+      "line": 158,
+      "code": "+ \"; \".join(controls_summary)"
+    },
+    {
+      "file": "friday_core/automation/security_guard.py",
+      "line": 13,
+      "code": "SECURITY_AUDIT_FILE = os.path.join(AUDIT_DIR, \"UI_AUTOMATION_SECURITY.json\")"
+    },
+    {
+      "file": "friday_core/automation/shortcuts.py",
+      "line": 87,
+      "code": "return True, f\"Dispatched shortcut '{shortcut_name}' ({'+'.join(keys)}).\""
+    },
+    {
+      "file": "friday_core/automation/tracer.py",
+      "line": 14,
+      "code": "ACTION_TRACE_FILE = os.path.join(AUDIT_DIR, \"UI_ACTION_TRACE.json\")"
+    },
+    {
+      "file": "friday_core/automation/tracer.py",
+      "line": 15,
+      "code": "INSPECTION_TRACE_FILE = os.path.join(AUDIT_DIR, \"UI_INSPECTION_TRACE.json\")"
+    },
+    {
+      "file": "friday_core/automation/tracer.py",
+      "line": 16,
+      "code": "FAILURES_FILE = os.path.join(AUDIT_DIR, \"UI_AUTOMATION_FAILURES.json\")"
+    },
+    {
+      "file": "friday_core/browser/controller.py",
+      "line": 32,
+      "code": "self.sandbox_dir = os.path.join(APP_DATA_DIR, \"browser_sandbox\")"
+    },
+    {
+      "file": "friday_core/context/budget.py",
+      "line": 230,
+      "code": "body = \"\\n\".join(lines[1:])"
+    },
+    {
+      "file": "friday_core/context/budget.py",
+      "line": 238,
+      "code": "result = \"\\n\\n\".join(compacted_blocks)"
+    },
+    {
+      "file": "friday_core/context/graphify_retriever.py",
+      "line": 50,
+      "code": "self.graph_path = os.path.join(self.workspace_root, \"graphify-out\", \"graph.json\")"
+    },
+    {
+      "file": "friday_core/context/graphify_retriever.py",
+      "line": 178,
+      "code": "lines.append(f\"- **Primary Entrypoints:** {', '.join(entrypoints[:4])}\")"
+    },
+    {
+      "file": "friday_core/context/graphify_retriever.py",
+      "line": 181,
+      "code": "lines.append(f\"- **Neural / Model Adapters:** {', '.join(adapters[:4])}\")"
+    },
+    {
+      "file": "friday_core/context/graphify_retriever.py",
+      "line": 184,
+      "code": "lines.append(f\"- **Callable Tools & Skills:** {', '.join(tools[:4])}\")"
+    },
+    {
+      "file": "friday_core/context/graphify_retriever.py",
+      "line": 204,
+      "code": "if sf and os.path.exists(os.path.join(self.workspace_root, sf)):"
+    },
+    {
+      "file": "friday_core/context/graphify_retriever.py",
+      "line": 234,
+      "code": "final_context = \"\\n\".join(lines)"
+    },
+    {
+      "file": "friday_core/context/graphify_retriever.py",
+      "line": 239,
+      "code": "abs_path = os.path.join(self.workspace_root, rel_path)"
+    },
+    {
+      "file": "friday_core/context/graphify_retriever.py",
+      "line": 254,
+      "code": "return \"\".join(selected).strip()"
+    },
+    {
+      "file": "friday_core/context/manager.py",
+      "line": 144,
+      "code": "os.path.join(recent_dir, f)"
+    },
+    {
+      "file": "friday_core/dev_agent/diff_engine.py",
+      "line": 32,
+      "code": "return \"\".join(diff_lines)"
+    },
+    {
+      "file": "friday_core/document/agent.py",
+      "line": 96,
+      "code": "message=f\"Extracted content from {', '.join(region.matched_labels)}:\\n\\n{region.context_text}\","
+    },
+    {
+      "file": "friday_core/document/agent.py",
+      "line": 99,
+      "code": "target_region=\", \".join(region.matched_labels),"
+    },
+    {
+      "file": "friday_core/document/agent.py",
+      "line": 113,
+      "code": "summary_text = f\"Summary of {', '.join(region.matched_labels)}: {region.context_text[:200]}...\""
+    },
+    {
+      "file": "friday_core/document/agent.py",
+      "line": 119,
+      "code": "target_region=\", \".join(region.matched_labels),"
+    },
+    {
+      "file": "friday_core/document/agent.py",
+      "line": 143,
+      "code": "targets_str = \", \".join(region.matched_labels) if region.matched_labels else \"the selected section\""
+    },
+    {
+      "file": "friday_core/document/agent.py",
+      "line": 171,
+      "code": "target_region=\", \".join(region.matched_labels),"
+    },
+    {
+      "file": "friday_core/document/agent.py",
+      "line": 191,
+      "code": "target_region=\", \".join(region.matched_labels),"
+    },
+    {
+      "file": "friday_core/document/agent.py",
+      "line": 197,
+      "code": "targets_desc = \", \".join(region.matched_labels)"
+    },
+    {
+      "file": "friday_core/document/editor.py",
+      "line": 63,
+      "code": "targets_desc = \", \".join(relevant_region.matched_labels) if relevant_region.matched_labels else \"the selected region\""
+    },
+    {
+      "file": "friday_core/document/file_detector.py",
+      "line": 407,
+      "code": "sample_text = \"\".join(sample_lines)"
+    },
+    {
+      "file": "friday_core/document/models.py",
+      "line": 82,
+      "code": "headings_preview = \", \".join(heading_titles) if heading_titles else \"None\""
+    },
+    {
+      "file": "friday_core/document/parser.py",
+      "line": 124,
+      "code": "md_lines.append(\"| \" + \" | \".join(headers) + \" |\")"
+    },
+    {
+      "file": "friday_core/document/parser.py",
+      "line": 125,
+      "code": "md_lines.append(\"| \" + \" | \".join([\"---\"] * len(headers)) + \" |\")"
+    },
+    {
+      "file": "friday_core/document/parser.py",
+      "line": 127,
+      "code": "md_lines.append(\"| \" + \" | \".join(row_texts) + \" |\")"
+    },
+    {
+      "file": "friday_core/document/parser.py",
+      "line": 147,
+      "code": "preview_markdown=\"\\n\".join(md_lines)"
+    },
+    {
+      "file": "friday_core/document/parser.py",
+      "line": 310,
+      "code": "context_text = \"\\n\".join(context_lines)"
+    },
+    {
+      "file": "friday_core/document/parser.py",
+      "line": 355,
+      "code": "context = \"\\n\".join(lines)[:3000]"
+    },
+    {
+      "file": "friday_core/document/pdf_worker.py",
+      "line": 453,
+      "code": "compiled = \"\\n\".join(lines)"
+    },
+    {
+      "file": "friday_core/document/pdf_worker.py",
+      "line": 533,
+      "code": "return \"\".join(collected).strip()"
+    },
+    {
+      "file": "friday_core/document/reader.py",
+      "line": 270,
+      "code": "snippet = \"\\n\".join(lines[start:end])"
+    },
+    {
+      "file": "friday_core/document/reader.py",
+      "line": 272,
+      "code": "snippet_str = \"\\n---\\n\".join(matching_snippet) if matching_snippet else p_text[:800]"
+    },
+    {
+      "file": "friday_core/document/reader.py",
+      "line": 276,
+      "code": "combined_excerpts = \"\\n\\n\".join(matched_excerpts)"
+    },
+    {
+      "file": "friday_core/document/reader.py",
+      "line": 280,
+      "code": "pages_desc = f\"Pages {', '.join(str(pn) for pn in matched_pages)}\""
+    },
+    {
+      "file": "friday_core/document/reader.py",
+      "line": 316,
+      "code": "combined_text = \"\\n\\n\".join(extracted_pages)"
+    },
+    {
+      "file": "friday_core/document/reader.py",
+      "line": 341,
+      "code": "loc = f\"Region: {region.region_type} ({', '.join(region.matched_labels) if region.matched_labels else clean_focus})\""
+    },
+    {
+      "file": "friday_core/document/reader.py",
+      "line": 355,
+      "code": "\"raw_text\": \"\\n\\n\".join(matching_paragraphs),"
+    },
+    {
+      "file": "friday_core/document/reader.py",
+      "line": 365,
+      "code": "sample_paras = \"\\n\".join(f\"P{p.index}: {p.text}\" for p in doc_map.paragraphs[:8] if p.text.strip())"
+    },
+    {
+      "file": "friday_core/document/reader.py",
+      "line": 421,
+      "code": "\"raw_text\": \"\\n\".join(matches),"
+    },
+    {
+      "file": "friday_core/document/reader.py",
+      "line": 478,
+      "code": "sample_text = \"\".join(sample_lines)"
+    },
+    {
+      "file": "friday_core/document/reader.py",
+      "line": 508,
+      "code": "row_str = \" | \".join(row).lower()"
+    },
+    {
+      "file": "friday_core/document/reader.py",
+      "line": 513,
+      "code": "lines = [f\"Headers: {' | '.join(header[:MAX_CSV_COLS])}\"]"
+    },
+    {
+      "file": "friday_core/document/reader.py",
+      "line": 516,
+      "code": "lines.append(f\"Row {r_num}: {' | '.join(r[:MAX_CSV_COLS])}\")"
+    },
+    {
+      "file": "friday_core/document/reader.py",
+      "line": 519,
+      "code": "\"raw_text\": \"\\n\".join(lines),"
+    },
+    {
+      "file": "friday_core/document/reader.py",
+      "line": 531,
+      "code": "f\"Headers: {' | '.join(header[:MAX_CSV_COLS])}\\nPreview (first 10 rows):\""
+    },
+    {
+      "file": "friday_core/document/reader.py",
+      "line": 534,
+      "code": "lines.append(f\"Row {r_num}: {' | '.join(r[:MAX_CSV_COLS])}\")"
+    },
+    {
+      "file": "friday_core/document/reader.py",
+      "line": 538,
+      "code": "\"raw_text\": \"\\n\".join(lines),"
+    },
+    {
+      "file": "friday_core/document/reader.py",
+      "line": 580,
+      "code": "regions.append(f\"--- Lines {start+1}-{end} ---\\n\" + \"\\n\".join(region_lines))"
+    },
+    {
+      "file": "friday_core/document/reader.py",
+      "line": 584,
+      "code": "\"raw_text\": \"\\n\\n\".join(regions),"
+    },
+    {
+      "file": "friday_core/document/reader.py",
+      "line": 605,
+      "code": "\"raw_text\": \"\\n\".join(preview_lines),"
+    },
+    {
+      "file": "friday_core/memory/store.py",
+      "line": 30,
+      "code": "db_path = os.path.join(APP_DATA_DIR, \"friday_memory.db\")"
+    },
+    {
+      "file": "friday_core/memory/store.py",
+      "line": 280,
+      "code": "cur = conn.execute(\" \".join(query), tuple(params))"
+    },
+    {
+      "file": "friday_core/memory/store.py",
+      "line": 316,
+      "code": "cur = conn.execute(\" \".join(query), tuple(params))"
+    },
+    {
+      "file": "friday_core/memory/store.py",
+      "line": 353,
+      "code": "cur = conn.execute(\" \".join(sql), tuple(params))"
+    },
+    {
+      "file": "friday_core/memory/store.py",
+      "line": 382,
+      "code": "cur = conn.execute(\" \".join(sql), tuple(params))"
+    },
+    {
+      "file": "friday_core/memory/store.py",
+      "line": 419,
+      "code": "cur = conn.execute(\" \".join(sql), tuple(params))"
+    },
+    {
+      "file": "friday_core/memory/store.py",
+      "line": 432,
+      "code": "check_cur = conn.execute(\" \".join(check_sql), tuple(check_params))"
+    },
+    {
+      "file": "friday_core/memory/store.py",
+      "line": 448,
+      "code": "cur = conn.execute(\" \".join(sql), tuple(params))"
+    },
+    {
+      "file": "friday_core/models/stream_parser.py",
+      "line": 133,
+      "code": "return \"\".join(user_visible_out)"
+    },
+    {
+      "file": "friday_core/models/stream_parser.py",
+      "line": 203,
+      "code": "candidate_content = \"\".join(final_tokens)"
+    },
+    {
+      "file": "friday_core/observability/event_logger.py",
+      "line": 28,
+      "code": "log_path = os.path.join(APP_DATA_DIR, \"logs\", \"structured_events.jsonl\")"
+    },
+    {
+      "file": "friday_core/observability/event_logger.py",
+      "line": 120,
+      "code": "return \"\\n\".join(lines)"
+    },
+    {
+      "file": "friday_core/observability/event_logger.py",
+      "line": 137,
+      "code": "return \"\\n\".join(lines)"
+    },
+    {
+      "file": "friday_core/rag/engine.py",
+      "line": 41,
+      "code": "db_path = os.path.join(APP_DATA_DIR, \"friday_rag_2.db\")"
+    },
+    {
+      "file": "friday_core/rag/engine.py",
+      "line": 385,
+      "code": "cur = conn.execute(\" \".join(sql), tuple(params))"
+    },
+    {
+      "file": "friday_core/rag/engine.py",
+      "line": 470,
+      "code": "current_tokens = ContextBudgetManager.estimate_tokens(\"\\n\".join(blocks))"
+    },
+    {
+      "file": "friday_core/rag/engine.py",
+      "line": 483,
+      "code": "return \"\\n\".join(blocks)"
+    },
+    {
+      "file": "friday_core/rag/extractors.py",
+      "line": 99,
+      "code": "paragraphs.append(\"\".join(texts))"
+    },
+    {
+      "file": "friday_core/rag/extractors.py",
+      "line": 101,
+      "code": "full_text = \"\\n\\n\".join(paragraphs)"
+    },
+    {
+      "file": "friday_core/rag/extractors.py",
+      "line": 123,
+      "code": "shared_strings.append(\"\".join([t.text or \"\" for t in t_elems]))"
+    },
+    {
+      "file": "friday_core/rag/extractors.py",
+      "line": 124,
+      "code": "full_text = \" | \".join([s for s in shared_strings if s.strip()])"
+    },
+    {
+      "file": "friday_core/research/cross_checker.py",
+      "line": 108,
+      "code": "topic=f\"Contrasting claims regarding '{' '.join(list(shared_terms)[:4])}'\","
+    },
+    {
+      "file": "friday_core/research/synthesizer.py",
+      "line": 44,
+      "code": "summary = f\"Executive briefing for '{topic}':\\n\" + \"\\n\".join(exec_summary_points)"
+    },
+    {
+      "file": "friday_core/research/synthesizer.py",
+      "line": 77,
+      "code": "sources_str = \", \".join([f\"[Source]({url})\" for url in f.supporting_sources])"
+    },
+    {
+      "file": "friday_core/research/synthesizer.py",
+      "line": 92,
+      "code": "return \"\\n\".join(lines)"
+    },
+    {
+      "file": "friday_core/research/worker.py",
+      "line": 296,
+      "code": "sources_context_str = \"\\n\".join(sources_summary_lines) if sources_summary_lines else \"> No live sources returned.\""
+    },
+    {
+      "file": "friday_core/research/worker.py",
+      "line": 300,
+      "code": "contradiction_notes = \"\\nFLAGGED CONTRADICTIONS ACROSS SOURCES:\\n\" + \"\\n\".join("
+    },
+    {
+      "file": "friday_core/research/worker.py",
+      "line": 451,
+      "code": "return \"\".join(collected).strip()"
+    },
+    {
+      "file": "friday_core/research/worker.py",
+      "line": 455,
+      "code": "return \"\".join(collected).strip()"
+    },
+    {
+      "file": "friday_core/research/worker.py",
+      "line": 457,
+      "code": "return \"\".join(collected).strip()"
+    },
+    {
+      "file": "friday_core/scheduler/scheduler.py",
+      "line": 160,
+      "code": "self._worker_thread.join(timeout=2.0)"
+    },
+    {
+      "file": "friday_core/security/credential_vault.py",
+      "line": 24,
+      "code": "vault_path = os.path.join(APP_DATA_DIR, \"security\", \"vault.enc\")"
+    },
+    {
+      "file": "friday_core/skills/agent_bridge.py",
+      "line": 462,
+      "code": "return False, f\"Target application '{app_arg}' was not requested by user. Explicit user target: {', '.join(user_apps)}. "
+    },
+    {
+      "file": "friday_core/skills/base.py",
+      "line": 237,
+      "code": "error=f\"Validation failed: {'; '.join(val_res.errors)}\","
+    },
+    {
+      "file": "friday_core/skills/builtins/memory.py",
+      "line": 130,
+      "code": "\"message\": \"\\n\\n\".join(formatted_snippets)"
+    },
+    {
+      "file": "friday_core/skills/builtins/organizer.py",
+      "line": 184,
+      "code": "message=f\"Rollback partially failed: {'; '.join(errors)}\","
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 605,
+      "code": "\"downloads\": os.path.join(user_home, \"Downloads\"),"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 606,
+      "code": "\"documents\": os.path.join(user_home, \"Documents\"),"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 607,
+      "code": "\"desktop\": os.path.join(user_home, \"Desktop\"),"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 608,
+      "code": "\"pictures\": os.path.join(user_home, \"Pictures\"),"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 609,
+      "code": "\"music\": os.path.join(user_home, \"Music\"),"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 610,
+      "code": "\"videos\": os.path.join(user_home, \"Videos\"),"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 1029,
+      "code": "clean_expected = \" \".join(expected_text.strip().split()[:6]).lower()"
+    },
+    {
+      "file": "friday_core/system/launcher.py",
+      "line": 79,
+      "code": "t.join(timeout=2.0)"
+    },
+    {
+      "file": "friday_core/system/launcher.py",
+      "line": 296,
+      "code": "if not sub_d.startswith(\".\") and not _is_reparse_point(os.path.join(root, sub_d))"
+    },
+    {
+      "file": "friday_core/system/launcher.py",
+      "line": 318,
+      "code": "candidates.append((score, base, os.path.join(root, item)))"
+    },
+    {
+      "file": "friday_core/system/office.py",
+      "line": 128,
+      "code": "temp_path = os.path.join(temp_dir, filename)"
+    },
+    {
+      "file": "friday_core/system/window_manager.py",
+      "line": 157,
+      "code": "t.join(timeout=desktop_timeout)"
+    },
+    {
+      "file": "friday_core/vision/image_context.py",
+      "line": 100,
+      "code": "lines.append(f\"Identified Objects & Elements: {', '.join(safe_objs)}\")"
+    },
+    {
+      "file": "friday_core/vision/image_context.py",
+      "line": 104,
+      "code": "lines.append(f\"Actions, Buttons & Events: {', '.join(safe_acts)}\")"
+    },
+    {
+      "file": "friday_core/vision/image_context.py",
+      "line": 106,
+      "code": "lines.append(f\"Notable Details / Status: {', '.join(safe_details)}\")"
+    },
+    {
+      "file": "friday_core/vision/image_context.py",
+      "line": 113,
+      "code": "return \"\\n\".join(lines)"
+    },
+    {
+      "file": "friday_core/voice/stt.py",
+      "line": 137,
+      "code": "raw_text = \"\".join(s.text for s in segments).strip()"
+    },
+    {
+      "file": "friday_core/voice/tracer.py",
+      "line": 15,
+      "code": "TRACE_FILE = os.path.join(AUDIT_DIR, \"VOICE_RUNTIME_TRACE.json\")"
+    },
+    {
+      "file": "friday_core/voice/tts.py",
+      "line": 159,
+      "code": "chunks.append(\" \".join(curr))"
+    },
+    {
+      "file": "friday_core/voice/tts.py",
+      "line": 166,
+      "code": "chunks.append(\" \".join(curr))"
+    }
+  ],
+  "blocking": [
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 210,
+      "code": "\"\"\"Runs Kokoro synthesis in a worker thread to keep the asyncio event loop non-blocking.\"\"\""
+    },
+    {
+      "file": "friday_ui/styles/themes.py",
+      "line": 561,
+      "code": "\"\"\"Performs a smooth non-blocking crossfade page transition between stacked views.\"\"\""
+    },
+    {
+      "file": "friday_ui/views/main_window.py",
+      "line": 616,
+      "code": "\"\"\"Starts dedicated QThread background PDF analysis with multi-stage progress and zero GUI blocking.\"\"\""
+    },
+    {
+      "file": "friday_ui/widgets/command_bar.py",
+      "line": 649,
+      "code": "\"\"\"Asynchronously queries Ollama for installed models without blocking UI thread.\"\"\""
+    },
+    {
+      "file": "friday_core/research/worker.py",
+      "line": 6,
+      "code": "1. Zero GUI thread blocking: Entire decomposition, multi-vector crawling, page extraction,"
+    },
+    {
+      "file": "friday_core/scheduler/notifier.py",
+      "line": 68,
+      "code": "\"\"\"Spawns non-blocking PowerShell script to trigger Windows Action Center toast.\"\"\""
+    }
+  ],
+  "urlopen": [
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 699,
+      "code": "with urllib.request.urlopen(req, timeout=6) as response:"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 724,
+      "code": "with urllib.request.urlopen(req, timeout=5) as resp:"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 2198,
+      "code": "with urllib.request.urlopen(req, timeout=3.5) as res_w:"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 3863,
+      "code": "with urllib.request.urlopen(req, timeout=3.5) as res_w:"
+    },
+    {
+      "file": "friday_core/skills/builtins/content.py",
+      "line": 88,
+      "code": "with urllib.request.urlopen(req, timeout=timeout) as resp:"
+    },
+    {
+      "file": "friday_core/web/youtube.py",
+      "line": 36,
+      "code": "with urllib.request.urlopen(req, timeout=timeout) as resp:"
+    }
+  ],
+  "subprocessPopen": [
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 1679,
+      "code": "subprocess.Popen(\"explorer.exe\")"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 1681,
+      "code": "subprocess.Popen([\"xdg-open\", os.path.expanduser(\"~\")])"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 1734,
+      "code": "subprocess.Popen([\"xdg-open\", str(p)])"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 1820,
+      "code": "subprocess.Popen([\"xdg-open\", str(found_folder)])"
+    },
+    {
+      "file": "friday_core/scheduler/notifier.py",
+      "line": 84,
+      "code": "subprocess.Popen("
+    },
+    {
+      "file": "friday_core/skills/builtins/file_ops.py",
+      "line": 315,
+      "code": "subprocess.Popen([\"xdg-open\", str(selected_path)])"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 614,
+      "code": "subprocess.Popen([\"explorer.exe\", dest])"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 617,
+      "code": "subprocess.Popen([\"explorer.exe\"])"
+    },
+    {
+      "file": "friday_core/system/launcher.py",
+      "line": 110,
+      "code": "subprocess.Popen("
+    },
+    {
+      "file": "friday_core/system/launcher.py",
+      "line": 205,
+      "code": "subprocess.Popen([exe_path], startupinfo=si)"
+    },
+    {
+      "file": "friday_core/system/office.py",
+      "line": 65,
+      "code": "subprocess.Popen([word_exe, \"/q\", \"/n\"])"
+    },
+    {
+      "file": "friday_core/system/office.py",
+      "line": 73,
+      "code": "subprocess.Popen(\"start winword\", shell=True)"
+    }
+  ],
+  "while not ": [
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 4411,
+      "code": "while not is_cancelled():"
+    },
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 4439,
+      "code": "while not is_cancelled():"
+    },
+    {
+      "file": "friday_core/scheduler/scheduler.py",
+      "line": 164,
+      "code": "while not self._stop_event.is_set():"
+    }
+  ],
+  "while True:": [
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 4685,
+      "code": "while True:"
+    }
+  ],
+  "wait": [
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 5113,
+      "code": "if not self._reader_idle.wait(timeout=3.0):"
+    },
+    {
+      "file": "friday_ui/views/main_window.py",
+      "line": 568,
+      "code": "self._active_research_worker.wait(1500)"
+    },
+    {
+      "file": "friday_ui/views/main_window.py",
+      "line": 572,
+      "code": "self._active_pdf_worker.wait(1500)"
+    },
+    {
+      "file": "friday_ui/views/main_window.py",
+      "line": 690,
+      "code": "worker.wait(1000)"
+    },
+    {
+      "file": "friday_core/scheduler/scheduler.py",
+      "line": 166,
+      "code": "self._stop_event.wait(timeout=self.check_interval)"
+    }
+  ],
+  "timesleep": [
+    {
+      "file": "friday_ui/core/engine.py",
+      "line": 5206,
+      "code": "time.sleep(0.04)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 325,
+      "code": "time.sleep(0.2)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 459,
+      "code": "time.sleep(0.25)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 553,
+      "code": "time.sleep(0.08)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 605,
+      "code": "time.sleep(0.08)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 684,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 690,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 693,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 699,
+      "code": "time.sleep(0.15)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 713,
+      "code": "time.sleep(0.2)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 784,
+      "code": "time.sleep(0.25)"
+    },
+    {
+      "file": "friday_core/automation/action_engine.py",
+      "line": 793,
+      "code": "time.sleep(0.25)"
+    },
+    {
+      "file": "friday_core/automation/inspector.py",
+      "line": 299,
+      "code": "time.sleep(0.2)"
+    },
+    {
+      "file": "friday_core/automation/inspector.py",
+      "line": 309,
+      "code": "time.sleep(0.2)"
+    },
+    {
+      "file": "friday_core/automation/inspector.py",
+      "line": 384,
+      "code": "time.sleep(0.15)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 145,
+      "code": "time.sleep(0.002)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 163,
+      "code": "time.sleep(0.002)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 187,
+      "code": "time.sleep(0.10)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 191,
+      "code": "time.sleep(0.10)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 213,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 288,
+      "code": "time.sleep(0.04)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 298,
+      "code": "time.sleep(0.1)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 318,
+      "code": "time.sleep(0.08)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 322,
+      "code": "time.sleep(0.08)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 325,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 328,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 349,
+      "code": "time.sleep(0.01)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 360,
+      "code": "time.sleep(0.08)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 370,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 381,
+      "code": "time.sleep(0.035)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 384,
+      "code": "time.sleep(0.015)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 387,
+      "code": "time.sleep(0.015)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 400,
+      "code": "time.sleep(0.030)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 402,
+      "code": "time.sleep(delay_sec)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 431,
+      "code": "time.sleep(0.04)"
+    },
+    {
+      "file": "friday_core/automation/mouse_keyboard.py",
+      "line": 435,
+      "code": "time.sleep(0.03)"
+    },
+    {
+      "file": "friday_core/automation/shortcuts.py",
+      "line": 78,
+      "code": "time.sleep(0.02)"
+    },
+    {
+      "file": "friday_core/automation/shortcuts.py",
+      "line": 80,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/automation/shortcuts.py",
+      "line": 85,
+      "code": "time.sleep(0.02)"
+    },
+    {
+      "file": "friday_core/automation/uia.py",
+      "line": 81,
+      "code": "time.sleep(0.15)"
+    },
+    {
+      "file": "friday_core/automation/uia.py",
+      "line": 104,
+      "code": "time.sleep(0.1)"
+    },
+    {
+      "file": "friday_core/automation/uia.py",
+      "line": 111,
+      "code": "time.sleep(0.1)"
+    },
+    {
+      "file": "friday_core/automation/uia.py",
+      "line": 118,
+      "code": "time.sleep(0.1)"
+    },
+    {
+      "file": "friday_core/automation/uia.py",
+      "line": 141,
+      "code": "time.sleep(0.1)"
+    },
+    {
+      "file": "friday_core/automation/uia.py",
+      "line": 151,
+      "code": "time.sleep(0.1)"
+    },
+    {
+      "file": "friday_core/gatekeeper/gatekeeper.py",
+      "line": 387,
+      "code": "time.sleep(0.5)"
+    },
+    {
+      "file": "friday_core/gatekeeper/gatekeeper.py",
+      "line": 435,
+      "code": "time.sleep(0.2)"
+    },
+    {
+      "file": "friday_core/gatekeeper/gatekeeper.py",
+      "line": 460,
+      "code": "time.sleep(0.15)"
+    },
+    {
+      "file": "friday_core/gatekeeper/gatekeeper.py",
+      "line": 476,
+      "code": "time.sleep(0.3)"
+    },
+    {
+      "file": "friday_core/research/worker.py",
+      "line": 140,
+      "code": "time.sleep(0.5 * attempt)"
+    },
+    {
+      "file": "friday_core/skills/builtins/apps.py",
+      "line": 111,
+      "code": "time.sleep(0.35)"
+    },
+    {
+      "file": "friday_core/skills/builtins/desktop_action.py",
+      "line": 257,
+      "code": "time.sleep(0.04)"
+    },
+    {
+      "file": "friday_core/skills/builtins/desktop_action.py",
+      "line": 279,
+      "code": "time.sleep(0.04)"
+    },
+    {
+      "file": "friday_core/skills/builtins/desktop_action.py",
+      "line": 304,
+      "code": "time.sleep(0.04)"
+    },
+    {
+      "file": "friday_core/skills/builtins/desktop_action.py",
+      "line": 324,
+      "code": "time.sleep(0.04)"
+    },
+    {
+      "file": "friday_core/skills/builtins/desktop_action.py",
+      "line": 337,
+      "code": "time.sleep(0.04)"
+    },
+    {
+      "file": "friday_core/skills/builtins/desktop_action.py",
+      "line": 413,
+      "code": "time.sleep(0.04)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 89,
+      "code": "time.sleep(0.2)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 215,
+      "code": "time.sleep(0.4)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 217,
+      "code": "time.sleep(0.08)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 239,
+      "code": "time.sleep(0.2)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 271,
+      "code": "time.sleep(0.08)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 336,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 342,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 345,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 348,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 356,
+      "code": "time.sleep(0.15)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 366,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 369,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 372,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 375,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 393,
+      "code": "time.sleep(0.25)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 672,
+      "code": "time.sleep(0.1)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 678,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 698,
+      "code": "time.sleep(0.15)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 814,
+      "code": "time.sleep(0.3)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 821,
+      "code": "time.sleep(0.3)"
+    },
+    {
+      "file": "friday_core/skills/builtins/ui_automation.py",
+      "line": 917,
+      "code": "time.sleep(0.15)"
+    },
+    {
+      "file": "friday_core/system/telemetry.py",
+      "line": 106,
+      "code": "time.sleep(0.12)"
+    },
+    {
+      "file": "friday_core/system/window_manager.py",
+      "line": 466,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/system/window_manager.py",
+      "line": 518,
+      "code": "time.sleep(0.05)"
+    },
+    {
+      "file": "friday_core/system/window_manager.py",
+      "line": 610,
+      "code": "time.sleep(0.15)"
+    },
+    {
+      "file": "friday_core/voice/tts.py",
+      "line": 241,
+      "code": "time.sleep(0.04)"
+    },
+    {
+      "file": "friday_core/voice/tts.py",
+      "line": 275,
+      "code": "time.sleep(0.05)"
+    }
+  ],
+  "subprocessrun": [
+    {
+      "file": "friday_core/dev_agent/git_manager.py",
+      "line": 21,
+      "code": "return subprocess.run("
+    },
+    {
+      "file": "friday_core/dev_agent/runner.py",
+      "line": 29,
+      "code": "proc = subprocess.run("
+    },
+    {
+      "file": "friday_core/gatekeeper/gatekeeper.py",
+      "line": 473,
+      "code": "subprocess.run([\"taskkill\", \"/F\", \"/T\", \"/IM\", exe], capture_output=True, timeout=2.0)"
+    },
+    {
+      "file": "friday_core/gatekeeper/gatekeeper.py",
+      "line": 505,
+      "code": "proc = subprocess.run(cmd, capture_output=True, text=True)"
+    },
+    {
+      "file": "friday_core/router/semantic_router.py",
+      "line": 402,
+      "code": "subprocess.run([\"ollama\", \"create\", \"friday-decider\", \"-f\", str(modelfile_path)], capture_output=True, timeout=15)"
+    }
+  ],
+  "result": [
+    {
+      "file": "friday_core/skills/builtins/desktop_action.py",
+      "line": 92,
+      "code": "img = future.result(timeout=5.0)"
+    }
+  ]
+}

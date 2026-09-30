@@ -154,7 +154,7 @@ class ChatView(QWidget):
     inspector_toggle_requested = Signal()
     session_changed = Signal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, session_store=None):
         super().__init__(parent)
         self.attached_files = []
         self.deep_research_active = False
@@ -162,7 +162,7 @@ class ChatView(QWidget):
         self._streaming_session_id = None
         self._is_generating = False
         self._last_streamed_text = ""
-        self.session_store = SessionStore()
+        self.session_store = session_store if session_store is not None else SessionStore()
         self.current_session_id = None
         self._is_loading_session = False
         self._init_ui()
@@ -1363,8 +1363,11 @@ class ChatView(QWidget):
         if not messages:
             self.add_message("friday", "F.R.I.D.A.Y. 3.0 online. Subsystems operational. How may I assist you today, Boss?", persist=False)
         else:
+            from friday_core.models.stream_parser import ReasoningStreamParser
             for msg in messages:
-                bubble = ChatBubble(msg["role"], msg["content"], self.chat_container)
+                raw_c = msg.get("content", "")
+                clean_c = ReasoningStreamParser.clean_final_content(raw_c) if msg.get("role") in ("friday", "assistant") else raw_c
+                bubble = ChatBubble(msg["role"], clean_c, self.chat_container)
                 insert_idx = max(0, self.chat_layout.count() - 1)
                 self.chat_layout.insertWidget(insert_idx, bubble)
         QTimer.singleShot(50, self._scroll_to_bottom)
@@ -1376,12 +1379,9 @@ class ChatView(QWidget):
         if self._current_streaming_bubble:
             self._current_streaming_bubble.finish_stream(final_text)
             self._last_streamed_text = self._current_streaming_bubble.raw_text.strip()
-            # If bubble has thinking text, persist complete text including <think> block
-            t_text = getattr(self._current_streaming_bubble, 'thinking_text', '').strip()
-            if t_text:
-                full_persisted = f"<think>\n{t_text}\n</think>\n\n{self._last_streamed_text}"
-            else:
-                full_persisted = self._last_streamed_text
+            # HARD SAFETY INVARIANT: Internal reasoning must NEVER enter saved session history
+            from friday_core.models.stream_parser import ReasoningStreamParser
+            full_persisted = ReasoningStreamParser.clean_final_content(self._last_streamed_text)
 
             if self.current_session_id and self._streaming_session_id == self.current_session_id and full_persisted:
                 self.session_store.add_message(self.current_session_id, "friday", full_persisted)
@@ -1397,8 +1397,9 @@ class ChatView(QWidget):
                     break
             if last_bubble and not getattr(last_bubble, 'raw_text', '').strip():
                 last_bubble.finish_stream(final_text)
-                self._last_streamed_text = last_bubble.raw_text.strip()
-                if self.current_session_id:
+                from friday_core.models.stream_parser import ReasoningStreamParser
+                self._last_streamed_text = ReasoningStreamParser.clean_final_content(last_bubble.raw_text.strip())
+                if self.current_session_id and self._last_streamed_text:
                     self.session_store.add_message(self.current_session_id, "friday", self._last_streamed_text)
             else:
                 self.add_message("friday", final_text, persist=True)
@@ -1408,7 +1409,8 @@ class ChatView(QWidget):
 
     def add_message(self, role: str, message: str, persist: bool = True):
         """Appends a new chat message bubble and scrolls smoothly to bottom."""
-        clean_msg = message.strip()
+        from friday_core.models.stream_parser import ReasoningStreamParser
+        clean_msg = ReasoningStreamParser.clean_final_content(message) if role.lower() in ("friday", "assistant") else message.strip()
         if role.lower() == "friday" and getattr(self, '_last_streamed_text', ''):
             if clean_msg and (clean_msg == self._last_streamed_text or self._last_streamed_text.startswith(clean_msg[:60])):
                 self._last_streamed_text = ""
@@ -1419,11 +1421,11 @@ class ChatView(QWidget):
             return
 
         self.typing_indicator.hide_indicator()
-        bubble = ChatBubble(role, message, self.chat_container)
+        bubble = ChatBubble(role, clean_msg, self.chat_container)
         insert_idx = max(0, self.chat_layout.count() - 1)
         self.chat_layout.insertWidget(insert_idx, bubble)
 
-        if persist and self.current_session_id:
+        if persist and self.current_session_id and clean_msg:
             self.session_store.add_message(self.current_session_id, role, clean_msg)
             if role.lower() == "user":
                 idx = self.session_combo.currentIndex()

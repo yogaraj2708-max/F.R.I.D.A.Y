@@ -1,49 +1,49 @@
 {
-  "total_inspections": 2,
+  "total_inspections": 3,
   "traces": [
     {
-      "trace_id": "trace_insp_44a500ad",
-      "task_id": "insp_task_db3e46",
-      "timestamp": "2026-09-28T00:18:28.716987",
-      "application": "notepad",
+      "trace_id": "trace_insp_65bc8b5f",
+      "task_id": "insp_task_e0b93f",
+      "timestamp": "2026-09-30T21:37:39.317730",
+      "application": "Notepad.exe",
       "window": {
-        "title": "*hello - Notepad",
-        "hwnd": 2298488,
+        "title": "Untitled - Notepad",
+        "hwnd": 395122,
         "is_foreground": true,
         "is_minimized": false,
         "bounding_rect": [
-          200,
-          200,
-          1640,
-          940
+          80,
+          80,
+          1520,
+          643
         ]
       },
       "process": {
-        "pid": 21280,
+        "pid": 4104,
         "name": "Notepad.exe"
       },
-      "controls_found": 53,
+      "controls_found": 54,
       "controls_summary": [
         {
           "control_type": "DocumentControl",
           "name": "Text editor",
           "automation_id": "",
           "bounding_rect": [
-            208,
-            293,
-            1632,
-            892
+            88,
+            173,
+            1512,
+            595
           ],
           "is_enabled": true,
           "is_visible": true,
-          "current_value": "hello\rFRIDAY",
-          "hwnd": 1576796,
+          "current_value": "",
+          "hwnd": 132984,
           "runtime_id": [
             42,
-            1576796
+            132984
           ],
           "class_name": "RichEditD2DPT",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 1
         },
         {
@@ -51,10 +51,10 @@
           "name": "",
           "automation_id": "Tabs",
           "bounding_rect": [
-            258,
-            212,
-            617,
-            252
+            138,
+            92,
+            797,
+            132
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -62,12 +62,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            790468,
+            2361016,
             4,
             1
           ],
           "class_name": "Microsoft.UI.Xaml.Controls.TabView",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 2
         },
         {
@@ -75,10 +75,10 @@
           "name": "",
           "automation_id": "TabListView",
           "bounding_rect": [
-            260,
-            212,
-            570,
-            252
+            140,
+            92,
+            750,
+            132
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -86,23 +86,23 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            790468,
+            2361016,
             4,
             2
           ],
           "class_name": "ListView",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 3
         },
         {
           "control_type": "TabItemControl",
-          "name": "hello. Modified.",
+          "name": "high frequency. Modified.",
           "automation_id": "",
           "bounding_rect": [
-            263,
-            212,
-            570,
-            252
+            148,
+            92,
+            446,
+            132
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -110,12 +110,36 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            790468,
+            2361016,
             4,
             4
           ],
           "class_name": "ListViewItem",
-          "process_id": 21280,
+          "process_id": 4104,
+          "depth": 4
+        },
+        {
+          "control_type": "TabItemControl",
+          "name": "Untitled. Unmodified.",
+          "automation_id": "",
+          "bounding_rect": [
+            441,
+            92,
+            749,
+            132
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": null,
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            2361016,
+            4,
+            5
+          ],
+          "class_name": "ListViewItem",
+          "process_id": 4104,
           "depth": 4
         },
         {
@@ -123,10 +147,10 @@
           "name": "Add New Tab",
           "automation_id": "AddButton",
           "bounding_rect": [
-            574,
-            219,
-            614,
-            249
+            754,
+            99,
+            794,
+            129
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -134,12 +158,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            790468,
+            2361016,
             4,
             3
           ],
           "class_name": "Button",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 3
         },
         {
@@ -147,10 +171,10 @@
           "name": "\ue710",
           "automation_id": "",
           "bounding_rect": [
-            587,
-            227,
-            602,
-            242
+            767,
+            107,
+            782,
+            122
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -158,12 +182,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            790468,
+            2361016,
             4,
-            5
+            6
           ],
           "class_name": "TextBlock",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 4
         },
         {
@@ -171,10 +195,10 @@
           "name": "",
           "automation_id": "MenuBar",
           "bounding_rect": [
-            208,
-            252,
-            407,
-            292
+            88,
+            132,
+            287,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -182,12 +206,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            6
+            7
           ],
           "class_name": "",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 2
         },
         {
@@ -195,10 +219,10 @@
           "name": "File",
           "automation_id": "File",
           "bounding_rect": [
-            213,
-            252,
-            265,
-            292
+            93,
+            132,
+            145,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -206,12 +230,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            23
+            24
           ],
           "class_name": "Microsoft.UI.Xaml.Controls.MenuBarItem",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 3
         },
         {
@@ -219,10 +243,10 @@
           "name": "File",
           "automation_id": "ContentButton",
           "bounding_rect": [
-            213,
-            252,
-            265,
-            292
+            93,
+            132,
+            145,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -230,12 +254,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            26
+            27
           ],
           "class_name": "Button",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 4
         },
         {
@@ -243,10 +267,10 @@
           "name": "Edit",
           "automation_id": "Edit",
           "bounding_rect": [
-            275,
-            252,
-            330,
-            292
+            155,
+            132,
+            210,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -254,12 +278,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            24
+            25
           ],
           "class_name": "Microsoft.UI.Xaml.Controls.MenuBarItem",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 3
         },
         {
@@ -267,10 +291,10 @@
           "name": "Edit",
           "automation_id": "ContentButton",
           "bounding_rect": [
-            275,
-            252,
-            330,
-            292
+            155,
+            132,
+            210,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -278,12 +302,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            27
+            28
           ],
           "class_name": "Button",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 4
         },
         {
@@ -291,10 +315,10 @@
           "name": "View",
           "automation_id": "View",
           "bounding_rect": [
-            340,
-            252,
-            402,
-            292
+            220,
+            132,
+            282,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -302,12 +326,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            25
+            26
           ],
           "class_name": "Microsoft.UI.Xaml.Controls.MenuBarItem",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 3
         },
         {
@@ -315,10 +339,10 @@
           "name": "View",
           "automation_id": "ContentButton",
           "bounding_rect": [
-            340,
-            252,
-            402,
-            292
+            220,
+            132,
+            282,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -326,12 +350,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            28
+            29
           ],
           "class_name": "Button",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 4
         },
         {
@@ -339,10 +363,10 @@
           "name": "Headings",
           "automation_id": "",
           "bounding_rect": [
-            714,
-            252,
-            785,
-            292
+            594,
+            132,
+            665,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -350,12 +374,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            7
+            8
           ],
           "class_name": "Microsoft.UI.Xaml.Controls.DropDownButton",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 2
         },
         {
@@ -363,10 +387,10 @@
           "name": "\uea19",
           "automation_id": "",
           "bounding_rect": [
-            728,
-            262,
-            746,
-            280
+            608,
+            142,
+            626,
+            160
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -374,12 +398,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            29
+            30
           ],
           "class_name": "TextBlock",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 3
         },
         {
@@ -387,10 +411,10 @@
           "name": "Lists",
           "automation_id": "",
           "bounding_rect": [
-            785,
-            252,
-            856,
-            292
+            665,
+            132,
+            736,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -398,12 +422,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            8
+            9
           ],
           "class_name": "Microsoft.UI.Xaml.Controls.DropDownButton",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 2
         },
         {
@@ -411,10 +435,10 @@
           "name": "\ue8fd",
           "automation_id": "",
           "bounding_rect": [
-            799,
-            262,
-            817,
-            280
+            679,
+            142,
+            697,
+            160
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -422,12 +446,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            30
+            31
           ],
           "class_name": "TextBlock",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 3
         },
         {
@@ -435,10 +459,10 @@
           "name": "Bold (Ctrl+B)",
           "automation_id": "",
           "bounding_rect": [
-            856,
-            252,
-            896,
-            292
+            736,
+            132,
+            776,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -446,12 +470,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            9
+            10
           ],
           "class_name": "ToggleButton",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 2
         },
         {
@@ -459,10 +483,10 @@
           "name": "\ue8dd",
           "automation_id": "",
           "bounding_rect": [
-            867,
-            263,
-            885,
-            281
+            747,
+            143,
+            765,
+            161
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -470,12 +494,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            31
+            32
           ],
           "class_name": "TextBlock",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 3
         },
         {
@@ -483,10 +507,10 @@
           "name": "Italic (Ctrl+I)",
           "automation_id": "",
           "bounding_rect": [
-            896,
-            252,
-            936,
-            292
+            776,
+            132,
+            816,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -494,12 +518,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            10
+            11
           ],
           "class_name": "ToggleButton",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 2
         },
         {
@@ -507,10 +531,10 @@
           "name": "\ue8db",
           "automation_id": "",
           "bounding_rect": [
-            907,
-            263,
-            925,
-            281
+            787,
+            143,
+            805,
+            161
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -518,12 +542,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            32
+            33
           ],
           "class_name": "TextBlock",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 3
         },
         {
@@ -531,10 +555,10 @@
           "name": "Strikethrough (Ctrl+Shift+X)",
           "automation_id": "",
           "bounding_rect": [
-            936,
-            252,
-            976,
-            292
+            816,
+            132,
+            856,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -542,12 +566,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            11
+            12
           ],
           "class_name": "ToggleButton",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 2
         },
         {
@@ -555,10 +579,10 @@
           "name": "\uede0",
           "automation_id": "",
           "bounding_rect": [
-            947,
-            263,
-            965,
-            281
+            827,
+            143,
+            845,
+            161
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -566,12 +590,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            33
+            34
           ],
           "class_name": "TextBlock",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 3
         },
         {
@@ -579,10 +603,10 @@
           "name": "Link (Ctrl+K)",
           "automation_id": "",
           "bounding_rect": [
-            976,
-            252,
-            1016,
-            292
+            856,
+            132,
+            896,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -590,83 +614,59 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            12
+            13
           ],
           "class_name": "ToggleButton",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 2
-        },
-        {
-          "control_type": "TextControl",
-          "name": "\ue71b",
-          "automation_id": "",
-          "bounding_rect": [
-            987,
-            263,
-            1005,
-            281
-          ],
-          "is_enabled": true,
-          "is_visible": true,
-          "current_value": "\ue71b",
-          "hwnd": 0,
-          "runtime_id": [
-            42,
-            1774026,
-            4,
-            34
-          ],
-          "class_name": "TextBlock",
-          "process_id": 21280,
-          "depth": 3
         }
       ]
     },
     {
-      "trace_id": "trace_insp_9d51ad44",
-      "task_id": "insp_task_70c601",
-      "timestamp": "2026-09-28T00:18:29.235843",
-      "application": "notepad",
+      "trace_id": "trace_insp_4d82e248",
+      "task_id": "insp_task_9ceaf8",
+      "timestamp": "2026-09-30T21:37:45.351868",
+      "application": "Notepad.exe",
       "window": {
-        "title": "*hello - Notepad",
-        "hwnd": 2298488,
+        "title": "Untitled - Notepad",
+        "hwnd": 395122,
         "is_foreground": true,
         "is_minimized": false,
         "bounding_rect": [
-          200,
-          200,
-          1640,
-          940
+          80,
+          80,
+          1520,
+          643
         ]
       },
       "process": {
-        "pid": 21280,
+        "pid": 4104,
         "name": "Notepad.exe"
       },
-      "controls_found": 53,
+      "controls_found": 54,
       "controls_summary": [
         {
           "control_type": "DocumentControl",
           "name": "Text editor",
           "automation_id": "",
           "bounding_rect": [
-            208,
-            293,
-            1632,
-            892
+            88,
+            173,
+            1512,
+            595
           ],
           "is_enabled": true,
           "is_visible": true,
-          "current_value": "hello\rFRIDAY",
-          "hwnd": 1576796,
+          "current_value": "",
+          "hwnd": 132984,
           "runtime_id": [
             42,
-            1576796
+            132984
           ],
           "class_name": "RichEditD2DPT",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 1
         },
         {
@@ -674,10 +674,10 @@
           "name": "",
           "automation_id": "Tabs",
           "bounding_rect": [
-            258,
-            212,
-            617,
-            252
+            138,
+            92,
+            797,
+            132
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -685,12 +685,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            790468,
+            2361016,
             4,
             1
           ],
           "class_name": "Microsoft.UI.Xaml.Controls.TabView",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 2
         },
         {
@@ -698,10 +698,10 @@
           "name": "",
           "automation_id": "TabListView",
           "bounding_rect": [
-            260,
-            212,
-            570,
-            252
+            140,
+            92,
+            750,
+            132
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -709,23 +709,23 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            790468,
+            2361016,
             4,
             2
           ],
           "class_name": "ListView",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 3
         },
         {
           "control_type": "TabItemControl",
-          "name": "hello. Modified.",
+          "name": "high frequency. Modified.",
           "automation_id": "",
           "bounding_rect": [
-            263,
-            212,
-            570,
-            252
+            148,
+            92,
+            446,
+            132
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -733,12 +733,36 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            790468,
+            2361016,
             4,
             4
           ],
           "class_name": "ListViewItem",
-          "process_id": 21280,
+          "process_id": 4104,
+          "depth": 4
+        },
+        {
+          "control_type": "TabItemControl",
+          "name": "Untitled. Unmodified.",
+          "automation_id": "",
+          "bounding_rect": [
+            441,
+            92,
+            749,
+            132
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": null,
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            2361016,
+            4,
+            5
+          ],
+          "class_name": "ListViewItem",
+          "process_id": 4104,
           "depth": 4
         },
         {
@@ -746,10 +770,10 @@
           "name": "Add New Tab",
           "automation_id": "AddButton",
           "bounding_rect": [
-            574,
-            219,
-            614,
-            249
+            754,
+            99,
+            794,
+            129
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -757,12 +781,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            790468,
+            2361016,
             4,
             3
           ],
           "class_name": "Button",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 3
         },
         {
@@ -770,10 +794,10 @@
           "name": "\ue710",
           "automation_id": "",
           "bounding_rect": [
-            587,
-            227,
-            602,
-            242
+            767,
+            107,
+            782,
+            122
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -781,12 +805,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            790468,
+            2361016,
             4,
-            5
+            6
           ],
           "class_name": "TextBlock",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 4
         },
         {
@@ -794,10 +818,10 @@
           "name": "",
           "automation_id": "MenuBar",
           "bounding_rect": [
-            208,
-            252,
-            407,
-            292
+            88,
+            132,
+            287,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -805,12 +829,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            6
+            7
           ],
           "class_name": "",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 2
         },
         {
@@ -818,10 +842,10 @@
           "name": "File",
           "automation_id": "File",
           "bounding_rect": [
-            213,
-            252,
-            265,
-            292
+            93,
+            132,
+            145,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -829,12 +853,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            23
+            24
           ],
           "class_name": "Microsoft.UI.Xaml.Controls.MenuBarItem",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 3
         },
         {
@@ -842,10 +866,10 @@
           "name": "File",
           "automation_id": "ContentButton",
           "bounding_rect": [
-            213,
-            252,
-            265,
-            292
+            93,
+            132,
+            145,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -853,12 +877,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            26
+            27
           ],
           "class_name": "Button",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 4
         },
         {
@@ -866,10 +890,10 @@
           "name": "Edit",
           "automation_id": "Edit",
           "bounding_rect": [
-            275,
-            252,
-            330,
-            292
+            155,
+            132,
+            210,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -877,12 +901,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            24
+            25
           ],
           "class_name": "Microsoft.UI.Xaml.Controls.MenuBarItem",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 3
         },
         {
@@ -890,10 +914,10 @@
           "name": "Edit",
           "automation_id": "ContentButton",
           "bounding_rect": [
-            275,
-            252,
-            330,
-            292
+            155,
+            132,
+            210,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -901,12 +925,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            27
+            28
           ],
           "class_name": "Button",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 4
         },
         {
@@ -914,10 +938,10 @@
           "name": "View",
           "automation_id": "View",
           "bounding_rect": [
-            340,
-            252,
-            402,
-            292
+            220,
+            132,
+            282,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -925,12 +949,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            25
+            26
           ],
           "class_name": "Microsoft.UI.Xaml.Controls.MenuBarItem",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 3
         },
         {
@@ -938,10 +962,10 @@
           "name": "View",
           "automation_id": "ContentButton",
           "bounding_rect": [
-            340,
-            252,
-            402,
-            292
+            220,
+            132,
+            282,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -949,12 +973,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            28
+            29
           ],
           "class_name": "Button",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 4
         },
         {
@@ -962,10 +986,10 @@
           "name": "Headings",
           "automation_id": "",
           "bounding_rect": [
-            714,
-            252,
-            785,
-            292
+            594,
+            132,
+            665,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -973,12 +997,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            7
+            8
           ],
           "class_name": "Microsoft.UI.Xaml.Controls.DropDownButton",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 2
         },
         {
@@ -986,10 +1010,10 @@
           "name": "\uea19",
           "automation_id": "",
           "bounding_rect": [
-            728,
-            262,
-            746,
-            280
+            608,
+            142,
+            626,
+            160
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -997,12 +1021,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            29
+            30
           ],
           "class_name": "TextBlock",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 3
         },
         {
@@ -1010,10 +1034,10 @@
           "name": "Lists",
           "automation_id": "",
           "bounding_rect": [
-            785,
-            252,
-            856,
-            292
+            665,
+            132,
+            736,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -1021,12 +1045,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            8
+            9
           ],
           "class_name": "Microsoft.UI.Xaml.Controls.DropDownButton",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 2
         },
         {
@@ -1034,10 +1058,10 @@
           "name": "\ue8fd",
           "automation_id": "",
           "bounding_rect": [
-            799,
-            262,
-            817,
-            280
+            679,
+            142,
+            697,
+            160
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -1045,12 +1069,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            30
+            31
           ],
           "class_name": "TextBlock",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 3
         },
         {
@@ -1058,10 +1082,10 @@
           "name": "Bold (Ctrl+B)",
           "automation_id": "",
           "bounding_rect": [
-            856,
-            252,
-            896,
-            292
+            736,
+            132,
+            776,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -1069,12 +1093,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            9
+            10
           ],
           "class_name": "ToggleButton",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 2
         },
         {
@@ -1082,10 +1106,10 @@
           "name": "\ue8dd",
           "automation_id": "",
           "bounding_rect": [
-            867,
-            263,
-            885,
-            281
+            747,
+            143,
+            765,
+            161
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -1093,12 +1117,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            31
+            32
           ],
           "class_name": "TextBlock",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 3
         },
         {
@@ -1106,10 +1130,10 @@
           "name": "Italic (Ctrl+I)",
           "automation_id": "",
           "bounding_rect": [
-            896,
-            252,
-            936,
-            292
+            776,
+            132,
+            816,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -1117,12 +1141,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            10
+            11
           ],
           "class_name": "ToggleButton",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 2
         },
         {
@@ -1130,10 +1154,10 @@
           "name": "\ue8db",
           "automation_id": "",
           "bounding_rect": [
-            907,
-            263,
-            925,
-            281
+            787,
+            143,
+            805,
+            161
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -1141,12 +1165,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            32
+            33
           ],
           "class_name": "TextBlock",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 3
         },
         {
@@ -1154,10 +1178,10 @@
           "name": "Strikethrough (Ctrl+Shift+X)",
           "automation_id": "",
           "bounding_rect": [
-            936,
-            252,
-            976,
-            292
+            816,
+            132,
+            856,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -1165,12 +1189,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            11
+            12
           ],
           "class_name": "ToggleButton",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 2
         },
         {
@@ -1178,10 +1202,10 @@
           "name": "\uede0",
           "automation_id": "",
           "bounding_rect": [
-            947,
-            263,
-            965,
-            281
+            827,
+            143,
+            845,
+            161
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -1189,12 +1213,12 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            33
+            34
           ],
           "class_name": "TextBlock",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 3
         },
         {
@@ -1202,10 +1226,10 @@
           "name": "Link (Ctrl+K)",
           "automation_id": "",
           "bounding_rect": [
-            976,
-            252,
-            1016,
-            292
+            856,
+            132,
+            896,
+            172
           ],
           "is_enabled": true,
           "is_visible": true,
@@ -1213,37 +1237,636 @@
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
             4,
-            12
+            13
           ],
           "class_name": "ToggleButton",
-          "process_id": 21280,
+          "process_id": 4104,
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "trace_id": "trace_insp_55cb0f14",
+      "task_id": "insp_task_c21a2f",
+      "timestamp": "2026-09-30T21:37:47.456848",
+      "application": "notepad",
+      "window": {
+        "title": "*hello world - Notepad",
+        "hwnd": 395122,
+        "is_foreground": true,
+        "is_minimized": false,
+        "bounding_rect": [
+          80,
+          80,
+          1520,
+          643
+        ]
+      },
+      "process": {
+        "pid": 4104,
+        "name": "Notepad.exe"
+      },
+      "controls_found": 54,
+      "controls_summary": [
+        {
+          "control_type": "DocumentControl",
+          "name": "Text editor",
+          "automation_id": "",
+          "bounding_rect": [
+            88,
+            173,
+            1512,
+            595
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": "hello world",
+          "hwnd": 132984,
+          "runtime_id": [
+            42,
+            132984
+          ],
+          "class_name": "RichEditD2DPT",
+          "process_id": 4104,
+          "depth": 1
+        },
+        {
+          "control_type": "TabControl",
+          "name": "",
+          "automation_id": "Tabs",
+          "bounding_rect": [
+            138,
+            92,
+            797,
+            132
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": null,
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            2361016,
+            4,
+            1
+          ],
+          "class_name": "Microsoft.UI.Xaml.Controls.TabView",
+          "process_id": 4104,
+          "depth": 2
+        },
+        {
+          "control_type": "ListControl",
+          "name": "",
+          "automation_id": "TabListView",
+          "bounding_rect": [
+            140,
+            92,
+            750,
+            132
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": null,
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            2361016,
+            4,
+            2
+          ],
+          "class_name": "ListView",
+          "process_id": 4104,
+          "depth": 3
+        },
+        {
+          "control_type": "TabItemControl",
+          "name": "high frequency. Modified.",
+          "automation_id": "",
+          "bounding_rect": [
+            148,
+            92,
+            446,
+            132
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": null,
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            2361016,
+            4,
+            4
+          ],
+          "class_name": "ListViewItem",
+          "process_id": 4104,
+          "depth": 4
+        },
+        {
+          "control_type": "TabItemControl",
+          "name": "hello world. Modified.",
+          "automation_id": "",
+          "bounding_rect": [
+            441,
+            92,
+            749,
+            132
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": null,
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            2361016,
+            4,
+            5
+          ],
+          "class_name": "ListViewItem",
+          "process_id": 4104,
+          "depth": 4
+        },
+        {
+          "control_type": "ButtonControl",
+          "name": "Add New Tab",
+          "automation_id": "AddButton",
+          "bounding_rect": [
+            754,
+            99,
+            794,
+            129
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": null,
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            2361016,
+            4,
+            3
+          ],
+          "class_name": "Button",
+          "process_id": 4104,
+          "depth": 3
+        },
+        {
+          "control_type": "TextControl",
+          "name": "\ue710",
+          "automation_id": "",
+          "bounding_rect": [
+            767,
+            107,
+            782,
+            122
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": "\ue710",
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            2361016,
+            4,
+            6
+          ],
+          "class_name": "TextBlock",
+          "process_id": 4104,
+          "depth": 4
+        },
+        {
+          "control_type": "MenuBarControl",
+          "name": "",
+          "automation_id": "MenuBar",
+          "bounding_rect": [
+            88,
+            132,
+            287,
+            172
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": null,
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            3342604,
+            4,
+            7
+          ],
+          "class_name": "",
+          "process_id": 4104,
+          "depth": 2
+        },
+        {
+          "control_type": "MenuItemControl",
+          "name": "File",
+          "automation_id": "File",
+          "bounding_rect": [
+            93,
+            132,
+            145,
+            172
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": null,
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            3342604,
+            4,
+            24
+          ],
+          "class_name": "Microsoft.UI.Xaml.Controls.MenuBarItem",
+          "process_id": 4104,
+          "depth": 3
+        },
+        {
+          "control_type": "ButtonControl",
+          "name": "File",
+          "automation_id": "ContentButton",
+          "bounding_rect": [
+            93,
+            132,
+            145,
+            172
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": null,
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            3342604,
+            4,
+            27
+          ],
+          "class_name": "Button",
+          "process_id": 4104,
+          "depth": 4
+        },
+        {
+          "control_type": "MenuItemControl",
+          "name": "Edit",
+          "automation_id": "Edit",
+          "bounding_rect": [
+            155,
+            132,
+            210,
+            172
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": null,
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            3342604,
+            4,
+            25
+          ],
+          "class_name": "Microsoft.UI.Xaml.Controls.MenuBarItem",
+          "process_id": 4104,
+          "depth": 3
+        },
+        {
+          "control_type": "ButtonControl",
+          "name": "Edit",
+          "automation_id": "ContentButton",
+          "bounding_rect": [
+            155,
+            132,
+            210,
+            172
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": null,
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            3342604,
+            4,
+            28
+          ],
+          "class_name": "Button",
+          "process_id": 4104,
+          "depth": 4
+        },
+        {
+          "control_type": "MenuItemControl",
+          "name": "View",
+          "automation_id": "View",
+          "bounding_rect": [
+            220,
+            132,
+            282,
+            172
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": null,
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            3342604,
+            4,
+            26
+          ],
+          "class_name": "Microsoft.UI.Xaml.Controls.MenuBarItem",
+          "process_id": 4104,
+          "depth": 3
+        },
+        {
+          "control_type": "ButtonControl",
+          "name": "View",
+          "automation_id": "ContentButton",
+          "bounding_rect": [
+            220,
+            132,
+            282,
+            172
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": null,
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            3342604,
+            4,
+            29
+          ],
+          "class_name": "Button",
+          "process_id": 4104,
+          "depth": 4
+        },
+        {
+          "control_type": "ButtonControl",
+          "name": "Headings",
+          "automation_id": "",
+          "bounding_rect": [
+            594,
+            132,
+            665,
+            172
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": null,
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            3342604,
+            4,
+            8
+          ],
+          "class_name": "Microsoft.UI.Xaml.Controls.DropDownButton",
+          "process_id": 4104,
           "depth": 2
         },
         {
           "control_type": "TextControl",
-          "name": "\ue71b",
+          "name": "\uea19",
           "automation_id": "",
           "bounding_rect": [
-            987,
-            263,
-            1005,
-            281
+            608,
+            142,
+            626,
+            160
           ],
           "is_enabled": true,
           "is_visible": true,
-          "current_value": "\ue71b",
+          "current_value": "\uea19",
           "hwnd": 0,
           "runtime_id": [
             42,
-            1774026,
+            3342604,
+            4,
+            30
+          ],
+          "class_name": "TextBlock",
+          "process_id": 4104,
+          "depth": 3
+        },
+        {
+          "control_type": "ButtonControl",
+          "name": "Lists",
+          "automation_id": "",
+          "bounding_rect": [
+            665,
+            132,
+            736,
+            172
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": null,
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            3342604,
+            4,
+            9
+          ],
+          "class_name": "Microsoft.UI.Xaml.Controls.DropDownButton",
+          "process_id": 4104,
+          "depth": 2
+        },
+        {
+          "control_type": "TextControl",
+          "name": "\ue8fd",
+          "automation_id": "",
+          "bounding_rect": [
+            679,
+            142,
+            697,
+            160
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": "\ue8fd",
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            3342604,
+            4,
+            31
+          ],
+          "class_name": "TextBlock",
+          "process_id": 4104,
+          "depth": 3
+        },
+        {
+          "control_type": "ButtonControl",
+          "name": "Bold (Ctrl+B)",
+          "automation_id": "",
+          "bounding_rect": [
+            736,
+            132,
+            776,
+            172
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": null,
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            3342604,
+            4,
+            10
+          ],
+          "class_name": "ToggleButton",
+          "process_id": 4104,
+          "depth": 2
+        },
+        {
+          "control_type": "TextControl",
+          "name": "\ue8dd",
+          "automation_id": "",
+          "bounding_rect": [
+            747,
+            143,
+            765,
+            161
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": "\ue8dd",
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            3342604,
+            4,
+            32
+          ],
+          "class_name": "TextBlock",
+          "process_id": 4104,
+          "depth": 3
+        },
+        {
+          "control_type": "ButtonControl",
+          "name": "Italic (Ctrl+I)",
+          "automation_id": "",
+          "bounding_rect": [
+            776,
+            132,
+            816,
+            172
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": null,
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            3342604,
+            4,
+            11
+          ],
+          "class_name": "ToggleButton",
+          "process_id": 4104,
+          "depth": 2
+        },
+        {
+          "control_type": "TextControl",
+          "name": "\ue8db",
+          "automation_id": "",
+          "bounding_rect": [
+            787,
+            143,
+            805,
+            161
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": "\ue8db",
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            3342604,
+            4,
+            33
+          ],
+          "class_name": "TextBlock",
+          "process_id": 4104,
+          "depth": 3
+        },
+        {
+          "control_type": "ButtonControl",
+          "name": "Strikethrough (Ctrl+Shift+X)",
+          "automation_id": "",
+          "bounding_rect": [
+            816,
+            132,
+            856,
+            172
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": null,
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            3342604,
+            4,
+            12
+          ],
+          "class_name": "ToggleButton",
+          "process_id": 4104,
+          "depth": 2
+        },
+        {
+          "control_type": "TextControl",
+          "name": "\uede0",
+          "automation_id": "",
+          "bounding_rect": [
+            827,
+            143,
+            845,
+            161
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": "\uede0",
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            3342604,
             4,
             34
           ],
           "class_name": "TextBlock",
-          "process_id": 21280,
+          "process_id": 4104,
           "depth": 3
+        },
+        {
+          "control_type": "ButtonControl",
+          "name": "Link (Ctrl+K)",
+          "automation_id": "",
+          "bounding_rect": [
+            856,
+            132,
+            896,
+            172
+          ],
+          "is_enabled": true,
+          "is_visible": true,
+          "current_value": null,
+          "hwnd": 0,
+          "runtime_id": [
+            42,
+            3342604,
+            4,
+            13
+          ],
+          "class_name": "ToggleButton",
+          "process_id": 4104,
+          "depth": 2
         }
       ]
     }

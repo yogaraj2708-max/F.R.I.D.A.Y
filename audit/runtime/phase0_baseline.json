@@ -1,0 +1,662 @@
+{
+  "runtime": {
+    "python_version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "python_executable": "C:\\Users\\Admin\\OneDrive\\Documents\\Friday voice\\.venv\\Scripts\\python.exe",
+    "os_system": "Windows",
+    "os_release": "10",
+    "os_version": "10.0.26200",
+    "os_platform": "Windows-10-10.0.26200-SP0",
+    "architecture": "AMD64"
+  },
+  "critical_packages": {
+    "PySide6": "6.11.2",
+    "pywinauto": "NOT_INSTALLED",
+    "uiautomation": "2.0.29",
+    "pytest": "9.1.1",
+    "sounddevice": "0.5.6",
+    "faster_whisper": "1.2.1",
+    "pyttsx3": "NOT_INSTALLED",
+    "kokoro": "0.6.1",
+    "torch": "2.14.0",
+    "sqlite3": "3.45.1"
+  },
+  "settings": {
+    "model": "qwen3.5:9b",
+    "ollama_host": "http://localhost:11434",
+    "stt_engine": "Faster-Whisper (Local GPU/CPU)",
+    "voice": "af_sarah (Local Sarah)",
+    "use_local_tts": true,
+    "local_voice": "af_sarah",
+    "vision_model": "qwen2.5-vl:7b",
+    "semantic_routing": true,
+    "decision_engine": "ollama",
+    "watchdog_enabled": true,
+    "context_budget": 8192
+  },
+  "ollama": {
+    "available": true,
+    "version": "0.34.4",
+    "models": [
+      "qwen3.5:4b",
+      "qwen2.5vl:3b",
+      "friday-decider:latest",
+      "llama3.2:1b",
+      "qwen2.5:0.5b",
+      "qwen3.5:9b",
+      "jarvis:latest",
+      "deepseek-r1:8b",
+      "friday-model:latest",
+      "qwen2.5-coder:latest"
+    ],
+    "error": null
+  },
+  "audio_devices": [
+    {
+      "index": 0,
+      "name": "Microsoft Sound Mapper - Input",
+      "max_input_channels": 2,
+      "max_output_channels": 0,
+      "default_samplerate": 44100.0,
+      "hostapi": 0
+    },
+    {
+      "index": 1,
+      "name": "Microphone Array (Realtek(R) Au",
+      "max_input_channels": 2,
+      "max_output_channels": 0,
+      "default_samplerate": 44100.0,
+      "hostapi": 0
+    },
+    {
+      "index": 2,
+      "name": "Microsoft Sound Mapper - Output",
+      "max_input_channels": 0,
+      "max_output_channels": 2,
+      "default_samplerate": 44100.0,
+      "hostapi": 0
+    },
+    {
+      "index": 3,
+      "name": "Speakers (Realtek(R) Audio)",
+      "max_input_channels": 0,
+      "max_output_channels": 2,
+      "default_samplerate": 44100.0,
+      "hostapi": 0
+    },
+    {
+      "index": 4,
+      "name": "Primary Sound Capture Driver",
+      "max_input_channels": 2,
+      "max_output_channels": 0,
+      "default_samplerate": 44100.0,
+      "hostapi": 1
+    },
+    {
+      "index": 5,
+      "name": "Microphone Array (Realtek(R) Audio)",
+      "max_input_channels": 2,
+      "max_output_channels": 0,
+      "default_samplerate": 44100.0,
+      "hostapi": 1
+    },
+    {
+      "index": 6,
+      "name": "Primary Sound Driver",
+      "max_input_channels": 0,
+      "max_output_channels": 2,
+      "default_samplerate": 44100.0,
+      "hostapi": 1
+    },
+    {
+      "index": 7,
+      "name": "Speakers (Realtek(R) Audio)",
+      "max_input_channels": 0,
+      "max_output_channels": 2,
+      "default_samplerate": 44100.0,
+      "hostapi": 1
+    },
+    {
+      "index": 8,
+      "name": "Speakers (Realtek(R) Audio)",
+      "max_input_channels": 0,
+      "max_output_channels": 2,
+      "default_samplerate": 48000.0,
+      "hostapi": 2
+    },
+    {
+      "index": 9,
+      "name": "Microphone Array (Realtek(R) Audio)",
+      "max_input_channels": 2,
+      "max_output_channels": 0,
+      "default_samplerate": 48000.0,
+      "hostapi": 2
+    },
+    {
+      "index": 10,
+      "name": "Speakers (Nahimic Wave Speaker)",
+      "max_input_channels": 0,
+      "max_output_channels": 8,
+      "default_samplerate": 48000.0,
+      "hostapi": 3
+    },
+    {
+      "index": 11,
+      "name": "Microphone Array (Realtek HD Audio Mic Array input)",
+      "max_input_channels": 2,
+      "max_output_channels": 0,
+      "default_samplerate": 44100.0,
+      "hostapi": 3
+    },
+    {
+      "index": 12,
+      "name": "Headphones (Realtek HD Audio 2nd output)",
+      "max_input_channels": 0,
+      "max_output_channels": 2,
+      "default_samplerate": 44100.0,
+      "hostapi": 3
+    },
+    {
+      "index": 13,
+      "name": "Speakers 1 (Realtek HD Audio output with SST)",
+      "max_input_channels": 0,
+      "max_output_channels": 2,
+      "default_samplerate": 48000.0,
+      "hostapi": 3
+    },
+    {
+      "index": 14,
+      "name": "Speakers 2 (Realtek HD Audio output with SST)",
+      "max_input_channels": 0,
+      "max_output_channels": 2,
+      "default_samplerate": 44100.0,
+      "hostapi": 3
+    },
+    {
+      "index": 15,
+      "name": "PC Speaker (Realtek HD Audio output with SST)",
+      "max_input_channels": 2,
+      "max_output_channels": 0,
+      "default_samplerate": 48000.0,
+      "hostapi": 3
+    },
+    {
+      "index": 16,
+      "name": "Microphone (Realtek HD Audio Mic input)",
+      "max_input_channels": 2,
+      "max_output_channels": 0,
+      "default_samplerate": 44100.0,
+      "hostapi": 3
+    },
+    {
+      "index": 17,
+      "name": "Stereo Mix (Realtek HD Audio Stereo input)",
+      "max_input_channels": 2,
+      "max_output_channels": 0,
+      "default_samplerate": 48000.0,
+      "hostapi": 3
+    },
+    {
+      "index": 18,
+      "name": "Headset Earphone (@System32\\drivers\\bthhfenum.sys,#2;%1 Hands-Free%0\r\n;(ALFHIN))",
+      "max_input_channels": 0,
+      "max_output_channels": 1,
+      "default_samplerate": 8000.0,
+      "hostapi": 3
+    },
+    {
+      "index": 19,
+      "name": "Headset Microphone (@System32\\drivers\\bthhfenum.sys,#2;%1 Hands-Free%0\r\n;(ALFHIN))",
+      "max_input_channels": 1,
+      "max_output_channels": 0,
+      "default_samplerate": 8000.0,
+      "hostapi": 3
+    },
+    {
+      "index": 20,
+      "name": "Speakers ()",
+      "max_input_channels": 0,
+      "max_output_channels": 2,
+      "default_samplerate": 44100.0,
+      "hostapi": 3
+    },
+    {
+      "index": 21,
+      "name": "Headphones ()",
+      "max_input_channels": 0,
+      "max_output_channels": 2,
+      "default_samplerate": 44100.0,
+      "hostapi": 3
+    },
+    {
+      "index": 22,
+      "name": "Speakers (Nahimic Easy Surround)",
+      "max_input_channels": 0,
+      "max_output_channels": 8,
+      "default_samplerate": 48000.0,
+      "hostapi": 3
+    },
+    {
+      "index": 23,
+      "name": "Headset (@System32\\drivers\\bthhfenum.sys,#2;%1 Hands-Free%0\r\n;(pro2))",
+      "max_input_channels": 0,
+      "max_output_channels": 1,
+      "default_samplerate": 8000.0,
+      "hostapi": 3
+    },
+    {
+      "index": 24,
+      "name": "Headset (@System32\\drivers\\bthhfenum.sys,#2;%1 Hands-Free%0\r\n;(pro2))",
+      "max_input_channels": 1,
+      "max_output_channels": 0,
+      "default_samplerate": 8000.0,
+      "hostapi": 3
+    },
+    {
+      "index": 25,
+      "name": "Speakers (Nahimic mirroring Wave Speaker)",
+      "max_input_channels": 0,
+      "max_output_channels": 2,
+      "default_samplerate": 44100.0,
+      "hostapi": 3
+    }
+  ],
+  "databases": {
+    "friday_memory.db": {
+      "path": "C:\\Users\\Admin\\.friday\\friday_memory.db",
+      "size_bytes": 36864,
+      "tables": {
+        "memories": {
+          "columns": [
+            "id",
+            "tier",
+            "key",
+            "value_json",
+            "source",
+            "confirmed_by_user",
+            "created_at",
+            "updated_at",
+            "session_id",
+            "scope",
+            "domain",
+            "version",
+            "confidence",
+            "retention_status",
+            "verification_state"
+          ],
+          "row_count": 3
+        }
+      },
+      "error": null
+    },
+    "friday_missions.db": {
+      "path": "C:\\Users\\Admin\\.friday\\friday_missions.db",
+      "size_bytes": 307200,
+      "tables": {
+        "missions": {
+          "columns": [
+            "mission_id",
+            "goal",
+            "status",
+            "current_step",
+            "steps_json",
+            "dependencies_json",
+            "attempt_count",
+            "outputs_json",
+            "errors_json",
+            "verification_json",
+            "checkpoint_state_json",
+            "created_at",
+            "updated_at"
+          ],
+          "row_count": 140
+        }
+      },
+      "error": null
+    },
+    "friday_rag_2.db": {
+      "path": "C:\\Users\\Admin\\.friday\\friday_rag_2.db",
+      "size_bytes": 28672,
+      "tables": {
+        "document_chunks": {
+          "columns": [
+            "chunk_id",
+            "doc_id",
+            "title",
+            "source_path",
+            "source_filename",
+            "page_or_section",
+            "chunk_index",
+            "content",
+            "char_offset",
+            "token_count",
+            "embedding",
+            "created_at",
+            "domain",
+            "version",
+            "content_hash",
+            "doc_hash",
+            "embedding_model",
+            "embedding_dim"
+          ],
+          "row_count": 0
+        }
+      },
+      "error": null
+    },
+    "friday_sessions.db": {
+      "path": "C:\\Users\\Admin\\.friday\\friday_sessions.db",
+      "size_bytes": 176128,
+      "tables": {
+        "sessions": {
+          "columns": [
+            "id",
+            "title",
+            "created_at",
+            "updated_at"
+          ],
+          "row_count": 1
+        },
+        "messages": {
+          "columns": [
+            "id",
+            "session_id",
+            "role",
+            "content",
+            "timestamp"
+          ],
+          "row_count": 4
+        },
+        "sqlite_sequence": {
+          "columns": [
+            "name",
+            "seq"
+          ],
+          "row_count": 1
+        }
+      },
+      "error": null
+    },
+    "friday_vectors.db": {
+      "path": "C:\\Users\\Admin\\.friday\\friday_vectors.db",
+      "size_bytes": 24576,
+      "tables": {
+        "documents": {
+          "columns": [
+            "id",
+            "doc_id",
+            "title",
+            "category",
+            "content",
+            "embedding",
+            "created_at"
+          ],
+          "row_count": 0
+        },
+        "sqlite_sequence": {
+          "columns": [
+            "name",
+            "seq"
+          ],
+          "row_count": 0
+        },
+        "document_chunks": {
+          "columns": [
+            "id",
+            "doc_id",
+            "chunk_index",
+            "title",
+            "category",
+            "content",
+            "embedding",
+            "created_at"
+          ],
+          "row_count": 0
+        }
+      },
+      "error": null
+    }
+  },
+  "telemetry": {
+    "cpu_percent": 25.3,
+    "cpu_cores_logical": 12,
+    "cpu_cores_physical": 8,
+    "memory_total_mb": 16091.87,
+    "memory_available_mb": 3893.64,
+    "memory_used_percent": 75.8,
+    "total_system_processes": 249,
+    "current_process": {
+      "pid": 23116,
+      "threads": 7,
+      "rss_mb": 35.68
+    },
+    "friday_processes": [
+      {
+        "pid": 7920,
+        "name": "python.exe",
+        "threads": 3,
+        "rss_mb": 4.18
+      },
+      {
+        "pid": 10952,
+        "name": "python.exe",
+        "threads": 3,
+        "rss_mb": 4.14
+      },
+      {
+        "pid": 18304,
+        "name": "python.exe",
+        "threads": 1,
+        "rss_mb": 3.58
+      },
+      {
+        "pid": 20404,
+        "name": "python.exe",
+        "threads": 116,
+        "rss_mb": 184.7
+      },
+      {
+        "pid": 20484,
+        "name": "python.exe",
+        "threads": 114,
+        "rss_mb": 29.83
+      },
+      {
+        "pid": 23116,
+        "name": "python.exe",
+        "threads": 7,
+        "rss_mb": 35.43
+      }
+    ],
+    "ollama_processes": [
+      {
+        "pid": 21936,
+        "name": "ollama.exe",
+        "threads": 23,
+        "rss_mb": 35.38
+      },
+      {
+        "pid": 27392,
+        "name": "ollama app.exe",
+        "threads": 19,
+        "rss_mb": 17.84
+      }
+    ],
+    "listening_endpoints": [
+      {
+        "fd": -1,
+        "family": "2",
+        "type": "1",
+        "laddr": "127.0.0.1:52258",
+        "pid": 2932
+      },
+      {
+        "fd": -1,
+        "family": "2",
+        "type": "1",
+        "laddr": "127.0.0.1:63682",
+        "pid": 24512
+      },
+      {
+        "fd": -1,
+        "family": "2",
+        "type": "1",
+        "laddr": "0.0.0.0:49666",
+        "pid": 1908
+      },
+      {
+        "fd": -1,
+        "family": "2",
+        "type": "1",
+        "laddr": "127.0.0.1:63669",
+        "pid": 10524
+      },
+      {
+        "fd": -1,
+        "family": "2",
+        "type": "1",
+        "laddr": "0.0.0.0:49665",
+        "pid": 1256
+      },
+      {
+        "fd": -1,
+        "family": "2",
+        "type": "1",
+        "laddr": "0.0.0.0:50131",
+        "pid": 4
+      },
+      {
+        "fd": -1,
+        "family": "23",
+        "type": "1",
+        "laddr": ":::8680",
+        "pid": 22680
+      },
+      {
+        "fd": -1,
+        "family": "23",
+        "type": "1",
+        "laddr": ":::445",
+        "pid": 4
+      },
+      {
+        "fd": -1,
+        "family": "2",
+        "type": "1",
+        "laddr": "127.0.0.1:50703",
+        "pid": 4116
+      },
+      {
+        "fd": -1,
+        "family": "23",
+        "type": "1",
+        "laddr": ":::49668",
+        "pid": 3888
+      },
+      {
+        "fd": -1,
+        "family": "2",
+        "type": "1",
+        "laddr": "127.0.0.1:52594",
+        "pid": 27392
+      },
+      {
+        "fd": -1,
+        "family": "2",
+        "type": "1",
+        "laddr": "26.204.124.32:139",
+        "pid": 4
+      },
+      {
+        "fd": -1,
+        "family": "2",
+        "type": "1",
+        "laddr": "127.0.0.1:28390",
+        "pid": 4
+      },
+      {
+        "fd": -1,
+        "family": "23",
+        "type": "1",
+        "laddr": ":::49667",
+        "pid": 1944
+      },
+      {
+        "fd": -1,
+        "family": "23",
+        "type": "1",
+        "laddr": ":::49666",
+        "pid": 1908
+      },
+      {
+        "fd": -1,
+        "family": "23",
+        "type": "1",
+        "laddr": ":::49665",
+        "pid": 1256
+      },
+      {
+        "fd": -1,
+        "family": "2",
+        "type": "1",
+        "laddr": "127.0.0.1:49350",
+        "pid": 22644
+      },
+      {
+        "fd": -1,
+        "family": "2",
+        "type": "1",
+        "laddr": "10.185.95.224:139",
+        "pid": 4
+      },
+      {
+        "fd": -1,
+        "family": "2",
+        "type": "1",
+        "laddr": "127.0.0.1:63681",
+        "pid": 24512
+      },
+      {
+        "fd": -1,
+        "family": "2",
+        "type": "1",
+        "laddr": "0.0.0.0:49667",
+        "pid": 1944
+      },
+      {
+        "fd": -1,
+        "family": "2",
+        "type": "1",
+        "laddr": "127.0.0.1:51368",
+        "pid": 2932
+      },
+      {
+        "fd": -1,
+        "family": "2",
+        "type": "1",
+        "laddr": "127.0.0.1:11434",
+        "pid": 21936
+      },
+      {
+        "fd": -1,
+        "family": "2",
+        "type": "1",
+        "laddr": "127.0.0.1:50748",
+        "pid": 2932
+      },
+      {
+        "fd": -1,
+        "family": "2",
+        "type": "1",
+        "laddr": "127.0.0.1:63670",
+        "pid": 10524
+      },
+      {
+        "fd": -1,
+        "family": "2",
+        "type": "1",
+        "laddr": "0.0.0.0:49664",
+        "pid": 1348
+      }
+    ]
+  }
+}

@@ -1,137 +1,17 @@
 {
-  "total_evaluations": 22,
+  "total_evaluations": 2,
   "log": [
     {
       "action": "launch_app",
-      "target": "csrss.exe",
-      "verdict": "BLOCKED",
-      "reason": "Protected OS core process: csrss.exe"
-    },
-    {
-      "action": "launch_app",
-      "target": "lsass.exe",
-      "verdict": "BLOCKED",
-      "reason": "Protected OS core process: lsass.exe"
-    },
-    {
-      "action": "launch_app",
-      "target": "services.exe",
-      "verdict": "BLOCKED",
-      "reason": "Protected OS core process: services.exe"
-    },
-    {
-      "action": "launch_app",
-      "target": "winlogon.exe",
-      "verdict": "BLOCKED",
-      "reason": "Protected OS core process: winlogon.exe"
-    },
-    {
-      "action": "launch_app",
-      "target": "svchost.exe",
-      "verdict": "BLOCKED",
-      "reason": "Protected OS core process: svchost.exe"
-    },
-    {
-      "action": "launch_app",
-      "target": "format C: /fs:ntfs",
-      "verdict": "BLOCKED",
-      "reason": "Matched prohibited pattern: \\bformat\\b"
+      "target": "notepad",
+      "verdict": "PERMITTED",
+      "reason": "Safe application launch authorized."
     },
     {
       "action": "type_text",
-      "target": "None",
-      "verdict": "BLOCKED",
-      "reason": "Destructive payload detected: \\bformat\\b"
-    },
-    {
-      "action": "launch_app",
-      "target": "rmdir /s /q C:\\Windows",
-      "verdict": "BLOCKED",
-      "reason": "Matched prohibited pattern: \\brmdir\\s+/[sq]\\b"
-    },
-    {
-      "action": "type_text",
-      "target": "None",
-      "verdict": "BLOCKED",
-      "reason": "Destructive payload detected: \\brmdir\\s+/[sq]\\b"
-    },
-    {
-      "action": "launch_app",
-      "target": "del /f /s /q *.*",
-      "verdict": "BLOCKED",
-      "reason": "Matched prohibited pattern: \\bdel\\s+/[fsq]\\b"
-    },
-    {
-      "action": "type_text",
-      "target": "None",
-      "verdict": "BLOCKED",
-      "reason": "Destructive payload detected: \\bdel\\s+/[fsq]\\b"
-    },
-    {
-      "action": "launch_app",
-      "target": "powershell -encodedcommand dGVzdA==",
-      "verdict": "BLOCKED",
-      "reason": "Matched prohibited pattern: \\bpowershell\\s+-(enc|encodedcommand)\\b"
-    },
-    {
-      "action": "type_text",
-      "target": "None",
-      "verdict": "BLOCKED",
-      "reason": "Destructive payload detected: \\bpowershell\\s+-(enc|encodedcommand)\\b"
-    },
-    {
-      "action": "launch_app",
-      "target": "shutdown /s /t 0",
-      "verdict": "BLOCKED",
-      "reason": "Matched prohibited pattern: \\bshutdown\\s+/[strf]\\b"
-    },
-    {
-      "action": "type_text",
-      "target": "None",
-      "verdict": "BLOCKED",
-      "reason": "Destructive payload detected: \\bshutdown\\s+/[strf]\\b"
-    },
-    {
-      "action": "click_control",
-      "target": "format all",
-      "verdict": "BLOCKED",
-      "reason": "Destructive system trigger identified."
-    },
-    {
-      "action": "click_control",
-      "target": "delete partition",
-      "verdict": "BLOCKED",
-      "reason": "Destructive system trigger identified."
-    },
-    {
-      "action": "click_control",
-      "target": "uninstall windows",
-      "verdict": "BLOCKED",
-      "reason": "Destructive system trigger identified."
-    },
-    {
-      "action": "click_control",
-      "target": "erase drive",
-      "verdict": "BLOCKED",
-      "reason": "Destructive system trigger identified."
-    },
-    {
-      "action": "launch_app",
-      "target": "notepad.exe",
-      "verdict": "BLOCKED",
-      "reason": "Panic / Observe-Only mode active."
-    },
-    {
-      "action": "click_control",
-      "target": "notepad:Button",
-      "verdict": "BLOCKED",
-      "reason": "Observe-only mode active."
-    },
-    {
-      "action": "type_text",
-      "target": "notepad:5chars",
-      "verdict": "BLOCKED",
-      "reason": "Observe-only mode active."
+      "target": "notepad:11chars",
+      "verdict": "PERMITTED",
+      "reason": "Text injection authorized."
     }
   ]
 }

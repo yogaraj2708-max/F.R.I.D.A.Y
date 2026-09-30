@@ -294,10 +294,21 @@ class FridayVoiceEngine:
             pass
 
     def clean_text_for_speech(self, text: str) -> str:
-        # 0. Strip internal reasoning/thought tags: <think>...</think>
-        text = re.sub(r"<think>[\s\S]*?</think>", " ", text, flags=re.IGNORECASE)
+        if not text:
+            return ""
+        # 0. Strict Reasoning & Thought Scrubbing via ReasoningStreamParser
+        try:
+            from friday_core.models.stream_parser import ReasoningStreamParser
+            text = ReasoningStreamParser.clean_final_content(text)
+        except Exception:
+            text = re.sub(r"<(?:think|thought|reasoning)>[\s\S]*?</(?:think|thought|reasoning)>", " ", text, flags=re.IGNORECASE)
+            text = re.sub(r"<(?:think|thought|reasoning)>[\s\S]*$", " ", text, flags=re.IGNORECASE)
+            text = re.sub(r"</(?:think|thought|reasoning)>", " ", text, flags=re.IGNORECASE)
+
         # 0.1 Strip raw tool traces & execution fences: [TOOL: ...]
         text = re.sub(r"\[(?:TOOL|TRACE|ACTION|RESULT)[\s\S]*?\]", " ", text, flags=re.IGNORECASE)
+        # 0.2 Strip raw tool call JSON payloads
+        text = re.sub(r'\{[^{}]*"(?:name|arguments|tool_calls|query|expression)"[^{}]*\}', ' ', text)
         # 1. Strip complete fenced code blocks (handling CRLF and LF)
         text = re.sub(r"```[\w\-]*\r?\n[\s\S]*?```", " ", text)
         text = re.sub(r"```[\s\S]*?```", " ", text)
@@ -576,6 +587,9 @@ class FridayVoiceEngine:
                     self._speak_depth = 0
                     self.is_speaking = False
                     self.speech_ended_at = time.monotonic()
+                    self.signals.speech_level_changed.emit(0.0)
+                    next_state = "listening" if self.voice_loop_active else "idle"
+                    self.signals.state_changed.emit(next_state)
 
     async def _speak_internal(self, text: str, display_text: str = None, emit_transcript: bool = True):
         full_display = display_text if display_text else text
@@ -967,48 +981,93 @@ class FridayBrain:
         Normalizes Ollama ChatResponse objects, dictionary responses, and async streams/mocks
         into a uniform (step_msg, tool_calls, content) structure without relying on dict .get()
         on arbitrary stream or mock objects.
+        Separates internal reasoning so that returned content is strictly user-facing FINAL_CONTENT.
         """
         import inspect
         from unittest.mock import MagicMock
+        from friday_core.models.stream_parser import ReasoningStreamParser
 
         # 1. Direct message attribute (e.g. ChatResponse, mock response)
         if hasattr(step_resp, 'message') and not inspect.isasyncgen(step_resp):
             msg = step_resp.message
             t_calls = getattr(msg, 'tool_calls', None) if hasattr(msg, 'tool_calls') else (msg.get('tool_calls') if isinstance(msg, dict) else None)
-            content = getattr(msg, 'content', '') if hasattr(msg, 'content') else (msg.get('content', '') if isinstance(msg, dict) else '')
-            return msg, t_calls, str(content or '')
+            raw_content = getattr(msg, 'content', '') if hasattr(msg, 'content') else (msg.get('content', '') if isinstance(msg, dict) else '')
+            raw_thinking = getattr(msg, 'thinking', '') if hasattr(msg, 'thinking') else (msg.get('thinking', '') if isinstance(msg, dict) else '')
+            if not raw_thinking:
+                raw_thinking = getattr(msg, 'reasoning_content', '') if hasattr(msg, 'reasoning_content') else (msg.get('reasoning_content', '') if isinstance(msg, dict) else '')
+            clean_content, extracted_reasoning = ReasoningStreamParser.extract_reasoning_and_content(str(raw_content or ''), str(raw_thinking or ''))
+            FridayBrain._last_extracted_reasoning = extracted_reasoning
+            try:
+                object.__setattr__(msg, 'internal_reasoning', extracted_reasoning)
+            except Exception:
+                pass
+            if isinstance(msg, dict):
+                msg['internal_reasoning'] = extracted_reasoning
+            return msg, t_calls, clean_content
 
         # 2. Dictionary response with 'message'
         if isinstance(step_resp, dict) and 'message' in step_resp:
             msg = step_resp['message']
             t_calls = getattr(msg, 'tool_calls', None) if hasattr(msg, 'tool_calls') else (msg.get('tool_calls') if isinstance(msg, dict) else None)
-            content = getattr(msg, 'content', '') if hasattr(msg, 'content') else (msg.get('content', '') if isinstance(msg, dict) else '')
-            return msg, t_calls, str(content or '')
+            raw_content = getattr(msg, 'content', '') if hasattr(msg, 'content') else (msg.get('content', '') if isinstance(msg, dict) else '')
+            raw_thinking = getattr(msg, 'thinking', '') if hasattr(msg, 'thinking') else (msg.get('thinking', '') if isinstance(msg, dict) else '')
+            if not raw_thinking:
+                raw_thinking = getattr(msg, 'reasoning_content', '') if hasattr(msg, 'reasoning_content') else (msg.get('reasoning_content', '') if isinstance(msg, dict) else '')
+            clean_content, extracted_reasoning = ReasoningStreamParser.extract_reasoning_and_content(str(raw_content or ''), str(raw_thinking or ''))
+            FridayBrain._last_extracted_reasoning = extracted_reasoning
+            try:
+                object.__setattr__(msg, 'internal_reasoning', extracted_reasoning)
+            except Exception:
+                pass
+            if isinstance(msg, dict):
+                msg['internal_reasoning'] = extracted_reasoning
+            return msg, t_calls, clean_content
 
         # 3. Streaming response (only if genuine async iterable, not MagicMock)
         if hasattr(step_resp, '__aiter__') and type(step_resp) is not MagicMock:
             accumulated_chunks = []
+            accumulated_thinking = []
             accumulated_tool_calls = []
             async for chunk in step_resp:
                 c_msg = chunk.message if hasattr(chunk, 'message') else (chunk.get('message', {}) if isinstance(chunk, dict) else getattr(chunk, 'message', {}))
                 c_content = getattr(c_msg, 'content', '') if hasattr(c_msg, 'content') else (c_msg.get('content', '') if isinstance(c_msg, dict) else '')
+                c_thinking = getattr(c_msg, 'thinking', '') if hasattr(c_msg, 'thinking') else (c_msg.get('thinking', '') if isinstance(c_msg, dict) else '')
+                if not c_thinking:
+                    c_thinking = getattr(c_msg, 'reasoning_content', '') if hasattr(c_msg, 'reasoning_content') else (c_msg.get('reasoning_content', '') if isinstance(c_msg, dict) else '')
                 if c_content:
                     accumulated_chunks.append(str(c_content))
+                if c_thinking:
+                    accumulated_thinking.append(str(c_thinking))
                 c_tc = getattr(c_msg, 'tool_calls', None) if hasattr(c_msg, 'tool_calls') else (c_msg.get('tool_calls', None) if isinstance(c_msg, dict) else None)
                 if c_tc:
                     accumulated_tool_calls.extend(c_tc)
             full_content = "".join(accumulated_chunks)
+            full_thinking = "".join(accumulated_thinking)
+            clean_content, extracted_reasoning = ReasoningStreamParser.extract_reasoning_and_content(full_content, full_thinking)
+            FridayBrain._last_extracted_reasoning = extracted_reasoning
             msg_dict = {
                 'role': 'assistant',
-                'content': full_content,
-                'tool_calls': accumulated_tool_calls if accumulated_tool_calls else None
+                'content': clean_content,
+                'tool_calls': accumulated_tool_calls if accumulated_tool_calls else None,
+                'internal_reasoning': extracted_reasoning
             }
-            return msg_dict, msg_dict['tool_calls'], full_content
+            return msg_dict, msg_dict['tool_calls'], clean_content
 
         msg = getattr(step_resp, 'message', step_resp)
         t_calls = getattr(msg, 'tool_calls', None) if hasattr(msg, 'tool_calls') else (msg.get('tool_calls') if isinstance(msg, dict) else None)
-        content = getattr(msg, 'content', '') if hasattr(msg, 'content') else (msg.get('content', '') if isinstance(msg, dict) else '')
-        return msg, t_calls, str(content or '')
+        raw_content = getattr(msg, 'content', '') if hasattr(msg, 'content') else (msg.get('content', '') if isinstance(msg, dict) else '')
+        raw_thinking = getattr(msg, 'thinking', '') if hasattr(msg, 'thinking') else (msg.get('thinking', '') if isinstance(msg, dict) else '')
+        if not raw_thinking:
+            raw_thinking = getattr(msg, 'reasoning_content', '') if hasattr(msg, 'reasoning_content') else (msg.get('reasoning_content', '') if isinstance(msg, dict) else '')
+        clean_content, extracted_reasoning = ReasoningStreamParser.extract_reasoning_and_content(str(raw_content or ''), str(raw_thinking or ''))
+        FridayBrain._last_extracted_reasoning = extracted_reasoning
+        try:
+            object.__setattr__(msg, 'internal_reasoning', extracted_reasoning)
+        except Exception:
+            pass
+        if isinstance(msg, dict):
+            msg['internal_reasoning'] = extracted_reasoning
+        return msg, t_calls, clean_content
 
     def _detect_best_model(self) -> str:
         host = settings.get("ollama_host", "http://localhost:11434")
@@ -1039,15 +1098,16 @@ Core Persona Rules:
 2. Tone: Calm, sharp, tactically aware, subtly witty, and professional.
 3. Dynamic Intelligence: For quick chit-chat and simple status requests, keep replies punchy and conversational. For file analyses, programming tasks, document reviews, technical inquiries, and deep explanations, provide complete, multi-paragraph, professional breakdowns with structured Markdown headers, bullet points, and code blocks.
 4. Real-World Context: Current time is {current_time} on {current_date}. Running on Windows 11.
-5. Honesty: If you don't know something or can't perform an action, admit it clearly with style.
+5. Honesty & Technical Precision: If an action or tool execution encounters an error or is blocked, report the EXACT technical error returned by the tool (e.g. 'Notepad execution failed: <actual failure>'). NEVER invent or claim system-level security filters, permissions, or restrictions that were not explicitly reported in the tool error. NEVER invent workarounds (such as opening VS Code or Word or suggesting manual copy/paste) when the user specifically requested Notepad or another specific application. NEVER claim an action succeeded unless verified.
 6. CRITICAL - Your Real Capabilities & Native Tools: You are NOT a plain chatbot. You have REAL integrated subsystems and callable tools:
    - WEB SEARCH & LIVE INTEL: You have access to the callable tool `web_search`. When you need current facts, recent events, breaking news, people, companies, or specifications, invoke `web_search` natively. Do NOT merely discuss searching in text; invoke the tool. When live web sources are returned, analyze and synthesize them directly to provide accurate, up-to-date facts, citations, and specifications.
    - WEATHER: You CAN get real-time weather data from wttr.in for any city worldwide.
-   - APP LAUNCHING: You CAN open apps (VS Code, Edge, Spotify, Calculator, etc.) on this Windows PC.
+   - APP LAUNCHING: You CAN open apps (Notepad, Calculator, VS Code, Edge, Spotify, etc.) on this Windows PC via `launch_app`.
    - FILE ANALYSIS: You CAN read, analyze, and review code files and documents attached by the user.
    - SYSTEM TELEMETRY: You CAN check battery level, RAM usage, and system diagnostics via `system_telemetry`.
    - CALCULATIONS: You CAN evaluate calculations via `calculate`.
    - YOUTUBE: You CAN search and open YouTube videos.
+   - DESKTOP AUTOMATION & TYPING: You have direct native access to `type_text` and `launch_app`. When asked to put, type, insert, or write code or text into an application like Notepad, invoke `launch_app` and `type_text`. You fully support multiline text, C/C++ source code, and large code blocks without size limits or clipboard restrictions. Never tell the user to manually copy/paste or suggest opening VS Code as a workaround.
 7. When the user asks about a real-world topic, provide your best knowledge and invoke tools whenever up-to-date or verifiable information is needed."""
         self.conversation_history = [{'role': 'system', 'content': self.system_prompt}]
 
@@ -1065,8 +1125,8 @@ Core Persona Rules:
             role = msg.get("role", "")
             content = msg.get("content", "")
             if role in ("user", "assistant", "friday") and content:
-                llm_role = "assistant" if role.lower() in ("friday", "assistant") else "user"
-                clean_content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip() if llm_role == "assistant" else content
+                from friday_core.models.stream_parser import ReasoningStreamParser
+                clean_content = ReasoningStreamParser.clean_final_content(content) if llm_role == "assistant" else content
                 if clean_content:
                     self.conversation_history.append({'role': llm_role, 'content': clean_content})
 
@@ -2740,6 +2800,16 @@ Core Persona Rules:
         cmd = re.sub(r"\byou\s*t[ui]be\b|\byuotube\b|\byotube\b", "youtube", cmd)
         cmd = re.sub(r"\b(?:olay|ply|plsy|paly)\b", "play", cmd)
 
+        # 0.0049 STRUCTURED DOCUMENT AGENT (TIER 1 FAST PATH FOR DOCX EDITING)
+        docx_edit_patterns = [
+            r"\b(?:fill|edit|update|modify|replace|insert|change|delete|add|format)\b.*\b(?:docx|\.docx\b|document)\b",
+            r"\b(?:docx|\.docx\b)\b.*\b(?:fill|edit|update|modify|replace|insert|change|delete|add|format)\b",
+            r"^in\s+['\"][^'\"]+\.docx['\"]",
+        ]
+        if any(re.search(p, cmd, re.IGNORECASE) for p in docx_edit_patterns):
+            if self._find_active_or_recent_docx(command):
+                return await self.execute_document_agent(command)
+
         # 0.005 TIER 0 FAST CONVERSATIONAL & GREETING HANDLERS (< 1ms)
         greeting_patterns = [
             r"^(?:hi|hello|hey|hey\s+friday|hello\s+friday|hi\s+friday|good\s+morning|good\s+afternoon|good\s+evening|greetings|howdy|sup|yo)$",
@@ -2799,11 +2869,24 @@ Core Persona Rules:
 
         # 0.0052 STANDALONE TYPING & UI AUTOMATION (TIER 1 FAST PATH)
         type_match = re.match(
-            r"^(?:can\s+you\s+|please\s+|could\s+you\s+|would\s+you\s+)?(?:type|input|enter|paste|append|insert|replace|overwrite)\s+(.+)$",
+            r"^(?:can\s+you\s+|please\s+|could\s+you\s+|would\s+you\s+)?(?:type|input|enter|paste|append|insert|replace|overwrite|put|write)\s+(.+)$",
             command,
             re.IGNORECASE
         )
-        if type_match and not re.match(r"^(?:type\s+of\s+|input\s+of\s+)", cmd, re.IGNORECASE) and not cmd.endswith("?"):
+        # COMPOUND CONTENT-GENERATION GUARD: Prevent "write a summary of X and put it in Y"
+        # from being intercepted as literal typing. Delegate to PEOV compound planner (section 0.03).
+        _is_compound_content_gen = False
+        if type_match and re.match(r"^(?:write|draft|compose|code|create|generate)\s+", cmd, re.IGNORECASE):
+            from friday_core.agent.compound import compound_parser
+            _raw_clause = type_match.group(1).strip()
+            # Check for "... and put/place/insert it in/into <app>"
+            _reversed_m = re.search(r"\s+(?:and\s+)?(?:put|place|paste|insert|type)\s+(?:it\s+|that\s+)?(?:in|into|on)\s+(?:my\s+)?[a-zA-Z0-9_\-\s]+$", _raw_clause, re.IGNORECASE)
+            if _reversed_m:
+                _topic_part = _raw_clause[:_reversed_m.start()].strip()
+                if compound_parser.is_generative_writing(_topic_part):
+                    _is_compound_content_gen = True
+
+        if type_match and not _is_compound_content_gen and not re.match(r"^(?:type\s+of\s+|input\s+of\s+)", cmd, re.IGNORECASE) and not cmd.endswith("?"):
             raw_text_clause = type_match.group(1).strip()
             # Handle "replace content with <text>" or "overwrite with <text>"
             rw_match = re.search(r"^(?:content|all|everything|text)?\s*with\s+(.+)$", raw_text_clause, re.IGNORECASE)
@@ -2811,7 +2894,7 @@ Core Persona Rules:
                 raw_text_clause = rw_match.group(1).strip()
 
             app_target = "notepad"
-            in_app_match = re.search(r"^(.*?)\s+(?:in|into|on)\s+([a-zA-Z0-9_\-\s]+)$", raw_text_clause, re.IGNORECASE)
+            in_app_match = re.search(r"^(.*?)\s+(?:in|into|on)\s+(?:my\s+)?([a-zA-Z0-9_\-\s]+)$", raw_text_clause, re.IGNORECASE)
             if in_app_match:
                 text_to_type = in_app_match.group(1).strip()
                 app_target = in_app_match.group(2).strip().lower()
@@ -2821,12 +2904,6 @@ Core Persona Rules:
             if (text_to_type.startswith("'") and text_to_type.endswith("'")) or (text_to_type.startswith('"') and text_to_type.endswith('"')):
                 text_to_type = text_to_type[1:-1]
 
-            # Special case: If target is Word and action is paste, delegate to Word automation
-            if app_target in ["word", "ms word", "microsoft word", "winword"] and (
-                text_to_type.lower() in ["this", "that", "it", "content", "clipboard"] or cmd.startswith("paste")
-            ):
-                return await self._execute_word_paste()
-
             mode = "type"
             if any(w in cmd for w in ["append", "at the end", "add "]):
                 mode = "append"
@@ -2835,7 +2912,41 @@ Core Persona Rules:
             elif "insert" in cmd:
                 mode = "insert"
 
-            skill_res = skill_registry.execute_skill(
+            # Anaphora Resolution: "that code", "this code", "the code", "the calculator code", etc.
+            is_code_ref = False
+            clean_text_ref = text_to_type.lower().strip(" .\"'")
+            if (
+                clean_text_ref in [
+                    "that code", "this code", "the code", "code", "that c code", "the c code",
+                    "the calculator code", "that calculator code", "it", "that", "this",
+                    "the program", "that program", "the script", "that script", "the source code", "that source code"
+                ]
+                or re.search(r"\b(?:code|program|script|snippet|implementation|source)\b", clean_text_ref)
+            ):
+                is_code_ref = True
+
+            if is_code_ref:
+                resolved_code = None
+                for msg in reversed(self.conversation_history):
+                    if msg.get("role") in ("assistant", "friday"):
+                        content = msg.get("content", "")
+                        code_blocks = re.findall(r"```(?:[a-zA-Z0-9_+\-#]+)?\n(.*?)```", content, re.DOTALL)
+                        if code_blocks:
+                            resolved_code = max(code_blocks, key=len).strip()
+                            break
+                if resolved_code:
+                    text_to_type = resolved_code
+                    if mode == "type":
+                        mode = "replace"
+
+            # Special case: If target is Word and action is paste, delegate to Word automation
+            if app_target in ["word", "ms word", "microsoft word", "winword"] and (
+                text_to_type.lower() in ["this", "that", "it", "content", "clipboard"] or cmd.startswith("paste")
+            ):
+                return await self._execute_word_paste()
+
+            skill_res = await asyncio.to_thread(
+                skill_registry.execute_skill,
                 tool_id="ui_type_text",
                 params={"app_name": app_target, "text": text_to_type, "mode": mode},
                 operation_id=f"standalone-type-{uuid.uuid4().hex[:6]}"
@@ -2843,6 +2954,8 @@ Core Persona Rules:
             if skill_res.success:
                 play_chime(CHIME_CONFIRM)
                 self.signals.skill_executed.emit("UI Type", text_to_type[:20])
+                if is_code_ref or len(text_to_type) > 80 or "\n" in text_to_type:
+                    return f"Inserted the requested code into {app_target.title()} and verified exact content on screen, Boss."
                 return f"Typed '{text_to_type}' into {app_target.title()} and verified on screen, Boss."
             else:
                 return f"⚠️ Typing operation failed: {skill_res.error or 'Could not focus or locate target window.'}"
@@ -2862,7 +2975,8 @@ Core Persona Rules:
         if save_file_match:
             target_filename = save_file_match.group(1).strip().strip("'\"")
             app_target = "notepad"
-            skill_res = skill_registry.execute_skill(
+            skill_res = await asyncio.to_thread(
+                skill_registry.execute_skill,
                 tool_id="save_file",
                 params={"app_name": app_target, "filename": target_filename},
                 operation_id=f"standalone-save-{uuid.uuid4().hex[:6]}"
@@ -2887,6 +3001,21 @@ Core Persona Rules:
             web_res = await self._handle_web_reading(command, cmd)
             if web_res:
                 return web_res
+
+        # 0.0056 DOCUMENT / PDF GROUNDED ANALYSIS & QA (TIER 1 FAST PATH)
+        doc_qa_patterns = [
+            r"\b(?:title|first\s+sentence|opening\s+sentence|summarize|summary|read|inspect|what\s+does\s+.*say|what\s+is\s+written|what\s+is\s+in)\b.*\b(?:pdf|document|\.pdf\b)",
+            r"\b(?:pdf|document|\.pdf\b).*\b(?:title|first\s+sentence|opening\s+sentence|summarize|summary|read|inspect|what\s+does\s+.*say|what\s+is\s+written)\b",
+            r"^(?:what\s+is|what's)\s+the\s+title\s+of\s+(?:the\s+)?pdf",
+            r"^(?:what\s+is|what's)\s+the\s+first\s+sentence\s+of\s+(?:the\s+)?pdf",
+            r"^summarize\s+(?:this\s+|the\s+)?pdf\b",
+            r"^read\s+(?:this\s+|the\s+)?(?:pdf|document)\b",
+        ]
+        if any(re.search(p, cmd, re.IGNORECASE) for p in doc_qa_patterns):
+            if self._find_active_or_recent_pdf(command):
+                doc_res = await self._handle_document_qa(command, cmd)
+                if doc_res:
+                    return doc_res
 
         # 0.006 Timer Status & Remaining Time (< 1ms deterministic)
         if any(re.search(p, cmd, re.IGNORECASE) for p in [
@@ -2918,7 +3047,8 @@ Core Persona Rules:
             m_key = (mem_remember_match.group(1) or mem_remember_match.group(3) or mem_remember_match.group(5) or "").strip()
             m_val = (mem_remember_match.group(2) or mem_remember_match.group(4) or mem_remember_match.group(6) or "").strip()
             if m_key and m_val:
-                m_res = skill_registry.execute_skill(
+                m_res = await asyncio.to_thread(
+                    skill_registry.execute_skill,
                     tool_id="memory",
                     params={"action": "store", "key": m_key, "value": m_val},
                     operation_id=f"mem-store-{uuid.uuid4().hex[:6]}"
@@ -2938,7 +3068,8 @@ Core Persona Rules:
         if mem_recall_match:
             m_key = (mem_recall_match.group(1) or mem_recall_match.group(2) or mem_recall_match.group(3) or "").strip().rstrip("?")
             if m_key and not any(m_key.startswith(p) for p in ["name", "ip", "location", "weather", "time", "date"]):
-                m_res = skill_registry.execute_skill(
+                m_res = await asyncio.to_thread(
+                    skill_registry.execute_skill,
                     tool_id="memory",
                     params={"action": "retrieve", "key": m_key},
                     operation_id=f"mem-get-{uuid.uuid4().hex[:6]}"
@@ -2958,7 +3089,8 @@ Core Persona Rules:
         )
         if mem_forget_match:
             m_key = (mem_forget_match.group(1) or mem_forget_match.group(2) or "").strip()
-            m_res = skill_registry.execute_skill(
+            m_res = await asyncio.to_thread(
+                skill_registry.execute_skill,
                 tool_id="memory",
                 params={"action": "delete", "key": m_key},
                 operation_id=f"mem-del-{uuid.uuid4().hex[:6]}"
@@ -3026,7 +3158,8 @@ Core Persona Rules:
             text_to_copy = (clip_match.group(1) or clip_match.group(2) or "").strip()
             if text_to_copy.startswith(("'", '"')) and text_to_copy.endswith(("'", '"')):
                 text_to_copy = text_to_copy[1:-1]
-            c_res = skill_registry.execute_skill(
+            c_res = await asyncio.to_thread(
+                skill_registry.execute_skill,
                 tool_id="clipboard",
                 params={"action": "set", "text": text_to_copy},
                 operation_id=f"clip-{uuid.uuid4().hex[:6]}"
@@ -3049,7 +3182,8 @@ Core Persona Rules:
         # 0.010 Physical Desktop Screenshot with Verification
         if any(w in cmd for w in ["take a screenshot", "capture screen", "capture active screen", "screenshot and save", "save a screenshot"]):
             target_dir = Path(os.path.expanduser("~")) / "Desktop" if "desktop" in cmd else None
-            shot_res = skill_registry.execute_skill(
+            shot_res = await asyncio.to_thread(
+                skill_registry.execute_skill,
                 tool_id="screenshot",
                 params={"target_dir": str(target_dir) if target_dir else None},
                 operation_id=f"shot-{uuid.uuid4().hex[:6]}"
@@ -3080,7 +3214,8 @@ Core Persona Rules:
             if f_desc and "text" not in f_desc.lower():
                 clean_fdesc = re.sub(r"[^a-zA-Z0-9_\-]", "_", f_desc.strip())
                 fname = f"{clean_fdesc}.txt"
-            c_res = skill_registry.execute_skill(
+            c_res = await asyncio.to_thread(
+                skill_registry.execute_skill,
                 tool_id="create_file",
                 params={"folder": loc, "filename": fname, "content": content},
                 operation_id=f"create-{uuid.uuid4().hex[:6]}"
@@ -3102,7 +3237,8 @@ Core Persona Rules:
             type_or_query = (file_search_match.group(1) or "").strip()
             loc = (file_search_match.group(2) or "").strip()
             if loc:
-                search_res = skill_registry.execute_skill(
+                search_res = await asyncio.to_thread(
+                    skill_registry.execute_skill,
                     tool_id="file_search",
                     params={"query": type_or_query if type_or_query else "*", "folder": loc, "file_type": type_or_query if type_or_query.lower() in ["pdf", "txt", "docx", "py", "jpg", "png", "zip", "xlsx"] else None},
                     operation_id=f"search-{uuid.uuid4().hex[:6]}"
@@ -3131,7 +3267,8 @@ Core Persona Rules:
             order = file_select_match.group(1).strip()
             f_type = (file_select_match.group(2) or "").strip()
             f_loc = (file_select_match.group(3) or "").strip()
-            sel_res = skill_registry.execute_skill(
+            sel_res = await asyncio.to_thread(
+                skill_registry.execute_skill,
                 tool_id="file_select",
                 params={"order": order, "file_type": f_type, "folder": f_loc, "open_file": True},
                 operation_id=f"select-{uuid.uuid4().hex[:6]}"
@@ -3229,7 +3366,8 @@ Core Persona Rules:
             "how to ", "how do ", "how does ", "explain ", "why did ", "why does ", "what is the difference ", "who invented ",
             "tell me a joke", "what is your favorite", "tell me about ", "tell me the history ", "general question "
         ])
-        if is_code_request:
+        has_compound_app_target = bool(re.search(r"\b(?:and\s+)?(?:put|place|paste|insert|type)\s+(?:it\s+|that\s+)?(?:in|into|on)\s+(?:my\s+)?[a-zA-Z0-9_\-\s]+", cmd, re.IGNORECASE))
+        if is_code_request and not has_compound_app_target:
             return None
 
         # 0.03 COMPOUND DIRECTIVE EXECUTION (PEOV Closed-Loop DAG)
@@ -3238,7 +3376,23 @@ Core Persona Rules:
             if compound_mission:
                 logger.info(f"PEOV Mission Planner dispatched compound mission: {compound_mission.mission_id} ({len(compound_mission.steps)} steps)")
                 play_chime(CHIME_CONFIRM)
-                mission_res = self.executor.execute_mission(compound_mission)
+
+                # CRITICAL FIX: Offload synchronous mission execution to a worker thread.
+                # execute_mission() contains blocking I/O (Ollama HTTP, subprocess, UIA,
+                # time.sleep) that was previously running on the Qt event loop thread,
+                # causing "Not Responding" GUI freeze.
+                try:
+                    mission_res = await asyncio.wait_for(
+                        asyncio.to_thread(self.executor.execute_mission, compound_mission),
+                        timeout=120.0  # Bounded mission timeout prevents infinite hangs
+                    )
+                except asyncio.TimeoutError:
+                    logger.error(f"Mission {compound_mission.mission_id} timed out after 120s")
+                    return f"⚠️ Compound operation timed out after 120 seconds. The task was too complex or a step became unresponsive, Boss."
+                except Exception as ex:
+                    logger.error(f"Mission {compound_mission.mission_id} crashed: {ex}", exc_info=True)
+                    return f"⚠️ Compound operation failed: {ex}"
+
                 if mission_res.status == MissionStatus.COMPLETED:
                     summaries = []
                     for s in compound_mission.steps:
@@ -3483,9 +3637,10 @@ Core Persona Rules:
         # 1. Pasting previous AI response or clipboard into Word
         # 2. Drafting notes/letters/documents and inserting into Word
         # 3. Opening Word with a clean, blank page when no file name is specified
-        is_word_paste = (
-            re.search(r"\b(?:open\s+(?:ms\s+|microsoft\s+)?word\s+and\s+paste|paste\s+(?:this|that|it)?\s*(?:in|into|there\s+in|to)?\s*(?:ms\s+|microsoft\s+)?word)\b", cmd) or
-            ("word" in cmd and any(p in cmd for p in ["paste this", "paste it", "paste that", "paste content"]))
+        has_explicit_other_app = any(a in cmd for a in ["notepad", "calculator", "calc", "vscode", "excel", "powerpoint", "terminal", "cmd"])
+        is_word_paste = (not has_explicit_other_app) and (
+            bool(re.search(r"\b(?:open\s+(?:ms\s+|microsoft\s+)?word\s+and\s+paste|paste\s+(?:this|that|it)?\s*(?:in|into|there\s+in|to)?\s*(?:ms\s+|microsoft\s+)?word)\b", cmd)) or
+            (bool(re.search(r"\b(?:ms\s+|microsoft\s+)?word\b", cmd)) and any(p in cmd for p in ["paste this", "paste it", "paste that", "paste content"]))
         )
         if is_word_paste:
             paste_content = ""
@@ -3522,11 +3677,13 @@ Core Persona Rules:
                 return "Opened a blank document in Microsoft Word, Boss. (No previous text found to paste)."
 
         # Check for Word drafting intent: "open word and help me write a thank you note", etc.
-        draft_match = re.search(
-            r"(?:open\s+(?:ms\s+|microsoft\s+)?word\s+(?:and\s+)?(?:help\s+me\s+)?(?:write|draft|create|compose)\s+(.+?)(?:\s+it\s+should|\s+and\s+paste|\s+and\s+put|$)|"
-            r"(?:help\s+me\s+)?(?:write|draft|create|compose)\s+(.+?)\s+(?:and\s+open\s+(?:ms\s+|microsoft\s+)?word|in\s+(?:ms\s+|microsoft\s+)?word|into\s+(?:ms\s+|microsoft\s+)?word))",
-            cmd
-        )
+        draft_match = None
+        if not has_explicit_other_app:
+            draft_match = re.search(
+                r"(?:open\s+(?:ms\s+|microsoft\s+)?word\s+(?:and\s+)?(?:help\s+me\s+)?(?:write|draft|create|compose)\s+(.+?)(?:\s+it\s+should|\s+and\s+paste|\s+and\s+put|$)|"
+                r"(?:help\s+me\s+)?(?:write|draft|create|compose)\s+(.+?)\s+(?:and\s+open\s+(?:ms\s+|microsoft\s+)?word|in\s+(?:ms\s+|microsoft\s+)?word|into\s+(?:ms\s+|microsoft\s+)?word))",
+                cmd
+            )
         if draft_match:
             draft_topic = (draft_match.group(1) or draft_match.group(2) or "").strip()
             draft_topic = re.sub(r"\s+(?:and\s+paste.*|and\s+open.*|in\s+word.*|it\s+should.*)$", "", draft_topic).strip()
@@ -3556,7 +3713,7 @@ Core Persona Rules:
             "start word", "start ms word", "start microsoft word",
             "open winword"
         ]
-        if cmd in blank_word_triggers:
+        if not has_explicit_other_app and cmd in blank_word_triggers:
             open_blank_word()
             play_chime(CHIME_CONFIRM)
             self.signals.skill_executed.emit("Microsoft Word", "Blank Document")
@@ -3962,13 +4119,101 @@ Core Persona Rules:
     def _try_calculate(self, cmd: str) -> Optional[str]:
         return safe_calculate(cmd)
 
+    async def fetch_weather_async(self, location: str = "") -> str:
+        """
+        Fetches live weather reports and forecasts asynchronously for any location.
+        Uses primary high-precision wttr.in meteorological telemetry with automated
+        DuckDuckGo / web search intelligence fallback.
+        """
+        loc_str = str(location).strip() if location else ""
+        return await asyncio.to_thread(self._fetch_weather_sync, loc_str)
+
+    def _fetch_weather_sync(self, location: str = "") -> str:
+        """Synchronous weather retrieval executed inside worker thread."""
+        loc = location.strip()
+        # 1. Primary: High-precision meteorological JSON from wttr.in
+        try:
+            url = f"https://wttr.in/{urllib.parse.quote(loc)}?format=j1" if loc else "https://wttr.in/?format=j1"
+            req = urllib.request.Request(url, headers={'User-Agent': 'curl/7.68.0'})
+            with urllib.request.urlopen(req, timeout=4.5) as res:
+                data = json.loads(res.read().decode('utf-8'))
+
+            curr = data.get('current_condition', [{}])[0]
+            temp_c = curr.get('temp_C', 'N/A')
+            temp_f = curr.get('temp_F', 'N/A')
+            feels_c = curr.get('FeelsLikeC', temp_c)
+            feels_f = curr.get('FeelsLikeF', temp_f)
+            humidity = curr.get('humidity', 'N/A')
+            desc = curr.get('weatherDesc', [{}])[0].get('value', 'Clear')
+            wind_kmph = curr.get('windspeedKmph', 'N/A')
+            wind_dir = curr.get('winddir16Point', '')
+            precip_mm = curr.get('precipMM', '0.0')
+            uv_index = curr.get('uvIndex', 'N/A')
+
+            nearest_area = data.get('nearest_area', [{}])[0]
+            area_name = nearest_area.get('areaName', [{}])[0].get('value', loc.title() if loc else 'Local Area')
+            region = nearest_area.get('region', [{}])[0].get('value', '')
+            country = nearest_area.get('country', [{}])[0].get('value', '')
+            loc_display = f"{area_name}, {region}, {country}".replace(", ,", ",").strip(", ")
+
+            # Daily forecast (today)
+            forecast_lines = []
+            daily_weather = data.get('weather', [])
+            if daily_weather:
+                today = daily_weather[0]
+                max_c = today.get('maxtempC', '')
+                min_c = today.get('mintempC', '')
+                max_f = today.get('maxtempF', '')
+                min_f = today.get('mintempF', '')
+                if max_c and min_c:
+                    forecast_lines.append(f"- **Today's Forecast Range**: High: {max_c}°C ({max_f}°F) | Low: {min_c}°C ({min_f}°F)")
+
+            output_lines = [
+                f"### Weather Report: {loc_display}",
+                f"- **Condition**: {desc}",
+                f"- **Temperature**: {temp_c}°C ({temp_f}°F) [Feels like {feels_c}°C / {feels_f}°F]",
+                f"- **Humidity**: {humidity}%",
+                f"- **Wind**: {wind_kmph} km/h ({wind_dir})" if wind_dir else f"- **Wind**: {wind_kmph} km/h",
+                f"- **Precipitation**: {precip_mm} mm",
+                f"- **UV Index**: {uv_index}",
+            ]
+            if forecast_lines:
+                output_lines.extend(forecast_lines)
+            output_lines.append("- **Source**: wttr.in (WorldWeatherOnline Meteorological Service)")
+
+            return "\n".join(output_lines)
+        except Exception as ex:
+            logger.debug(f"Primary wttr.in weather fetch failed for '{loc}': {ex}")
+
+        # 2. Secondary Fallback: Live DuckDuckGo web search intelligence
+        try:
+            search_query = f"current weather in {loc}" if loc else "current weather today"
+            web_results = fetch_web_results(search_query, max_results=3)
+            if web_results:
+                formatted_results = []
+                for i, r in enumerate(web_results, 1):
+                    t = r.get("title", f"Source {i}")
+                    b = r.get("body", "No description available.")
+                    u = r.get("href", "")
+                    formatted_results.append(f"{i}. [{t}]({u})\n   {b}")
+                return (
+                    f"### Weather Intelligence for {loc.title() if loc else 'Local Area'} (Web Search):\n\n"
+                    + "\n\n".join(formatted_results)
+                    + f"\n\n- **Source**: Live Web Search ({web_results[0].get('href', 'DuckDuckGo')})"
+                )
+        except Exception as fallback_ex:
+            logger.warning(f"Secondary weather fallback error: {fallback_ex}")
+
+        return f"Unable to retrieve current atmospheric telemetry or web weather reports for '{loc}' at this time."
+
     def get_agent_tools(self) -> List[Dict[str, Any]]:
         """Compiles OpenAPI-compatible tool specifications directly from registered skills."""
         from friday_core.skills.agent_bridge import agent_tool_bridge
         return agent_tool_bridge.get_tool_schemas()
 
-    async def dispatch_agent_tool(self, name: str, args: Any) -> str:
+    async def dispatch_agent_tool(self, name: str, args: Any, trace_id: Optional[str] = None) -> str:
         """Executes an agent tool invoked by the LLM and formats the grounded observation."""
+        tid = trace_id or f"trace_{uuid.uuid4().hex[:8]}"
         if name == "web_search":
             query = ""
             if isinstance(args, dict):
@@ -3990,36 +4235,63 @@ Core Persona Rules:
             return f"No live web search results found for query '{query}'."
 
         elif name == "launch_app":
-            app_name = args.get("app_name", "") if isinstance(args, dict) else str(args).strip()
+            app_name = (
+                args.get("app_name") or
+                args.get("target_app") or
+                args.get("application") or
+                args.get("app") or
+                args.get("name") or ""
+            ) if isinstance(args, dict) else str(args).strip()
             if not app_name:
                 return "Error: Argument validation failed: 'app_name' parameter is required for launch_app."
             from friday_core.automation.action_engine import ui_action_engine
-            res = ui_action_engine.launch_app(app_name)
+            res = await asyncio.to_thread(ui_action_engine.launch_app, app_name, task_id=tid)
             if res.get("success"):
                 play_chime(CHIME_CONFIRM)
                 return res.get("message", f"Application '{app_name}' launched and verified on desktop.")
             return f"Failed to launch application '{app_name}': {res.get('message', 'Application window did not appear.')}"
 
         elif name == "type_text":
-            text = args.get("text", "") if isinstance(args, dict) else str(args)
+            text = (
+                args.get("text") or
+                args.get("content") or
+                args.get("code") or
+                args.get("source_code") or ""
+            ) if isinstance(args, dict) else str(args)
             if not text:
                 return "Error: Argument validation failed: 'text' parameter is required for type_text."
-            app_target = args.get("app_name", "") if isinstance(args, dict) else ""
+            app_target = (
+                args.get("app_name") or
+                args.get("target_app") or
+                args.get("application") or
+                args.get("app") or
+                args.get("name") or "notepad"
+            ) if isinstance(args, dict) else "notepad"
             mode = args.get("mode", "type") if isinstance(args, dict) else "type"
             ctrl_name = args.get("control_name") if isinstance(args, dict) else None
             from friday_core.automation.action_engine import ui_action_engine
-            res = ui_action_engine.type_text(text=text, app_name=app_target, control_name=ctrl_name, mode=mode)
+            res = await asyncio.to_thread(ui_action_engine.type_text, text=text, app_name=app_target, control_name=ctrl_name, mode=mode, task_id=tid)
             if res.get("success"):
                 play_chime(CHIME_CONFIRM)
                 return res.get("message", f"Typed text into {app_target or 'active window'} and verified on screen.")
             return f"Typing operation failed: {res.get('message', 'Failed to inject or verify text.')}"
 
         elif name == "weather":
-            loc = args.get("location", "") if isinstance(args, dict) else str(args)
-            if not loc:
-                return "Error: Argument validation failed: 'location' parameter is required for weather."
+            loc = ""
+            if isinstance(args, dict):
+                loc = (
+                    args.get("location") or
+                    args.get("city") or
+                    args.get("place") or
+                    args.get("query") or
+                    args.get("properties", {}).get("location") or ""
+                )
+            elif isinstance(args, str):
+                loc = args.strip()
             w_res = await self.fetch_weather_async(loc)
-            return w_res or f"Could not retrieve weather data for '{loc}'."
+            play_chime(CHIME_CONFIRM)
+            self.signals.skill_executed.emit("Weather", loc or "Local")
+            return w_res or f"Could not retrieve weather data for '{loc or 'current location'}'."
 
         elif name == "system_time_date":
             now = datetime.now()
@@ -4086,7 +4358,8 @@ Core Persona Rules:
             page = args.get("page") if isinstance(args, dict) else None
             max_chars = args.get("max_chars", 3500) if isinstance(args, dict) else 3500
             from friday_core.document.reader import UnifiedDocumentReader
-            read_res = UnifiedDocumentReader.read_document(
+            read_res = await asyncio.to_thread(
+                UnifiedDocumentReader.read_document,
                 file_path=fpath,
                 focus=focus,
                 page=page,
@@ -4107,7 +4380,8 @@ Core Persona Rules:
             if not target:
                 return "Error: Argument validation failed: 'target' parameter is required for edit_document."
             from friday_core.document.unified_editor import UnifiedDocumentEditor
-            edit_res = UnifiedDocumentEditor.edit_document(
+            edit_res = await asyncio.to_thread(
+                UnifiedDocumentEditor.edit_document,
                 file_path=fpath,
                 target=target,
                 operation=operation,
@@ -4141,7 +4415,7 @@ Core Persona Rules:
             app_target = args.get("app_name", "") if isinstance(args, dict) else str(args).strip()
             exp_content = args.get("expected_content", "") if isinstance(args, dict) else ""
             from friday_core.automation.action_engine import ui_action_engine
-            res = ui_action_engine.inspect_ui(app_name=app_target, expected_content=exp_content)
+            res = await asyncio.to_thread(ui_action_engine.inspect_ui, app_name=app_target, expected_content=exp_content, task_id=tid)
             if res.get("success"):
                 return res.get("summary") or res.get("message")
             return res.get("message", f"Failed to inspect window for '{app_target}'.")
@@ -4154,7 +4428,7 @@ Core Persona Rules:
             ctype = args.get("control_type") if isinstance(args, dict) else None
             aid = args.get("automation_id") if isinstance(args, dict) else None
             from friday_core.automation.action_engine import ui_action_engine
-            res = ui_action_engine.click_control(control_name=control, app_name=app_target, control_type=ctype, automation_id=aid)
+            res = await asyncio.to_thread(ui_action_engine.click_control, control_name=control, app_name=app_target, control_type=ctype, automation_id=aid, task_id=tid)
             if res.get("success"):
                 play_chime(CHIME_CONFIRM)
                 return res.get("message", f"Clicked '{control}' successfully.")
@@ -4208,7 +4482,7 @@ Core Persona Rules:
         try:
             from friday_core.skills.registry import skill_registry
             if name in skill_registry._skills:
-                res = skill_registry.execute_skill(name, args if isinstance(args, dict) else {})
+                res = await asyncio.to_thread(skill_registry.execute_skill, name, args if isinstance(args, dict) else {})
                 return str(res.data or res.error or "Executed successfully")
         except Exception as s_ex:
             logger.debug("Pluggable skill execution note: %s", s_ex)
@@ -4401,9 +4675,11 @@ Core Persona Rules:
                     break
 
                 step_msg, t_calls, step_content = await self._normalize_chat_message(step_resp)
+                self.last_internal_reasoning = getattr(step_msg, 'internal_reasoning', '') or getattr(FridayBrain, '_last_extracted_reasoning', '')
 
                 if not t_calls:
-                    final_agent_response = step_content
+                    from friday_core.models.stream_parser import ReasoningStreamParser
+                    final_agent_response = ReasoningStreamParser.clean_final_content(step_content)
                     final_answer_ready = True
                     break
 
@@ -4434,11 +4710,15 @@ Core Persona Rules:
                     self.signals.status_updated.emit(f"⚡ {display_label}...")
                     play_chime(CHIME_CONFIRM)
 
-                    is_allowed, risk_reason = agent_tool_bridge.risk_gate(fn_name, raw_args if isinstance(raw_args, dict) else {})
+                    is_allowed, risk_reason = agent_tool_bridge.risk_gate(
+                        fn_name,
+                        raw_args if isinstance(raw_args, dict) else {},
+                        user_query=prompt_text
+                    )
                     if not is_allowed:
                         raw_output = f"Error: Tool '{fn_name}' execution blocked by security policy: {risk_reason}"
                     else:
-                        raw_output = await self.dispatch_agent_tool(fn_name, raw_args)
+                        raw_output = await self.dispatch_agent_tool(fn_name, raw_args, trace_id=trace_id)
 
                     verified_bundle = agent_tool_bridge.verify_tool_result(
                         tool_name=fn_name,
@@ -4482,6 +4762,8 @@ Core Persona Rules:
             self.agent_traces.append(self.last_agent_trace)
 
         if final_answer_ready and final_agent_response:
+            from friday_core.models.stream_parser import ReasoningStreamParser
+            final_agent_response = ReasoningStreamParser.clean_final_content(final_agent_response)
             sentence_buffer = ""
             if stream_to_ui:
                 self.signals.status_updated.emit("")
@@ -4502,7 +4784,7 @@ Core Persona Rules:
                                 await phrase_queue.put(clean)
                     await asyncio.sleep(0.008)
 
-            reply = final_agent_response.strip()
+            reply = ReasoningStreamParser.clean_final_content(final_agent_response.strip())
             if is_cancelled():
                 if stream_to_ui:
                     self.signals.stream_finished.emit(reply if reply else "[Stopped by user]")
@@ -4551,8 +4833,9 @@ Core Persona Rules:
                 options={'temperature': 0.7, 'top_p': 0.9, 'num_ctx': 8192},
                 stream=True
             )
+            from friday_core.models.stream_parser import ReasoningStreamParser
             sentence_buffer = ""
-            in_think_tag = False
+            parser = ReasoningStreamParser()
             stream_iter = response_stream.__aiter__()
             while True:
                 if is_cancelled():
@@ -4573,46 +4856,21 @@ Core Persona Rules:
                 thinking_token = ""
                 content_token = ""
                 if msg is not None:
-                    thinking_token = getattr(msg, 'thinking', '') if hasattr(msg, 'thinking') else (msg.get('thinking', '') if isinstance(msg, dict) else '')
+                    thinking_token = getattr(msg, 'thinking', '') or (msg.get('thinking', '') if isinstance(msg, dict) else '') or getattr(msg, 'reasoning_content', '') or (msg.get('reasoning_content', '') if isinstance(msg, dict) else '') or ''
                     content_token = getattr(msg, 'content', '') if hasattr(msg, 'content') else (msg.get('content', '') if isinstance(msg, dict) else '')
                 else:
                     content_token = getattr(chunk, 'content', '') if hasattr(chunk, 'content') else str(chunk)
 
-                # 1. Native thinking field from Ollama (e.g. DeepSeek-R1)
-                if thinking_token and stream_to_ui:
-                    self.signals.stream_thinking.emit(thinking_token)
+                clean_token = parser.process_chunk(content_token, thinking_token)
 
-                # 2. Check for <think> tags in content_token
-                if content_token:
-                    if "<think>" in content_token:
-                        parts = content_token.split("<think>", 1)
-                        if parts[0]:
-                            collected.append(parts[0])
-                            if stream_to_ui:
-                                self.signals.stream_token.emit(parts[0])
-                        in_think_tag = True
-                        content_token = parts[1]
-
-                    if in_think_tag:
-                        if "</think>" in content_token:
-                            t_part, c_part = content_token.split("</think>", 1)
-                            if t_part and stream_to_ui:
-                                self.signals.stream_thinking.emit(t_part)
-                            in_think_tag = False
-                            content_token = c_part
-                        else:
-                            if content_token and stream_to_ui:
-                                self.signals.stream_thinking.emit(content_token)
-                            content_token = ""
-
-                # 3. Stream normal content tokens
-                if content_token:
-                    collected.append(content_token)
+                # Stream ONLY clean user-facing content tokens
+                if clean_token:
+                    collected.append(clean_token)
                     if stream_to_ui:
-                        self.signals.stream_token.emit(content_token)
+                        self.signals.stream_token.emit(clean_token)
 
                     if not seamless_speech and phrase_queue and not is_cancelled():
-                        sentence_buffer += content_token
+                        sentence_buffer += clean_token
                         abbrev_m = re.search(r"(?:e\.g|i\.e|vs|dr|mr|mrs|ms|prof|inc|ltd|v\d+)\.\s*$", sentence_buffer, re.IGNORECASE)
                         if not abbrev_m:
                             m = re.search(r"([.!?]+[\"'\)\]]*|\n{2,})\s*", sentence_buffer)
@@ -4624,7 +4882,18 @@ Core Persona Rules:
                                 if clean and len(clean.split()) >= 1 and not is_cancelled():
                                     await phrase_queue.put(clean)
 
-            reply = "".join(collected).strip()
+            flush_token = parser.flush()
+            if flush_token:
+                clean_flush = ReasoningStreamParser.clean_final_content(flush_token)
+                if clean_flush:
+                    collected.append(clean_flush)
+                    if stream_to_ui:
+                        self.signals.stream_token.emit(clean_flush)
+                    if not seamless_speech and phrase_queue and not is_cancelled():
+                        sentence_buffer += clean_flush
+
+            self.last_internal_reasoning = parser.internal_reasoning
+            reply = ReasoningStreamParser.clean_final_content("".join(collected).strip())
             if is_cancelled():
                 if stream_to_ui:
                     self.signals.stream_finished.emit(reply if reply else "[Stopped by user]")
@@ -4784,6 +5053,11 @@ class FridayVoiceLoop:
     def trigger_active_listen(self):
         """Forces immediate active listening mode without requiring wake word."""
         self.force_listen = True
+        try:
+            from friday_core.voice.device_manager import audio_device_manager
+            audio_device_manager.ensure_capture_unmuted()
+        except Exception:
+            pass
         play_chime(CHIME_WAKE)
         self.signals.state_changed.emit("listening")
 
@@ -4802,6 +5076,13 @@ class FridayVoiceLoop:
         self.running = True
         self.tts.voice_loop_active = True
         self.signals.state_changed.emit("standby")
+
+        # Pre-flight Windows Core Audio verification: ensure physical capture endpoint is unmuted
+        try:
+            from friday_core.voice.device_manager import audio_device_manager
+            audio_device_manager.ensure_capture_unmuted()
+        except Exception as pre_ex:
+            logger.debug("CoreAudio preflight error: %s", pre_ex)
 
         loop = asyncio.get_running_loop()
         # Bound the reconnect attempts. Previously a permanently missing or busy
@@ -4843,8 +5124,17 @@ class FridayVoiceLoop:
                         calib_chunks.append(d)
                     if calib_chunks:
                         all_c = np.concatenate(calib_chunks, axis=0)
+                        raw_calib_rms = float(np.sqrt(np.mean(all_c.astype(np.float32) ** 2)))
+                        # If raw RMS is near zero (< 1.0), the Windows capture endpoint may be hardware/driver muted
+                        if raw_calib_rms < 1.0:
+                            logger.warning("Microphone calibration observed digital silence (RMS=%.2f). Ensuring capture unmuted...", raw_calib_rms)
+                            try:
+                                from friday_core.voice.device_manager import audio_device_manager
+                                audio_device_manager.ensure_capture_unmuted()
+                            except Exception:
+                                pass
                         # Cap baseline to 120 so fan noise does not raise speech threshold impossibly high
-                        self.ambient_rms = min(max(float(np.sqrt(np.mean(all_c.astype(np.float32) ** 2))), 10.0), 120.0)
+                        self.ambient_rms = min(max(raw_calib_rms, 10.0), 120.0)
 
                     consecutive_failures = 0  # device opened cleanly
                     if not self.notified_online:
