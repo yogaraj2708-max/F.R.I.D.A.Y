@@ -32,79 +32,62 @@
 
 ---
 
-## 🚀 Beginner's Quickstart: Download & Install Tutorial
+## 🚀 Quickstart: Running F.R.I.D.A.Y. 3.0
 
-Follow this simple tutorial to download, set up, and start F.R.I.D.A.Y. on your Windows PC in under 3 minutes.
+You can run F.R.I.D.A.Y. in two ways:
+- **Option 1 (Recommended for Users): Standalone Windows App (`.exe`)** — No Python, no virtual environments, and no `setup.bat` required.
+- **Option 2 (For Developers): Run from Source** — For developers modifying the codebase with Python and `setup.bat`.
 
-### 📋 Prerequisites (Do this once)
+---
 
-1. **Install Python (Version 3.10, 3.11, or 3.12)**:
-   - Download the installer from the official website: [python.org/downloads](https://www.python.org/downloads/).
-   - ⚠️ **VERY IMPORTANT**: On the first screen of the Python installer, check the box that says:
-     `[x] Add python.exe to PATH` (located at the bottom).
-   - Click **Install Now**.
+### 🌟 Option 1: Standalone Windows App (Zero Setup)
 
-2. **Install Ollama (Free Local AI Engine)**:
-   - Download and install [Ollama for Windows](https://ollama.com/download/windows).
-   - Once installed, open your Windows **Terminal** or **PowerShell** and download your preferred model:
+The easiest way to run F.R.I.D.A.Y. 3.0 on any Windows 10 or 11 PC:
+
+1. **Install Ollama (Local AI Engine)**:
+   - Download from [ollama.com/download/windows](https://ollama.com/download/windows).
+   - In PowerShell or Terminal, pull the primary production brain:
      ```powershell
-     ollama pull qwen2.5:7b
+     ollama pull qwen3.5:9b
      ```
-     *(Or lightweight models like `ollama pull llama3.2:3b` for laptops / lower RAM systems).*
+2. **Download & Run**:
+   - Download the pre-built `F.R.I.D.A.Y. 3.0` distribution package (or find it in `release/F.R.I.D.A.Y. 3.0/`).
+   - Double-click **`F.R.I.D.A.Y. 3.0.exe`**.
+   - *That's it!* The complete neural voice engine, PySide6 Fluent UI, and Windows desktop automation start instantly without running any scripts.
 
 ---
 
-### 📥 Step 1: Download F.R.I.D.A.Y.
+### 💻 Option 2: Run From Source (Developers)
 
-Choose whichever method you prefer:
+If you are customizing or contributing to the F.R.I.D.A.Y. codebase:
 
-#### Option A: 1-Click ZIP Download (Easiest)
-1. Click the green **`<> Code`** button at the top of this GitHub repository page.
-2. Select **`Download ZIP`**.
-3. Locate `F.R.I.D.A.Y-main.zip` in your `Downloads` folder.
-4. Right-click the `.zip` file, click **Extract All...**, and click **Extract**.
-5. Open the extracted `F.R.I.D.A.Y-main` folder.
+#### 📋 Prerequisites
+1. **Python 3.10, 3.11, or 3.12**:
+   - Download from [python.org/downloads](https://www.python.org/downloads/).
+   - ⚠️ Check `[x] Add python.exe to PATH` during installation.
+2. **Ollama**:
+   - Install from [ollama.com](https://ollama.com) and pull: `ollama pull qwen3.5:9b` (or `qwen2.5:7b`).
 
-#### Option B: Git Clone (For Developers)
-Open PowerShell or Command Prompt:
+#### ⚡ Setup & Launch
+1. **Clone the repository**:
+   ```powershell
+   git clone https://github.com/yogaraj2708-max/F.R.I.D.A.Y.git
+   cd F.R.I.D.A.Y
+   ```
+2. **Automatic 1-Click Setup**:
+   - Double-click **`setup.bat`** (or run `pip install -r requirements.txt` inside your virtual environment).
+3. **Launch the Application**:
+   - Run **`Launch_FRIDAY_App.bat`**, double-click your Desktop shortcut, or run:
+     ```powershell
+     .\.venv\Scripts\python.exe run_friday_gui.py
+     ```
+
+#### 📦 Building the Standalone Executable from Source
+To compile your own production `.exe` bundle using PyInstaller:
 ```powershell
-git clone https://github.com/yogaraj2708-max/F.R.I.D.A.Y.git
-cd F.R.I.D.A.Y
+.\.venv\Scripts\pyinstaller.exe --noconfirm --distpath release --workpath build FRIDAY_3.0.spec
 ```
-
----
-
-### ⚡ Step 2: 1-Click Automatic Setup
-
-Inside the F.R.I.D.A.Y. project folder:
-
-1. Double-click **`setup.bat`**.
-2. The automatic setup utility will:
-   - Verify your Python installation.
-   - Build an isolated virtual environment (`.venv`).
-   - Install all required libraries (PySide6 Fluent UI, sounddevice, torch/whisper, etc.).
-   - Place a glowing **F.R.I.D.A.Y. 2.0 Arc Reactor Shortcut** right onto your Windows Desktop!
-3. Press any key when the setup completes.
-
-> **Manual CLI Setup (Alternative)**:
-> If you prefer manual setup in terminal:
-> ```powershell
-> python -m venv .venv
-> .\.venv\Scripts\activate
-> pip install -r requirements.txt
-> ```
-
----
-
-### 🎯 Step 3: Launch F.R.I.D.A.Y.
-
-You can launch F.R.I.D.A.Y. anytime using any of these methods:
-- **From your Desktop**: Double-click the **`F.R.I.D.A.Y. 2.0`** desktop shortcut.
-- **From File Explorer**: Double-click **`Launch_FRIDAY_App.bat`** or **`run_friday_gui.bat`**.
-- **From Terminal**:
-  ```powershell
-  .\.venv\Scripts\python.exe -m friday_ui.main
-  ```
+The output directory will be created at `release/F.R.I.D.A.Y. 3.0/F.R.I.D.A.Y. 3.0.exe`.
 
 ---
 
