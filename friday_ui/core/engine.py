@@ -4244,8 +4244,9 @@ Core Persona Rules:
             ) if isinstance(args, dict) else str(args).strip()
             if not app_name:
                 return "Error: Argument validation failed: 'app_name' parameter is required for launch_app."
+            from friday_core.system.window_manager import run_on_interactive_desktop
             from friday_core.automation.action_engine import ui_action_engine
-            res = await asyncio.to_thread(ui_action_engine.launch_app, app_name, task_id=tid)
+            res = await asyncio.to_thread(run_on_interactive_desktop, ui_action_engine.launch_app, app_name, task_id=tid)
             if res.get("success"):
                 play_chime(CHIME_CONFIRM)
                 return res.get("message", f"Application '{app_name}' launched and verified on desktop.")
@@ -4269,12 +4270,24 @@ Core Persona Rules:
             ) if isinstance(args, dict) else "notepad"
             mode = args.get("mode", "type") if isinstance(args, dict) else "type"
             ctrl_name = args.get("control_name") if isinstance(args, dict) else None
+            from friday_core.system.window_manager import run_on_interactive_desktop
             from friday_core.automation.action_engine import ui_action_engine
-            res = await asyncio.to_thread(ui_action_engine.type_text, text=text, app_name=app_target, control_name=ctrl_name, mode=mode, task_id=tid)
-            if res.get("success"):
+            calc_timeout = max(180.0, len(text) * 0.08 + 30.0)
+            res = await asyncio.to_thread(
+                run_on_interactive_desktop,
+                ui_action_engine.type_text,
+                text=text,
+                app_name=app_target,
+                control_name=ctrl_name,
+                mode=mode,
+                task_id=tid,
+                desktop_timeout=calc_timeout
+            )
+            if res and isinstance(res, dict) and res.get("success"):
                 play_chime(CHIME_CONFIRM)
                 return res.get("message", f"Typed text into {app_target or 'active window'} and verified on screen.")
-            return f"Typing operation failed: {res.get('message', 'Failed to inject or verify text.')}"
+            err_msg = res.get("message", "Failed to inject or verify text.") if isinstance(res, dict) else (res or "Typing operation timed out.")
+            return f"Typing operation failed: {err_msg}"
 
         elif name == "weather":
             loc = ""
@@ -4414,8 +4427,9 @@ Core Persona Rules:
         elif name == "inspect_ui":
             app_target = args.get("app_name", "") if isinstance(args, dict) else str(args).strip()
             exp_content = args.get("expected_content", "") if isinstance(args, dict) else ""
+            from friday_core.system.window_manager import run_on_interactive_desktop
             from friday_core.automation.action_engine import ui_action_engine
-            res = await asyncio.to_thread(ui_action_engine.inspect_ui, app_name=app_target, expected_content=exp_content, task_id=tid)
+            res = await asyncio.to_thread(run_on_interactive_desktop, ui_action_engine.inspect_ui, app_name=app_target, expected_content=exp_content, task_id=tid)
             if res.get("success"):
                 return res.get("summary") or res.get("message")
             return res.get("message", f"Failed to inspect window for '{app_target}'.")
@@ -4427,8 +4441,9 @@ Core Persona Rules:
             app_target = args.get("app_name") if isinstance(args, dict) else None
             ctype = args.get("control_type") if isinstance(args, dict) else None
             aid = args.get("automation_id") if isinstance(args, dict) else None
+            from friday_core.system.window_manager import run_on_interactive_desktop
             from friday_core.automation.action_engine import ui_action_engine
-            res = await asyncio.to_thread(ui_action_engine.click_control, control_name=control, app_name=app_target, control_type=ctype, automation_id=aid, task_id=tid)
+            res = await asyncio.to_thread(run_on_interactive_desktop, ui_action_engine.click_control, control_name=control, app_name=app_target, control_type=ctype, automation_id=aid, task_id=tid)
             if res.get("success"):
                 play_chime(CHIME_CONFIRM)
                 return res.get("message", f"Clicked '{control}' successfully.")

@@ -113,22 +113,23 @@ def run_on_interactive_desktop(func, *args, **kwargs):
     if not HAS_WIN32:
         return func(*args, **kwargs)
 
-    # If current thread can attach or is already on the input desktop:
-    if ensure_interactive_desktop():
+    # If already running inside an InteractiveDesktopWorker, COM and UIA are already initialized
+    if getattr(threading.current_thread(), "_is_interactive_desktop_worker", False):
         return func(*args, **kwargs)
 
-    # Current thread is trapped on an isolated desktop (Error 170). Execute on a clean worker thread.
     result_container = []
     exc_container = []
 
     def _worker():
+        setattr(threading.current_thread(), "_is_interactive_desktop_worker", True)
         co_inited = False
         ole32 = getattr(ctypes.windll, "ole32", None)
         try:
+            # Desktop MUST be switched BEFORE CoInitialize, otherwise COM window creation causes Error 170 (ERROR_BUSY)
+            ensure_interactive_desktop()
             if ole32:
                 hr = ole32.CoInitialize(None)
                 co_inited = (hr >= 0)
-            ensure_interactive_desktop()
             try:
                 import uiautomation as _auto
                 has_auto = True
@@ -151,8 +152,9 @@ def run_on_interactive_desktop(func, *args, **kwargs):
                 except Exception:
                     pass
 
-    desktop_timeout = kwargs.pop("desktop_timeout", 60.0)
-    t = threading.Thread(target=_worker, daemon=True)
+    desktop_timeout = kwargs.pop("desktop_timeout", 180.0)
+    worker_name = f"InteractiveDesktopWorker_{getattr(func, '__name__', 'task')}"
+    t = threading.Thread(target=_worker, daemon=True, name=worker_name)
     t.start()
     t.join(timeout=desktop_timeout)
 

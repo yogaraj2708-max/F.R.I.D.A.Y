@@ -1,32 +1,99 @@
 # -*- mode: python ; coding: utf-8 -*-
-from PyInstaller.utils.hooks import collect_all
+"""
+F.R.I.D.A.Y. 3.0 — Production Windows PyInstaller Specification
+Builds standalone, directory-based production application bundle.
+"""
 
-datas = [('C:/Users/Admin/OneDrive/Documents/jarvis voice/friday_ui', 'friday_ui'), ('C:/Users/Admin/OneDrive/Documents/jarvis voice/friday_core', 'friday_core')]
+import os
+from PyInstaller.utils.hooks import collect_all, collect_submodules
+
+# Base datas: Local application assets and modelfiles
+datas = [
+    ('friday_ui/assets', 'friday_ui/assets'),
+    ('friday_core/router/Modelfile.decider', 'friday_core/router'),
+]
 binaries = []
-hiddenimports = ['qfluentwidgets', 'qasync', 'certifi', 'win32com', 'win32com.client', 'pythoncom', 'sounddevice', 'pygame', 'speech_recognition', 'edge_tts', 'ollama', 'duckduckgo_search', 'sqlite3', 'pypdf', 'lxml', 'lxml.html', 'psutil', 'mss', 'uiautomation', 'friday_ui', 'friday_core', 'friday_core.skills', 'friday_core.agent', 'friday_core.context', 'friday_core.automation', 'friday_core.vision', 'friday_core.memory', 'friday_core.rag', 'friday_core.browser', 'friday_core.research', 'friday_core.scheduler', 'friday_core.dev_agent', 'friday_core.observability', 'friday_core.security']
-tmp_ret = collect_all('qfluentwidgets')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-tmp_ret = collect_all('qasync')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-tmp_ret = collect_all('certifi')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-tmp_ret = collect_all('win32com')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+hiddenimports = [
+    'win32com',
+    'win32com.client',
+    'pythoncom',
+    'pywintypes',
+    'win32api',
+    'win32gui',
+    'win32con',
+    'win32process',
+    'win32clipboard',
+    'comtypes',
+    'speech_recognition',
+    'pygame',
+    'edge_tts',
+    'rapidfuzz',
+    'numpy',
+    'PIL',
+    'bs4',
+    'sqlite3',
+    'certifi',
+    'qasync',
+    'unittest',
+    'unittest.mock',
+]
 
+# Collect all submodules for internal packages to guarantee zero missing dynamic imports
+hiddenimports += collect_submodules('friday_core')
+hiddenimports += collect_submodules('friday_ui')
+
+# Explicitly collect third-party packages requiring native dynamic libraries, data schemas, and runtime templates
+packages_to_collect = [
+    'qfluentwidgets',
+    'certifi',
+    'soundfile',
+    '_soundfile_data',
+    '_sounddevice_data',
+    'kokoro_onnx',
+    'onnxruntime',
+    'faster_whisper',
+    'ctranslate2',
+    'uiautomation',
+    'docx',
+    'pypdf',
+    'lxml',
+    'psutil',
+    'mss',
+    'ollama',
+    'duckduckgo_search',
+]
+
+for pkg in packages_to_collect:
+    try:
+        pkg_datas, pkg_binaries, pkg_hidden = collect_all(pkg)
+        datas += pkg_datas
+        binaries += pkg_binaries
+        hiddenimports += pkg_hidden
+    except Exception as ex:
+        print(f"[SPEC_WARNING] collect_all failed for {pkg}: {ex}")
+
+# Exclude unneeded development and test suites from production bundle
+excludes = [
+    'tests',
+    'pytest',
+    'tkinter',
+    'setuptools',
+]
 
 a = Analysis(
-    ['C:/Users/Admin/OneDrive/Documents/jarvis voice/run_friday_gui.py'],
-    pathex=[],
+    ['run_friday_gui.py'],
+    pathex=['.'],
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=excludes,
     noarchive=False,
     optimize=0,
 )
+
 pyz = PYZ(a.pure)
 
 exe = EXE(
@@ -34,25 +101,26 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='FRIDAY_3.0',
+    name='F.R.I.D.A.Y. 3.0',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['C:/Users/Admin/OneDrive/Documents/jarvis voice/friday_ui/assets/friday_icon.ico'],
+    icon='friday_ui/assets/friday_icon.ico',
 )
+
 coll = COLLECT(
     exe,
     a.binaries,
     a.datas,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
-    name='FRIDAY_3.0',
+    name='F.R.I.D.A.Y. 3.0',
 )

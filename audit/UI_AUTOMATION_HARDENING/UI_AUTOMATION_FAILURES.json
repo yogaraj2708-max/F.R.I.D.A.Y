@@ -1,44 +1,14 @@
 {
-  "total_failures": 4,
+  "total_failures": 1,
   "failures": [
     {
-      "failure_id": "fail_ed4ea3fd",
-      "task_id": "trace-586ddef6",
-      "timestamp": "2026-09-30T20:31:24.436483",
+      "failure_id": "fail_357be831",
+      "task_id": "trace-6035558f",
+      "timestamp": "2026-10-01T00:20:11.123056",
       "action": "type_text",
       "application": "notepad",
-      "failure_type": "INPUT_METHOD_FAILED",
-      "reason": "Operation timed out after 60.0s.",
-      "details": {}
-    },
-    {
-      "failure_id": "fail_aeef37c6",
-      "task_id": "trace-84a07f46",
-      "timestamp": "2026-09-30T21:23:28.970120",
-      "action": "inspect_ui",
-      "application": "taskmgr",
-      "failure_type": "WINDOW_NOT_FOUND",
-      "reason": "Target window for 'taskmgr' not found on desktop.",
-      "details": {}
-    },
-    {
-      "failure_id": "fail_7c6a9163",
-      "task_id": "trace-84a07f46",
-      "timestamp": "2026-09-30T21:23:42.063727",
-      "action": "click_control",
-      "application": "taskmgr",
-      "failure_type": "WINDOW_NOT_FOUND",
-      "reason": "Window 'taskmgr' not found for click target 'Processes'.",
-      "details": {}
-    },
-    {
-      "failure_id": "fail_1a2c6f77",
-      "task_id": "trace-84a07f46",
-      "timestamp": "2026-09-30T21:23:59.703614",
-      "action": "inspect_ui",
-      "application": "taskmgr",
-      "failure_type": "WINDOW_NOT_FOUND",
-      "reason": "Target window for 'taskmgr' not found on desktop.",
+      "failure_type": "SECURITY_BLOCKED",
+      "reason": "Security Gatekeeper: Injection of destructive system shell commands prohibited.",
       "details": {}
     }
   ]

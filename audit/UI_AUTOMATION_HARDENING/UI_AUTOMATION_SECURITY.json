@@ -3,13 +3,13 @@
   "log": [
     {
       "action": "launch_app",
-      "target": "notepad",
+      "target": "calculator",
       "verdict": "PERMITTED",
       "reason": "Safe application launch authorized."
     },
     {
       "action": "type_text",
-      "target": "notepad:11chars",
+      "target": "calculator:7chars",
       "verdict": "PERMITTED",
       "reason": "Text injection authorized."
     }
